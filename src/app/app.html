@@ -1,0 +1,15 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/owner/dashboard" aria-label="ครัวเที่ยงตรง หน้าหลัก">
+      <span class="brand-mark">11:30</span>
+      <span class="brand-copy"><strong>ครัวเที่ยงตรง</strong><span>ระบบจัดเส้นทางมื้อเที่ยง</span></span>
+    </a>
+    <nav class="main-nav" aria-label="เมนูหลัก">
+      <a routerLink="/owner/dashboard" routerLinkActive="active">ภาพรวม</a>
+      <a routerLink="/owner/customers" routerLinkActive="active">ลูกค้า</a>
+      <a routerLink="/owner/orders" routerLinkActive="active">ออเดอร์</a>
+      <a class="rider-link" routerLink="/rider" routerLinkActive="active">ใบงานไรเดอร์</a>
+    </nav>
+  </header>
+  <router-outlet />
+</div>

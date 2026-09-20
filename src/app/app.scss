@@ -1,0 +1,22 @@
+.app-shell { min-height: 100vh; background: var(--canvas); }
+.topbar {
+  position: sticky; top: 0; z-index: 1000; display: flex; align-items: center;
+  justify-content: space-between; min-height: 72px; padding: 0 32px;
+  border-bottom: 1px solid var(--line); background: rgba(251, 251, 250, .94);
+  backdrop-filter: blur(14px);
+}
+.brand { display: flex; align-items: center; gap: 12px; color: var(--ink); text-decoration: none; }
+.brand-mark { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--ink); border-radius: 8px; font: 700 12px/1 var(--mono); }
+.brand-copy strong, .brand-copy span { display: block; }
+.brand-copy strong { font-size: 14px; }
+.brand-copy span { margin-top: 2px; color: var(--muted); font-size: 11px; }
+.main-nav { display: flex; align-items: center; gap: 4px; }
+.main-nav a { padding: 9px 12px; border-radius: 5px; color: var(--muted); font-size: 13px; text-decoration: none; }
+.main-nav a:hover, .main-nav a.active { background: #f0efec; color: var(--ink); }
+.main-nav .rider-link { margin-left: 8px; border: 1px solid var(--line-strong); }
+@media (max-width: 760px) {
+  .topbar { align-items: flex-start; padding: 14px 18px 10px; }
+  .brand-copy { display: none; }
+  .main-nav { max-width: calc(100vw - 78px); overflow-x: auto; padding-bottom: 4px; }
+  .main-nav a { white-space: nowrap; }
+}
