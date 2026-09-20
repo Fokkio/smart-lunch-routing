@@ -21,6 +21,7 @@ export class DeliveryService {
     const next = input.id ? current.map((item) => item.id === input.id ? customer : item) : [...current, customer];
     this.customers.set(next);
     this.persist(CUSTOMER_KEY, next);
+    this.clearPlan();
   }
 
   deleteCustomer(id: string): boolean {
@@ -60,7 +61,12 @@ export class DeliveryService {
   }
 
   calculateRoutes(alternative = false): RoutePlan {
-    const version = alternative ? (this.plan()?.version || 1) + 1 : 1;
+    const plan = this.previewRoutes(alternative ? (this.plan()?.version || 1) + 1 : 1);
+    this.choosePlan(plan);
+    return plan;
+  }
+
+  previewRoutes(version: number): RoutePlan {
     const orders = this.pendingOrders();
     const customerById = new Map(this.customers().map((customer) => [customer.id, customer]));
     const sorted = [...orders].sort((a, b) => {
@@ -84,9 +90,12 @@ export class DeliveryService {
       profit: this.round(routes.reduce((sum, route) => sum + route.profit, 0)),
       deadlineSafe: routes.every((route) => route.deadlineSafe),
     };
+    return plan;
+  }
+
+  choosePlan(plan: RoutePlan): void {
     this.plan.set(plan);
     this.persist(PLAN_KEY, plan);
-    return plan;
   }
 
   routeForJobCode(jobCode: string): RiderRoute | null {

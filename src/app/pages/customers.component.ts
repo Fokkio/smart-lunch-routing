@@ -3,77 +3,101 @@ import { FormsModule } from '@angular/forms';
 import { Customer } from '../core/models';
 import { DeliveryService } from '../core/delivery.service';
 import { DeliveryMapComponent } from '../shared/delivery-map.component';
-import { RevealDirective } from '../shared/reveal.directive';
 
-type CustomerDraft = Omit<Customer, 'id'> & { id?: string };
+type Draft = Omit<Customer, 'id'> & { id?: string };
 
 @Component({
   selector: 'app-customers',
   standalone: true,
-  imports: [FormsModule, DeliveryMapComponent, RevealDirective],
-  template: `
-    <main class="page section-page">
-      <header class="section-heading" appReveal>
-        <div><p class="eyebrow">CUSTOMER DIRECTORY</p><h1>ลูกค้าและพิกัด</h1><p>ค้นหาจากเบอร์โทร ตรวจจุดส่งบนแผนที่ และแก้ข้อมูลที่ใช้คำนวณเส้นทาง</p></div>
-        <button class="button button-primary" type="button" (click)="startCreate()">เพิ่มลูกค้า</button>
-      </header>
-
-      <section class="split-layout" appReveal>
-        <article class="panel table-panel">
-          <div class="toolbar">
-            <label class="search-field"><span>ค้นหา</span><input [(ngModel)]="query" placeholder="ชื่อ เบอร์โทร หรือที่อยู่" /></label>
-            <span class="count-label">{{ filteredCustomers().length }} รายการ</span>
-          </div>
-          <div class="customer-list">
-            @for (customer of filteredCustomers(); track customer.id) {
-              <article class="customer-row">
-                <span class="initial">{{ customer.name.slice(0, 1) }}</span>
-                <div><strong>{{ customer.name }}</strong><small>{{ customer.phone }}</small><p>{{ customer.address }}</p></div>
-                <div class="coordinate"><small>LAT / LNG</small><span>{{ customer.lat.toFixed(5) }}<br>{{ customer.lng.toFixed(5) }}</span></div>
-                <div class="row-actions"><button type="button" (click)="edit(customer)">แก้ไข</button><button type="button" (click)="remove(customer)">ลบ</button></div>
-              </article>
-            } @empty { <div class="no-results">ไม่พบลูกค้าที่ตรงกับคำค้น</div> }
-          </div>
-        </article>
-
-        <aside class="side-stack">
-          <article class="panel form-panel">
-            <div class="panel-heading"><div><p class="eyebrow">{{ draft.id ? 'EDIT RECORD' : 'NEW RECORD' }}</p><h2>{{ draft.id ? 'แก้ข้อมูลลูกค้า' : 'เพิ่มลูกค้าใหม่' }}</h2></div></div>
-            <form (ngSubmit)="save()" #customerForm="ngForm">
-              <label>ชื่อ–นามสกุล<input required name="name" [(ngModel)]="draft.name" /></label>
-              <label>เบอร์โทร<input required name="phone" [(ngModel)]="draft.phone" inputmode="tel" /></label>
-              <label>ที่อยู่<textarea required name="address" [(ngModel)]="draft.address" rows="2"></textarea></label>
-              <div class="field-pair"><label>ละติจูด<input required type="number" step="0.00001" name="lat" [(ngModel)]="draft.lat" /></label><label>ลองจิจูด<input required type="number" step="0.00001" name="lng" [(ngModel)]="draft.lng" /></label></div>
-              <p class="form-note">เดโมนี้ใช้พิกัดโดยตรง การค้นหาที่อยู่และ geocoding ต้องเพิ่มบริการแยกในระบบจริง</p>
-              <div class="form-actions"><button class="button button-primary" [disabled]="customerForm.invalid" type="submit">บันทึกข้อมูล</button><button class="button button-secondary" type="button" (click)="startCreate()">ล้างฟอร์ม</button></div>
-            </form>
-          </article>
-          <article class="panel mini-map"><app-delivery-map [customers]="store.customers()" [compact]="true" /></article>
-        </aside>
-      </section>
-    </main>
-  `,
+  imports: [FormsModule, DeliveryMapComponent],
+  templateUrl: './customers.component.html',
   styleUrl: './customers.component.scss',
 })
 export class CustomersComponent {
   readonly store = inject(DeliveryService);
   query = '';
-  draft: CustomerDraft = this.blankDraft();
+  placeQuery = '';
+  showForm = false;
+  showCoordinates = false;
+  locationSelected = false;
+  pickerLocation: { lat: number; lng: number } | null = null;
+  manualLat: number | null = null;
+  manualLng: number | null = null;
+  error = '';
+  draft: Draft = this.blankDraft();
 
   filteredCustomers(): Customer[] {
     const term = this.query.trim().toLowerCase();
-    if (!term) return this.store.customers();
     return this.store.customers().filter((customer) => `${customer.name} ${customer.phone} ${customer.address}`.toLowerCase().includes(term));
   }
 
-  edit(customer: Customer): void { this.draft = { ...customer }; }
-  startCreate(): void { this.draft = this.blankDraft(); }
-  save(): void { this.store.saveCustomer(this.draft); this.startCreate(); }
+  placeMatches(): Customer[] {
+    const term = this.placeQuery.trim().toLowerCase();
+    return term ? this.store.customers().filter((customer) => `${customer.name} ${customer.address}`.toLowerCase().includes(term)).slice(0, 5) : [];
+  }
+
+  startCreate(): void {
+    this.draft = this.blankDraft();
+    this.locationSelected = false;
+    this.pickerLocation = null;
+    this.manualLat = null;
+    this.manualLng = null;
+    this.placeQuery = '';
+    this.showCoordinates = false;
+    this.error = '';
+    this.showForm = true;
+  }
+
+  edit(customer: Customer): void {
+    this.draft = { ...customer };
+    this.locationSelected = true;
+    this.pickerLocation = { lat: customer.lat, lng: customer.lng };
+    this.manualLat = customer.lat;
+    this.manualLng = customer.lng;
+    this.placeQuery = '';
+    this.showCoordinates = false;
+    this.error = '';
+    this.showForm = true;
+  }
+
+  cancel(): void { this.showForm = false; this.error = ''; }
+
+  selectPlace(customer: Customer): void {
+    this.setLocation({ lat: customer.lat, lng: customer.lng });
+    if (!this.draft.address.trim()) this.draft.address = customer.address;
+    this.placeQuery = '';
+  }
+
+  setLocation(location: { lat: number; lng: number }): void {
+    this.draft.lat = location.lat;
+    this.draft.lng = location.lng;
+    this.locationSelected = true;
+    this.pickerLocation = location;
+    this.manualLat = location.lat;
+    this.manualLng = location.lng;
+    this.error = '';
+  }
+
+  clearLocation(): void { this.locationSelected = false; this.pickerLocation = null; }
+
+  applyCoordinates(): void {
+    if (this.manualLat === null || this.manualLng === null || !Number.isFinite(this.manualLat) || !Number.isFinite(this.manualLng) || Math.abs(this.manualLat) > 90 || Math.abs(this.manualLng) > 180) {
+      this.error = 'กรุณาตรวจสอบตำแหน่งจัดส่งอีกครั้ง';
+      return;
+    }
+    this.setLocation({ lat: this.manualLat, lng: this.manualLng });
+  }
+
+  save(): void {
+    if (!this.locationSelected) { this.error = 'กรุณาปักตำแหน่งจัดส่งของลูกค้า'; return; }
+    this.store.saveCustomer(this.draft);
+    this.cancel();
+  }
+
   remove(customer: Customer): void {
+    if (!window.confirm(`ลบข้อมูลของ ${customer.name} หรือไม่?`)) return;
     if (!this.store.deleteCustomer(customer.id)) window.alert('ลบไม่ได้ เพราะลูกค้ารายนี้ยังมีออเดอร์อยู่');
   }
 
-  private blankDraft(): CustomerDraft {
-    return { name: '', phone: '', address: '', lat: 16.24631, lng: 103.25286 };
-  }
+  private blankDraft(): Draft { return { name: '', phone: '', address: '', lat: 16.24631, lng: 103.25286 }; }
 }

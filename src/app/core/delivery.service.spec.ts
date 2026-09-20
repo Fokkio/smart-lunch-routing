@@ -34,4 +34,23 @@ describe('DeliveryService route planning', () => {
     expect(alternative.version).toBe(2);
     expect(alternative.routes.flatMap((route) => route.stops).length).toBe(service.pendingOrders().length);
   });
+
+  it('previews a different route without replacing the current plan', () => {
+    const original = service.calculateRoutes();
+    const alternative = service.previewRoutes(2);
+    expect(alternative.version).toBe(2);
+    expect(service.plan()).toEqual(original);
+    expect(alternative.routes.length).toBe(9);
+    expect(new Set(alternative.routes.map(route => route.rider.id)).size).toBe(9);
+    expect(alternative.routes.every(route => route.stops.length <= 3)).toBe(true);
+    service.choosePlan(alternative);
+    expect(service.plan()?.version).toBe(2);
+  });
+
+  it('invalidates a plan when customer details change', () => {
+    service.calculateRoutes();
+    const customer = service.customers()[0];
+    service.saveCustomer({ ...customer, address: 'จุดส่งตัวอย่างที่แก้ไขแล้ว' });
+    expect(service.plan()).toBeNull();
+  });
 });

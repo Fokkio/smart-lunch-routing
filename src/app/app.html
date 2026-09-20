@@ -1,15 +1,24 @@
-<div class="app-shell">
-  <header class="topbar">
+<div class="app-shell" [class.rider-shell]="router.url.startsWith('/rider')">
+  @if (!router.url.startsWith('/rider')) { <header class="topbar">
     <a class="brand" routerLink="/owner/dashboard" aria-label="ครัวเที่ยงตรง หน้าหลัก">
-      <span class="brand-mark">11:30</span>
-      <span class="brand-copy"><strong>ครัวเที่ยงตรง</strong><span>ระบบจัดเส้นทางมื้อเที่ยง</span></span>
+      <span class="brand-mark" aria-hidden="true">ก</span>
+      <span class="brand-copy"><strong>ครัวเที่ยงตรง</strong><span>จัดส่งมื้อเที่ยง</span></span>
     </a>
-    <nav class="main-nav" aria-label="เมนูหลัก">
-      <a routerLink="/owner/dashboard" routerLinkActive="active">ภาพรวม</a>
-      <a routerLink="/owner/customers" routerLinkActive="active">ลูกค้า</a>
-      <a routerLink="/owner/orders" routerLinkActive="active">ออเดอร์</a>
-      <a class="rider-link" routerLink="/rider" routerLinkActive="active">ใบงานไรเดอร์</a>
-    </nav>
-  </header>
-  <router-outlet />
+    <span class="topbar-context">วันนี้ · ข้อมูลตัวอย่าง</span>
+    <a class="rider-shortcut" routerLink="/rider">เปิดหน้าไรเดอร์</a>
+  </header> }
+  @if (!router.url.startsWith('/rider')) {
+    <aside class="sidebar" aria-label="เมนูเจ้าของร้าน">
+      <div class="sidebar-caption">งานของร้าน</div>
+      <nav>
+        <a routerLink="/owner/dashboard" routerLinkActive="active">หน้าหลัก</a>
+        <a routerLink="/owner/customers" routerLinkActive="active">ลูกค้า</a>
+        <a routerLink="/owner/orders" routerLinkActive="active">ออเดอร์</a>
+        <a routerLink="/owner/delivery" routerLinkActive="active">จัดส่งวันนี้</a>
+        <a routerLink="/owner/history" routerLinkActive="active">ประวัติการจัดส่ง</a>
+      </nav>
+      <div class="sidebar-bottom"><strong>รอบเที่ยง</strong><span>ออกส่ง 11:30 น.<br>ก่อน 12:30 น.</span></div>
+    </aside>
+  }
+  <div class="main-slot"><router-outlet /></div>
 </div>

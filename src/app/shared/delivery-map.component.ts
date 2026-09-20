@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, Input, OnChanges, OnDestroy, SimpleChanges, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild } from '@angular/core';
 import * as L from 'leaflet';
 import { Customer, RiderRoute, SHOP } from '../core/models';
 
@@ -12,6 +12,9 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   @Input() customers: Customer[] = [];
   @Input() routes: RiderRoute[] = [];
   @Input() compact = false;
+  @Input() pickable = false;
+  @Input() selectedLocation: { lat: number; lng: number } | null = null;
+  @Output() locationPicked = new EventEmitter<{ lat: number; lng: number }>();
   @ViewChild('map', { static: true }) mapElement!: ElementRef<HTMLDivElement>;
 
   private map?: L.Map;
@@ -24,6 +27,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(this.map);
     this.render();
+    if (this.pickable) this.map.on('click', ({ latlng }) => this.emitLocation(latlng));
     setTimeout(() => this.map?.invalidateSize(), 0);
   }
 
@@ -41,7 +45,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
     this.layer = L.featureGroup().addTo(this.map);
     L.circleMarker([SHOP.lat, SHOP.lng], {
       radius: 9, color: '#111111', fillColor: '#ffffff', fillOpacity: 1, weight: 3,
-    }).bindPopup(`<strong>${SHOP.name}</strong><br>จุดเริ่มต้น 11:30 น.`).addTo(this.layer);
+    }).bindPopup(this.popup(SHOP.name, 'จุดเริ่มต้น 11:30 น.')).addTo(this.layer);
 
     if (this.routes.length) {
       this.routes.forEach((route) => {
@@ -50,7 +54,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
           points.push([stop.customer.lat, stop.customer.lng]);
           L.circleMarker([stop.customer.lat, stop.customer.lng], {
             radius: 7, color: route.rider.color, fillColor: '#ffffff', fillOpacity: 1, weight: 3,
-          }).bindPopup(`<strong>${stop.sequence}. ${stop.customer.name}</strong><br>${stop.order.boxes} กล่อง · ถึง ${stop.arrivalTime} น.`).addTo(this.layer!);
+          }).bindPopup(this.popup(`${stop.sequence}. ${stop.customer.name}`, `${stop.order.boxes} กล่อง · ถึง ${stop.arrivalTime} น.`)).addTo(this.layer!);
         });
         L.polyline(points, { color: route.rider.color, weight: 5, opacity: 0.82 }).addTo(this.layer!);
       });
@@ -58,11 +62,32 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
       this.customers.forEach((customer) => {
         L.circleMarker([customer.lat, customer.lng], {
           radius: 6, color: '#787774', fillColor: '#ffffff', fillOpacity: 1, weight: 2,
-        }).bindPopup(`<strong>${customer.name}</strong><br>${customer.address}`).addTo(this.layer!);
+        }).bindPopup(this.popup(customer.name, customer.address)).addTo(this.layer!);
       });
+    }
+
+    if (this.pickable && this.selectedLocation) {
+      L.marker([this.selectedLocation.lat, this.selectedLocation.lng], {
+        draggable: true,
+        icon: L.divIcon({ className: 'location-pin', html: '<span></span>', iconSize: [28, 34], iconAnchor: [14, 34] }),
+      }).on('dragend', (event) => this.emitLocation(event.target.getLatLng())).addTo(this.layer);
     }
 
     const bounds = this.layer.getBounds();
     if (bounds.isValid()) this.map.fitBounds(bounds.pad(this.compact ? 0.12 : 0.2), { maxZoom: 15 });
+  }
+
+  private emitLocation(latlng: L.LatLng): void {
+    this.locationPicked.emit({ lat: Number(latlng.lat.toFixed(6)), lng: Number(latlng.lng.toFixed(6)) });
+  }
+
+  private popup(title: string, detail: string): HTMLElement {
+    const content = document.createElement('div');
+    const heading = document.createElement('strong');
+    const description = document.createElement('div');
+    heading.textContent = title;
+    description.textContent = detail;
+    content.append(heading, description);
+    return content;
   }
 }
