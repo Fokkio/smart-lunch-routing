@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { DeliveryService } from '../core/delivery.service';
+import { DeliveryService } from '../../core/delivery.service';
 import { RiderComponent } from './rider.component';
 
 describe('Rider demo flow', () => {

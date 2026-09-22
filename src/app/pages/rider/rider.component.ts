@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DeliveryService } from '../core/delivery.service';
-import { RiderRoute, RouteStop } from '../core/models';
+import { DeliveryService } from '../../core/delivery.service';
+import { RiderRoute, RouteStop } from '../../core/models';
 
 type Stage = 'entry' | 'summary' | 'delivery' | 'completed';
 
@@ -10,7 +10,6 @@ type Stage = 'entry' | 'summary' | 'delivery' | 'completed';
   standalone: true,
   imports: [FormsModule],
   templateUrl: './rider.component.html',
-  styleUrl: './rider.component.scss',
 })
 export class RiderComponent {
   readonly store = inject(DeliveryService);

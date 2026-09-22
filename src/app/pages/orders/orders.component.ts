@@ -1,8 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Customer, Order, OrderStatus } from '../core/models';
-import { DeliveryService } from '../core/delivery.service';
+import { Customer, Order, OrderStatus } from '../../core/models';
+import { DeliveryService } from '../../core/delivery.service';
 
 type Draft = { id?: string; customerId: string; boxes: number; status: OrderStatus };
 
@@ -11,14 +11,15 @@ type Draft = { id?: string; customerId: string; boxes: number; status: OrderStat
   standalone: true,
   imports: [FormsModule, RouterLink],
   templateUrl: './orders.component.html',
-  styleUrl: './orders.component.scss',
 })
 export class OrdersComponent {
   readonly store = inject(DeliveryService);
   query = '';
   customerQuery = '';
   showForm = false;
+  feedback = '';
   draft: Draft = this.blankDraft();
+  private feedbackTimer?: ReturnType<typeof setTimeout>;
 
   filteredOrders(): Order[] {
     const term = this.query.trim().toLowerCase();
@@ -39,7 +40,9 @@ export class OrdersComponent {
   cancel(): void { this.showForm = false; }
   chooseCustomer(customer: Customer): void { this.draft.customerId = customer.id; this.customerQuery = ''; }
   adjustBoxes(step: number): void { this.draft.boxes = Math.max(1, Math.min(3, this.draft.boxes + step)); }
-  save(): void { if (!this.draft.customerId) return; this.store.saveOrder(this.draft); this.cancel(); }
-  remove(order: Order): void { if (window.confirm(`ลบออเดอร์ ${order.id} หรือไม่?`)) this.store.deleteOrder(order.id); }
+  save(): void { if (!this.draft.customerId) return; const message = this.draft.id ? 'บันทึกการแก้ไขออเดอร์แล้ว' : 'เพิ่มออเดอร์แล้ว'; this.store.saveOrder(this.draft); this.cancel(); this.notify(message); }
+  simulate(): void { this.store.simulateOrder(); this.notify('สร้างออเดอร์จำลองแล้ว'); }
+  remove(order: Order): void { if (window.confirm(`ลบออเดอร์ ${order.id} หรือไม่?`)) { this.store.deleteOrder(order.id); this.notify(`ลบออเดอร์ ${order.id} แล้ว`); } }
+  private notify(message: string): void { clearTimeout(this.feedbackTimer); this.feedback = message; this.feedbackTimer = setTimeout(() => this.feedback = '', 3500); }
   private blankDraft(): Draft { return { customerId: '', boxes: 1, status: 'pending' }; }
 }

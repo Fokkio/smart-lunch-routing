@@ -1,24 +1,35 @@
-<div class="app-shell" [class.rider-shell]="router.url.startsWith('/rider')">
-  @if (!router.url.startsWith('/rider')) { <header class="topbar">
-    <a class="brand" routerLink="/owner/dashboard" aria-label="ครัวเที่ยงตรง หน้าหลัก">
-      <span class="brand-mark" aria-hidden="true">ก</span>
-      <span class="brand-copy"><strong>ครัวเที่ยงตรง</strong><span>จัดส่งมื้อเที่ยง</span></span>
-    </a>
-    <span class="topbar-context">วันนี้ · ข้อมูลตัวอย่าง</span>
-    <a class="rider-shortcut" routerLink="/rider">เปิดหน้าไรเดอร์</a>
-  </header> }
+<a class="neu-panel sr-only z-[1000] rounded-xl px-4 py-3 font-bold text-slate-950 focus:not-sr-only focus:fixed focus:left-4 focus:top-4" href="#main-content">ข้ามไปยังเนื้อหา</a>
+<div class="min-h-screen bg-neu text-slate-900">
   @if (!router.url.startsWith('/rider')) {
-    <aside class="sidebar" aria-label="เมนูเจ้าของร้าน">
-      <div class="sidebar-caption">งานของร้าน</div>
-      <nav>
-        <a routerLink="/owner/dashboard" routerLinkActive="active">หน้าหลัก</a>
-        <a routerLink="/owner/customers" routerLinkActive="active">ลูกค้า</a>
-        <a routerLink="/owner/orders" routerLinkActive="active">ออเดอร์</a>
-        <a routerLink="/owner/delivery" routerLinkActive="active">จัดส่งวันนี้</a>
-        <a routerLink="/owner/history" routerLinkActive="active">ประวัติการจัดส่ง</a>
+    <header class="neu-panel-soft sticky top-0 z-40 flex min-h-16 items-center justify-between border-x-0 border-t-0 px-4 sm:px-6 lg:pl-72">
+      <a class="brand-copy flex min-h-11 items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800" routerLink="/owner/orders" aria-label="ครัวเที่ยงตรง หน้าออเดอร์">
+        <img class="size-10" src="assets/brand/krua-thiang-trong-mark.svg" width="40" height="40" alt="" role="presentation" />
+        <span class="leading-tight"><strong class="block text-sm">ครัวเที่ยงตรง</strong><span class="block text-xs text-slate-500">ระบบจัดส่งมื้อเที่ยง</span></span>
+      </a>
+      <div class="flex items-center gap-3">
+        <span class="hidden rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 sm:inline">ข้อมูลตัวอย่าง</span>
+        <a class="neu-control inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold" routerLink="/rider"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 17a3 3 0 1 0 0 .01M19 17a3 3 0 1 0 0 .01M8 17h4l-2-7H7m5 7 3-8h3l2 5M9 7h3"/></svg><span>หน้าไรเดอร์</span></a>
+      </div>
+    </header>
+    <aside class="neu-panel fixed inset-y-0 left-0 z-50 hidden w-64 rounded-r-3xl border-y-0 border-l-0 px-4 py-5 lg:block" aria-label="เมนูเจ้าของร้าน">
+      <a class="mb-8 flex items-center gap-3 rounded-lg px-2" routerLink="/owner/orders">
+        <img class="size-11" src="assets/brand/krua-thiang-trong-mark.svg" width="44" height="44" alt="" role="presentation" />
+        <span><strong class="block">ครัวเที่ยงตรง</strong><small class="text-slate-500">เจ้าของร้าน</small></span>
+      </a>
+      <p class="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-400">งานของร้าน</p>
+      <nav class="space-y-1">
+        <a class="neu-control flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-slate-700" routerLink="/owner/customers" routerLinkActive="neu-control-active !text-emerald-900" ariaCurrentWhenActive="page"><svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>ข้อมูลลูกค้า</span></a>
+        <a class="neu-control flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-slate-700" routerLink="/owner/orders" routerLinkActive="neu-control-active !text-emerald-900" ariaCurrentWhenActive="page"><svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 2h12v20l-3-2-3 2-3-2-3 2V2Zm3 5h6M9 11h6M9 15h3"/></svg><span>ออเดอร์วันนี้</span></a>
+        <a class="neu-control flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-slate-700" routerLink="/owner/delivery" routerLinkActive="neu-control-active !text-emerald-900" ariaCurrentWhenActive="page"><svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9 18-6 3V6l6-3 6 3 6-3v15l-6 3-6-3Zm0 0V3m6 18V6"/></svg><span>จัดเส้นทาง</span></a>
       </nav>
-      <div class="sidebar-bottom"><strong>รอบเที่ยง</strong><span>ออกส่ง 11:30 น.<br>ก่อน 12:30 น.</span></div>
+      <div class="neu-inset absolute bottom-5 left-4 right-4 rounded-2xl p-4 text-sm"><strong class="block text-slate-900">รอบเที่ยงวันนี้</strong><span class="text-slate-600">เริ่ม 11:30 · เสร็จก่อน 12:30</span></div>
     </aside>
+    <nav class="neu-panel fixed inset-x-2 bottom-2 z-50 grid grid-cols-3 rounded-2xl px-2 pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="เมนูเจ้าของร้านบนมือถือ">
+      <a class="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-2 text-center text-xs font-semibold text-slate-700" routerLink="/owner/customers" routerLinkActive="neu-control-active !text-emerald-800" ariaCurrentWhenActive="page"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87"/></svg><span>ลูกค้า</span></a>
+      <a class="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-2 text-center text-xs font-semibold text-slate-700" routerLink="/owner/orders" routerLinkActive="neu-control-active !text-emerald-800" ariaCurrentWhenActive="page"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 2h12v20l-3-2-3 2-3-2-3 2V2Zm3 5h6M9 11h6"/></svg><span>ออเดอร์</span></a>
+      <a class="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl px-2 text-center text-xs font-semibold text-slate-700" routerLink="/owner/delivery" routerLinkActive="neu-control-active !text-emerald-800" ariaCurrentWhenActive="page"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9 18-6 3V6l6-3 6 3 6-3v15l-6 3-6-3Zm0 0V3m6 18V6"/></svg><span>เส้นทาง</span></a>
+    </nav>
   }
-  <div class="main-slot"><router-outlet /></div>
+  <main id="main-content" tabindex="-1" [class]="router.url.startsWith('/rider') ? '' : 'pb-24 lg:pb-0 lg:pl-64'"><router-outlet /></main>
 </div>
+

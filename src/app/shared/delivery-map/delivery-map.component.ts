@@ -1,12 +1,21 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild } from '@angular/core';
 import * as L from 'leaflet';
-import { Customer, RiderRoute, SHOP } from '../core/models';
+import { Customer, RiderRoute, SHOP } from '../../core/models';
 
 @Component({
   selector: 'app-delivery-map',
   standalone: true,
-  template: '<div #map class="delivery-map" role="region" aria-label="แผนที่จุดส่งและเส้นทางไรเดอร์"></div>',
-  styles: [`.delivery-map { width: 100%; height: 100%; min-height: 420px; background: #f7f6f3; }`],
+  template: `
+    <div class="relative h-full min-h-[320px] w-full">
+      <div #map class="h-full min-h-[320px] w-full bg-neu" role="region" aria-label="แผนที่จุดส่งและเส้นทางไรเดอร์"></div>
+      @if (routes.length) {
+        <div class="neu-panel-soft absolute bottom-6 left-3 z-[500] max-w-[calc(100%-24px)] rounded-xl px-3 py-2 text-xs" aria-label="คำอธิบายสีเส้นทาง">
+          <strong class="mb-1 block text-slate-900">สีเส้นทางไรเดอร์</strong>
+          <div class="flex flex-wrap gap-x-3 gap-y-1">@for (route of routes; track route.rider.id) { <span class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-full" [style.background]="route.rider.color" aria-hidden="true"></span>{{ route.rider.name }}</span> }</div>
+        </div>
+      }
+    </div>
+  `,
 })
 export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() customers: Customer[] = [];
@@ -52,8 +61,8 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
         const points: L.LatLngExpression[] = [[SHOP.lat, SHOP.lng]];
         route.stops.forEach((stop) => {
           points.push([stop.customer.lat, stop.customer.lng]);
-          L.circleMarker([stop.customer.lat, stop.customer.lng], {
-            radius: 7, color: route.rider.color, fillColor: '#ffffff', fillOpacity: 1, weight: 3,
+          L.marker([stop.customer.lat, stop.customer.lng], {
+            icon: L.divIcon({ className: 'route-sequence-pin', html: `<span style="--route-color:${route.rider.color}">${stop.sequence}</span>`, iconSize: [30, 30], iconAnchor: [15, 15] }),
           }).bindPopup(this.popup(`${stop.sequence}. ${stop.customer.name}`, `${stop.order.boxes} กล่อง · ถึง ${stop.arrivalTime} น.`)).addTo(this.layer!);
         });
         L.polyline(points, { color: route.rider.color, weight: 5, opacity: 0.82 }).addTo(this.layer!);

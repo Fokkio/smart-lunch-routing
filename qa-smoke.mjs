@@ -4,9 +4,11 @@ import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 
 const profile = await mkdtemp(join(tmpdir(), 'lunch-ui-'));
+const viewportWidth = Number(process.env.QA_WIDTH || 1440);
+const viewportHeight = Number(process.env.QA_HEIGHT || 900);
 const chrome = spawn('C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', [
   '--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=0',
-  '--remote-allow-origins=*', '--window-size=1440,900', `--user-data-dir=${profile}`, 'about:blank',
+  '--remote-allow-origins=*', `--window-size=${viewportWidth},${viewportHeight}`, `--user-data-dir=${profile}`, 'about:blank',
 ], { stdio: 'ignore' });
 let socket;
 let sequence = 0;
@@ -42,6 +44,10 @@ async function navigate(path) {
   await cdp('Page.navigate', { url: `http://127.0.0.1:4200${path}` });
   await until(() => exists('h1'), path);
 }
+async function assertNoPageOverflow(label) {
+  const overflow = await evaluate('document.documentElement.scrollWidth > document.documentElement.clientWidth');
+  if (overflow) throw new Error(`Horizontal page overflow: ${label}`);
+}
 
 try {
   const port = await until(async () => Number((await readFile(join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]), 'Chrome debugging port');
@@ -62,38 +68,37 @@ try {
   await navigate('/owner/delivery');
   await click('คำนวณเส้นทาง');
   await until(() => exists('.result-grid'), 'route result');
+  await assertNoPageOverflow('delivery result');
   if (process.env.QA_CAPTURE) {
     await pause(2000);
     const screenshot = await cdp('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     await writeFile(process.env.QA_CAPTURE, Buffer.from(screenshot.data, 'base64'));
   }
-  await click('ลองคำนวณเส้นทางใหม่');
+  await click('คำนวณใหม่เพื่อเปรียบเทียบ');
   await until(() => exists('.comparison'), 'route comparison');
-  await click('เลือกเส้นทางใหม่');
-  await click('ยืนยันและสร้างใบงานไรเดอร์');
-  await until(() => evaluate('document.querySelector("dialog")?.open'), 'confirmation dialog');
-  await click('ยืนยัน', 'dialog button');
-  await until(() => exists('.jobs-grid'), 'rider job cards');
+  await click('เลือกแผนใหม่');
 
   await navigate('/rider');
   await click('LUNCH-101');
   await until(() => exists('.job-summary'), 'rider summary');
+  await assertNoPageOverflow('rider summary');
   await click('เริ่มส่ง');
   await until(() => exists('.delivery-stop'), 'first stop');
-  for (let i = 0; i < 3; i++) await click('ส่งสำเร็จ');
+  for (let i = 0; i < 3; i++) await click('ส่งจุดนี้สำเร็จ');
   await until(() => exists('.completed-panel'), 'completed screen');
 
   await navigate('/owner/customers');
   await click('เพิ่มลูกค้า');
   await until(() => exists('.form-panel'), 'customer form');
-  await click('เปิดวิธีระบุตำแหน่งด้วยตัวเลข');
+  await assertNoPageOverflow('customer form');
+  await click('ระบุพิกัดด้วยตัวเลข');
   await evaluate("for (const [name,value] of Object.entries({name:'ลูกค้าทดสอบ',phone:'0000000000',manualLat:'16.246',manualLng:'103.253'})) { const field = document.getElementsByName(name)[0]; field.value=value; field.dispatchEvent(new Event('input',{bubbles:true})); }");
   await pause(100);
   await click('ใช้ตำแหน่งนี้');
   await until(() => exists('.location-confirm'), 'keyboard location selection');
-  await click('บันทึกข้อมูลลูกค้า');
+  await click('บันทึกข้อมูล');
   await until(() => evaluate('document.body.textContent.includes("27 รายการ")'), 'customer saved');
-  console.log('PASS: route calculation, comparison, confirmation UI, rider three-stop flow, keyboard location entry');
+  console.log('PASS: route calculation, comparison, rider three-stop flow, keyboard location entry');
 } finally {
   socket?.close();
   chrome.kill();

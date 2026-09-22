@@ -1,0 +1,88 @@
+@import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
+
+@theme {
+  --font-sans: 'Noto Sans Thai', 'Leelawadee UI', 'Segoe UI', Tahoma, sans-serif;
+  --color-neu: #e7edf3;
+  --color-neu-light: #f4f8fb;
+  --color-neu-dark: #c1ccd6;
+}
+
+@layer base {
+  html { @apply bg-neu font-sans text-slate-900 antialiased; }
+  body { @apply m-0 min-h-screen min-w-80 bg-neu leading-relaxed; }
+  button, a, input, textarea, select { @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800; }
+  button:not(:disabled), a { @apply cursor-pointer; }
+  button:disabled { @apply cursor-not-allowed opacity-50; }
+  input, textarea, select { caret-color: #064e3b; }
+  a { text-underline-offset: .18em; }
+  * { scrollbar-color: #94a3b8 #e7edf3; scrollbar-width: thin; }
+  ::selection { background: #fcd34d; color: #0f172a; }
+}
+
+@layer components {
+  .neu-panel {
+    @apply border border-white/70 bg-neu;
+    box-shadow: -8px -8px 18px rgb(255 255 255 / .78), 8px 8px 18px rgb(148 163 184 / .32);
+  }
+
+  .neu-panel-soft {
+    @apply border border-white/60 bg-neu;
+    box-shadow: -4px -4px 10px rgb(255 255 255 / .72), 4px 4px 10px rgb(148 163 184 / .25);
+  }
+
+  .neu-inset {
+    @apply border border-white/50 bg-neu;
+    box-shadow: inset 3px 3px 7px rgb(148 163 184 / .3), inset -3px -3px 7px rgb(255 255 255 / .82);
+  }
+
+  .neu-control {
+    @apply border border-white/70 bg-neu transition-[box-shadow,color,background-color] duration-200;
+    box-shadow: -3px -3px 7px rgb(255 255 255 / .82), 3px 3px 7px rgb(148 163 184 / .32);
+  }
+
+  .neu-control:hover:not(:disabled) {
+    @apply text-emerald-900;
+    box-shadow: -4px -4px 9px rgb(255 255 255 / .9), 4px 4px 9px rgb(148 163 184 / .38);
+  }
+
+  .neu-control:active:not(:disabled), .neu-control-active {
+    box-shadow: inset 3px 3px 7px rgb(148 163 184 / .32), inset -3px -3px 7px rgb(255 255 255 / .82);
+  }
+
+  .neu-primary {
+    @apply border border-emerald-950/10 bg-emerald-900 text-white transition-[box-shadow,background-color] duration-200 hover:bg-emerald-800;
+    box-shadow: -4px -4px 9px rgb(255 255 255 / .72), 4px 4px 9px rgb(51 65 85 / .34), inset 0 1px 0 rgb(255 255 255 / .18);
+  }
+
+  .neu-primary:active:not(:disabled) {
+    box-shadow: inset 3px 3px 7px rgb(2 44 34 / .55), inset -2px -2px 5px rgb(52 211 153 / .18);
+  }
+
+  .neu-field {
+    @apply border border-white/60 bg-neu text-slate-900 placeholder:text-slate-500;
+    box-shadow: inset 3px 3px 7px rgb(148 163 184 / .28), inset -3px -3px 7px rgb(255 255 255 / .82);
+  }
+
+  .neu-field:focus {
+    @apply border-emerald-700;
+    box-shadow: inset 3px 3px 7px rgb(148 163 184 / .28), inset -3px -3px 7px rgb(255 255 255 / .82), 0 0 0 3px rgb(4 120 87 / .14);
+  }
+}
+
+.leaflet-container { font-family: var(--font-sans); }
+.leaflet-control-zoom a { color: #0f172a; }
+.leaflet-popup-content-wrapper { border: 1px solid rgb(255 255 255 / .75); border-radius: .75rem; background: #e7edf3; box-shadow: -4px -4px 10px rgb(255 255 255 / .7), 5px 5px 12px rgb(100 116 139 / .32); }
+.leaflet-popup-tip { box-shadow: none; }
+.location-pin { border: 0; background: transparent; }
+.location-pin span { display: block; width: 26px; height: 26px; border: 4px solid white; border-radius: 50% 50% 50% 0; background: #064e3b; box-shadow: 0 2px 8px #0005; transform: rotate(-45deg); }
+.route-sequence-pin { border: 0; background: transparent; }
+.route-sequence-pin span { display: grid; width: 30px; height: 30px; place-items: center; border: 3px solid white; border-radius: 999px; background: var(--route-color); box-shadow: 0 3px 10px rgb(15 23 42 / .3); color: white; font-size: 12px; font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
+
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid ButtonText; }
+}

@@ -1,8 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Customer } from '../core/models';
-import { DeliveryService } from '../core/delivery.service';
-import { DeliveryMapComponent } from '../shared/delivery-map.component';
+import { Customer } from '../../core/models';
+import { DeliveryService } from '../../core/delivery.service';
+import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
 
 type Draft = Omit<Customer, 'id'> & { id?: string };
 
@@ -11,7 +11,6 @@ type Draft = Omit<Customer, 'id'> & { id?: string };
   standalone: true,
   imports: [FormsModule, DeliveryMapComponent],
   templateUrl: './customers.component.html',
-  styleUrl: './customers.component.scss',
 })
 export class CustomersComponent {
   readonly store = inject(DeliveryService);
@@ -24,7 +23,9 @@ export class CustomersComponent {
   manualLat: number | null = null;
   manualLng: number | null = null;
   error = '';
+  feedback = '';
   draft: Draft = this.blankDraft();
+  private feedbackTimer?: ReturnType<typeof setTimeout>;
 
   filteredCustomers(): Customer[] {
     const term = this.query.trim().toLowerCase();
@@ -90,13 +91,21 @@ export class CustomersComponent {
 
   save(): void {
     if (!this.locationSelected) { this.error = 'กรุณาปักตำแหน่งจัดส่งของลูกค้า'; return; }
+    const message = this.draft.id ? 'บันทึกการแก้ไขลูกค้าแล้ว' : 'เพิ่มลูกค้าใหม่แล้ว';
     this.store.saveCustomer(this.draft);
     this.cancel();
+    this.notify(message);
   }
 
   remove(customer: Customer): void {
     if (!window.confirm(`ลบข้อมูลของ ${customer.name} หรือไม่?`)) return;
-    if (!this.store.deleteCustomer(customer.id)) window.alert('ลบไม่ได้ เพราะลูกค้ารายนี้ยังมีออเดอร์อยู่');
+    this.notify(this.store.deleteCustomer(customer.id) ? `ลบข้อมูลของ ${customer.name} แล้ว` : 'ลบไม่ได้ เพราะลูกค้ารายนี้ยังมีออเดอร์อยู่');
+  }
+
+  private notify(message: string): void {
+    clearTimeout(this.feedbackTimer);
+    this.feedback = message;
+    this.feedbackTimer = setTimeout(() => this.feedback = '', 3500);
   }
 
   private blankDraft(): Draft { return { name: '', phone: '', address: '', lat: 16.24631, lng: 103.25286 }; }
