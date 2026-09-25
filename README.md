@@ -4,6 +4,8 @@ Angular 22 + Tailwind CSS UI demo สำหรับจัดเส้นทา�
 
 Backend แยกอยู่ที่ [Fokkio/smart-lunch-routing-backend](https://github.com/Fokkio/smart-lunch-routing-backend) และติดตามงานร่วมกันผ่าน [Full Stack Team Project](https://github.com/users/Fokkio/projects/2)
 
+สมาชิกทีมที่เพิ่งเริ่มใช้ Git ดูขั้นตอนได้จาก [คู่มือ Git และ GitHub ภาษาไทย](GIT_GUIDE_TH.md)
+
 ## ฟังก์ชันที่มีในเดโม
 
 - จัดการลูกค้า: เพิ่ม แก้ไข ลบ ค้นหา และปักหมุดบน Leaflet + OpenStreetMap
