@@ -2,6 +2,8 @@
 
 Angular 22 + Tailwind CSS UI demo สำหรับจัดเส้นทางและแบ่งงานไรเดอร์ส่งข้าวกล่องช่วงมื้อเที่ยง อ้างอิงข้อกำหนดจาก `Project.pdf` โดยใช้ข้อมูลจำลองและเก็บข้อมูลใน `localStorage` ของเบราว์เซอร์
 
+Backend แยกอยู่ที่ [Fokkio/smart-lunch-routing-backend](https://github.com/Fokkio/smart-lunch-routing-backend) และติดตามงานร่วมกันผ่าน [Full Stack Team Project](https://github.com/users/Fokkio/projects/2)
+
 ## ฟังก์ชันที่มีในเดโม
 
 - จัดการลูกค้า: เพิ่ม แก้ไข ลบ ค้นหา และปักหมุดบน Leaflet + OpenStreetMap
