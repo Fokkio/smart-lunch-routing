@@ -20,7 +20,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.brand-copy')?.textContent).toContain('ครัวเที่ยงตรง');
-    expect(compiled.querySelectorAll('aside nav a').length).toBe(3);
+    expect(compiled.querySelector('aside a[aria-label*="ครัวเที่ยงตรง"]')?.textContent).toContain('ครัวเที่ยงตรง');
+    expect(compiled.querySelectorAll('aside nav a').length).toBe(4);
   });
 });

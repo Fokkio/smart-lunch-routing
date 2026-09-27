@@ -42,7 +42,7 @@ async function click(text, selector = 'button') {
 }
 async function navigate(path) {
   await cdp('Page.navigate', { url: `http://127.0.0.1:4200${path}` });
-  await until(() => exists('h1'), path);
+  await until(() => evaluate('!!document.querySelector("router-outlet")?.nextElementSibling'), path);
 }
 async function assertNoPageOverflow(label) {
   const overflow = await evaluate('document.documentElement.scrollWidth > document.documentElement.clientWidth');
@@ -67,7 +67,7 @@ try {
 
   await navigate('/owner/delivery');
   await click('คำนวณเส้นทาง');
-  await until(() => exists('.result-grid'), 'route result');
+  await until(() => evaluate('document.body.textContent.includes("แผนพร้อมใช้งาน")'), 'route result');
   await assertNoPageOverflow('delivery result');
   if (process.env.QA_CAPTURE) {
     await pause(2000);
@@ -104,5 +104,5 @@ try {
   chrome.kill();
   await pause(300);
   if (!resolve(profile).startsWith(resolve(tmpdir()) + sep)) throw new Error('Unsafe temporary profile path');
-  await rm(profile, { recursive: true, force: true });
+  await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
