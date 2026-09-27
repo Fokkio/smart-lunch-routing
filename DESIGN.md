@@ -2,40 +2,40 @@
 name: ระบบจัดเส้นทางและแบ่งงานไรเดอร์อัจฉริยะ
 description: ระบบจัดส่งมื้อเที่ยงภาษาไทยที่อ่านสถานะและขั้นตอนถัดไปได้ทันที
 colors:
-  canvas: "#e7edf3"
-  bone: "#e7edf3"
-  surface: "#e7edf3"
-  surface-light: "#f4f8fb"
-  surface-shadow: "#c1ccd6"
-  ink: "#0f172a"
-  muted: "#475569"
-  line: "rgba(255,255,255,.70)"
-  line-strong: "#c1ccd6"
-  primary: "#064e3b"
-  primary-hover: "#065f46"
-  green-soft: "#edf3ec"
-  green-text: "#346538"
-  yellow-soft: "#fbf3db"
-  yellow-text: "#956400"
-  red-soft: "#fdebec"
-  red-text: "#9f2f2d"
-  blue-soft: "#e1f3fe"
-  blue-text: "#1f6c9f"
+  canvas: "#f8faff"
+  bone: "#f3f7ff"
+  surface: "#ffffff"
+  surface-light: "#f3f7ff"
+  surface-shadow: "#dbe3f1"
+  ink: "#17171a"
+  muted: "#667085"
+  line: "#dbe3f1"
+  line-strong: "#b9c8df"
+  primary: "#0053fd"
+  primary-hover: "#003fc7"
+  green-soft: "#e8f7f0"
+  green-text: "#16865c"
+  yellow-soft: "#fff5df"
+  yellow-text: "#a45b00"
+  red-soft: "#fff0f3"
+  red-text: "#c72e4d"
+  blue-soft: "#eaf1ff"
+  blue-text: "#0053fd"
 typography:
   headline:
-    fontFamily: "Noto Sans Thai, Segoe UI Variable Display, Tahoma, sans-serif"
+    fontFamily: "Bai Jamjuree, Noto Sans Thai, Leelawadee UI, sans-serif"
     fontSize: "32px"
     fontWeight: 700
     lineHeight: 1.3
   body:
-    fontFamily: "Noto Sans Thai, Segoe UI Variable Display, Tahoma, sans-serif"
+    fontFamily: "Bai Jamjuree, Noto Sans Thai, Leelawadee UI, sans-serif"
     lineHeight: 1.6
   metric:
-    fontFamily: "Noto Sans Thai, Segoe UI Variable Display, Tahoma, sans-serif"
+    fontFamily: "JetBrains Mono, Cascadia Mono, monospace"
     fontSize: "38px"
     lineHeight: 1.25
   label:
-    fontFamily: "Noto Sans Thai, Segoe UI Variable Display, Tahoma, sans-serif"
+    fontFamily: "Bai Jamjuree, Noto Sans Thai, Leelawadee UI, sans-serif"
     fontSize: "13px"
     fontWeight: 600
 rounded:
@@ -86,13 +86,13 @@ components:
 
 **Creative North Star: "มื้อเที่ยงที่จัดการได้ทัน"**
 
-หน้าจอภาษาไทยของร้านข้าวกล่องให้เจ้าของร้านเห็นสถานะ ความพร้อม และสิ่งที่ต้องทำต่อโดยไม่ต้องแปลศัพท์เทคนิค ภาพรวมใช้ Soft Neumorphism ที่มี contrast ชัดเจน: พื้นผิวสีฟ้าเทาอ่อน เงาคู่จากซ้ายบน/ขวาล่าง และพื้นผิวเว้าสำหรับ input หรือข้อมูลย่อย ฝั่งไรเดอร์ใช้จอมือถือที่เน้นงานของตนทีละจุด
+หน้าจอภาษาไทยของร้านข้าวกล่องให้เจ้าของร้านเห็นสถานะ ความพร้อม และสิ่งที่ต้องทำต่อโดยไม่ต้องแปลศัพท์เทคนิค ภาพรวมใช้ operational dashboard โทนขาว–ฟ้า: sidebar สีอ่อน การ์ดพื้นขาวขอบบาง KPI ที่อ่านเร็ว แผนที่เป็นจุดเด่น และ dispatch panel อยู่ข้างกันบนจอกว้าง ฝั่งไรเดอร์ใช้จอมือถือที่เน้นงานของตนทีละจุด
 
-**Key Characteristics:** พื้นหลังและการ์ดใช้ฐานสีเดียวกันพร้อมเงาคู่; input และ metric ย่อยใช้ inset shadow; ปุ่มหลักสีเขียวเข้ม; ตัวเลขเวลา ระยะทาง และเงินเด่นพอให้กวาดตา; ข้อความสถานะอยู่คู่กับสีเสมอ
+**Key Characteristics:** พื้นหลังฟ้าอ่อนกับการ์ดขาวขอบบาง; ปุ่มหลักสีน้ำเงิน; ตัวเลขเวลา ระยะทาง และเงินใช้ monospace; แผนที่กับรายการไรเดอร์เป็นแกนหลัก; ข้อความสถานะอยู่คู่กับสีเสมอ
 
 ## Colors
 
-สีเขียวเข้มเป็นสีการกระทำหลัก ส่วนสีสถานะใช้เมื่อมีความหมายเท่านั้น: เขียวสำหรับพร้อม/ทันเวลา/กำไร เหลืองสำหรับเรื่องที่ต้องสนใจ แดงสำหรับผิดพลาด/ช้า/ขาดทุน และฟ้าอ่อนสำหรับสถานะข้อมูลรอง พื้นหลังและเส้นแบ่งใช้ชุด neutral ใน frontmatter
+สีน้ำเงินเป็นสีการกระทำหลัก ส่วนสีสถานะใช้เมื่อมีความหมายเท่านั้น: เขียวสำหรับพร้อม/ทันเวลา/กำไร เหลืองสำหรับเรื่องที่ต้องสนใจ แดงสำหรับผิดพลาด/ช้า/ขาดทุน และฟ้าอ่อนสำหรับสถานะข้อมูลรอง พื้นหลังและเส้นแบ่งใช้ชุด neutral ใน frontmatter
 
 **The Meaning Before Color Rule.** สถานะต้องมีข้อความหรือสัญลักษณ์ที่เข้าใจได้โดยไม่พึ่งสีเพียงอย่างเดียว
 
@@ -100,17 +100,17 @@ components:
 
 ## Typography
 
-ใช้ Noto Sans Thai พร้อม fallback ใน frontmatter สำหรับข้อความไทยทั้งระบบ หัวข้อหน้าโดยทั่วไปประมาณ 32px; ตัวเลขสรุปหลักประมาณ 38px และใช้ `tabular-nums` เมื่อเป็นตัวเลขที่ต้องเทียบกัน ป้ายกำกับและข้อมูลรองลดน้ำหนักด้วยสี `muted` ไม่ใช้แบบอักษรประดับ
+ใช้ Bai Jamjuree พร้อม fallback ใน frontmatter สำหรับข้อความไทยทั้งระบบ และ JetBrains Mono สำหรับรหัส เวลา ระยะทาง และเงิน หัวข้อหน้าโดยทั่วไปประมาณ 32px; ตัวเลขสรุปหลักประมาณ 38px ป้ายกำกับและข้อมูลรองลดน้ำหนักด้วยสี `muted`
 
 **The Scannable Numbers Rule.** เวลา จำนวนกล่อง ระยะทาง และกำไรต้องอ่านแยกจากคำอธิบายได้ทันที
 
 ## Layout
 
-ฝั่งเจ้าของร้านใช้แถบบน แถบเมนูซ้ายกว้าง 256px และพื้นที่เนื้อหากว้างไม่เกิน 1480px; ต่ำกว่า breakpoint `lg` เมนูย้ายเป็นแถบล่าง หน้าแผนที่กับรายชื่อไรเดอร์เรียงคู่กันบนจอกว้างและเรียงแนวตั้งบนจอเล็ก ฝั่งไรเดอร์จำกัดความกว้างประมาณ 512px ระยะห่างและ responsive layout ใช้ Tailwind CSS utilities; จอเล็กจัดองค์ประกอบใหม่แทนการย่อทั้งหน้า
+ฝั่งเจ้าของร้านใช้แถบบน แถบเมนูซ้ายกว้าง 224px และพื้นที่เนื้อหากว้างไม่เกิน 1560px; ต่ำกว่า breakpoint `lg` เมนูย้ายเป็นแถบล่าง หน้าแผนที่กับรายชื่อไรเดอร์เรียงคู่กันบนจอกว้างและเรียงแนวตั้งบนจอเล็ก ฝั่งไรเดอร์จำกัดความกว้างประมาณ 512px ระยะห่างและ responsive layout ใช้ Tailwind CSS utilities; จอเล็กจัดองค์ประกอบใหม่แทนการย่อทั้งหน้า
 
 ## Elevation & Depth
 
-ใช้ Soft UI Evolution แทน Neumorphism แบบ contrast ต่ำ: การ์ดนูนใช้เงาสว่างด้านซ้ายบนและเงาเข้มด้านขวาล่าง; input และข้อมูลรองใช้ inset shadow; ยังคงเส้นขอบสีขาวโปร่งและ focus ring สีเขียวเพื่อให้ขอบเขตคอนโทรลชัดเจน
+ใช้พื้นผิวแบบ flat/elevated เบา ๆ: การ์ดพื้นขาวมีเส้นขอบเทาฟ้า 1px และเงาเฉพาะส่วนที่ลอยเหนือแผนที่หรือ popup; input ใช้ขอบชัดและ focus ring สีน้ำเงิน
 
 ## Shapes
 
@@ -118,10 +118,10 @@ components:
 
 ## Components
 
-- **Buttons:** ปุ่มหลักเขียวเข้ม สูงอย่างน้อย 44px; ปุ่มรองพื้นขาวขอบเทา; ปุ่มทำลายข้อมูลเป็นข้อความแดง ไม่ใช้รูปลักษณ์ปุ่มหลัก สถานะ hover เปลี่ยนสีอย่างนุ่มนวล และ focus-visible มีกรอบชัด
+- **Buttons:** ปุ่มหลักสีน้ำเงิน สูงอย่างน้อย 44px; ปุ่มรองพื้นขาวขอบเทา; ปุ่มทำลายข้อมูลเป็นข้อความแดง ไม่ใช้รูปลักษณ์ปุ่มหลัก สถานะ hover เปลี่ยนสีอย่างนุ่มนวล และ focus-visible มีกรอบชัด
 - **Inputs:** พื้นขาว ขอบ `line-strong` สูงอย่างน้อย 44px; ช่องเลขใบงานของไรเดอร์สูงอย่างน้อย 52px
 - **Cards and chips:** การ์ดพื้นขาวมีขอบบาง; สถานะเป็นพื้นอ่อนกับข้อความสีเข้มและข้อความบอกความหมาย
-- **Navigation:** เมนูเจ้าของร้านแสดงหน้าปัจจุบันด้วยพื้นเขียวอ่อนและข้อความเขียว; หน้าไรเดอร์ไม่มี sidebar
+- **Navigation:** เมนูเจ้าของร้านแสดงหน้าปัจจุบันด้วยพื้นขาวหรือฟ้าอ่อนและข้อความน้ำเงิน; หน้าไรเดอร์ไม่มี sidebar
 - **Route result:** แผนที่อยู่คู่การ์ดไรเดอร์; สีประจำไรเดอร์เป็นตัวช่วยจับคู่ แต่ชื่อและลำดับยังแสดงเป็นข้อความ
 - **Motion:** ใช้เฉพาะ transition สีสั้น ๆ ที่ช่วยบอกสถานะ; เมื่อผู้ใช้ขอลดการเคลื่อนไหวให้ปิดแอนิเมชันที่ไม่จำเป็นตาม media query ที่มีอยู่
 
