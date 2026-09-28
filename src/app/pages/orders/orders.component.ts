@@ -1,10 +1,13 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Customer, Order, OrderStatus } from '../../core/models';
-import { DeliveryService } from '../../core/delivery.service';
+import { forkJoin } from 'rxjs';
+import { apiErrorMessage } from '../../core/api-error';
+import { ApiCustomer } from '../../core/customer-api.models';
+import { CustomerApiService } from '../../core/customer-api.service';
+import { ApiOrder, ApiOrderStatus, OrderApiService } from '../../core/order-api.service';
 
-type Draft = { id?: string; customerId: string; boxes: number; status: OrderStatus };
+type Draft = { id?: number; customerId: number | null; boxes: number; status: ApiOrderStatus };
 
 @Component({
   selector: 'app-orders',
@@ -13,36 +16,81 @@ type Draft = { id?: string; customerId: string; boxes: number; status: OrderStat
   templateUrl: './orders.component.html',
 })
 export class OrdersComponent {
-  readonly store = inject(DeliveryService);
+  private readonly ordersApi = inject(OrderApiService);
+  private readonly customersApi = inject(CustomerApiService);
+  readonly orders = signal<ApiOrder[]>([]);
+  readonly customers = signal<ApiCustomer[]>([]);
+  readonly loading = signal(false);
+  readonly saving = signal(false);
+  readonly error = signal('');
+  readonly today = new Date().toLocaleDateString('en-CA');
   query = '';
   customerQuery = '';
   showForm = false;
   feedback = '';
   draft: Draft = this.blankDraft();
-  private feedbackTimer?: ReturnType<typeof setTimeout>;
+  ngOnInit(): void { this.reload(); }
 
-  filteredOrders(): Order[] {
+  reload(): void {
+    this.loading.set(true);
+    this.error.set('');
+    forkJoin({ orders: this.ordersApi.list(this.today), customers: this.customersApi.list() }).subscribe({
+      next: ({ orders, customers }) => {
+        this.orders.set(orders);
+        this.customers.set(customers);
+        this.loading.set(false);
+      },
+      error: err => {
+        this.error.set(apiErrorMessage(err, 'โหลดออเดอร์ไม่สำเร็จ'));
+        this.loading.set(false);
+      },
+    });
+  }
+
+  pendingOrders(): ApiOrder[] { return this.orders().filter(order => order.status === 'PENDING'); }
+  pendingBoxes(): number { return this.pendingOrders().reduce((sum, order) => sum + order.boxes, 0); }
+
+  filteredOrders(): ApiOrder[] {
     const term = this.query.trim().toLowerCase();
-    return this.store.orders().filter((order) => `${order.id} ${this.customerFor(order)?.name ?? ''} ${this.customerFor(order)?.phone ?? ''}`.toLowerCase().includes(term));
+    return this.orders().filter((order) => `${order.id} ${this.customerFor(order)?.name ?? ''} ${this.customerFor(order)?.phone ?? ''}`.toLowerCase().includes(term));
   }
 
-  matchingCustomers(): Customer[] {
+  matchingCustomers(): ApiCustomer[] {
     const term = this.customerQuery.trim().toLowerCase();
-    return this.store.customers().filter((customer) => `${customer.name} ${customer.phone}`.toLowerCase().includes(term)).slice(0, 8);
+    return this.customers().filter((customer) => `${customer.name} ${customer.phone}`.toLowerCase().includes(term)).slice(0, 8);
   }
 
-  selectedCustomer(): Customer | undefined { return this.store.customers().find((customer) => customer.id === this.draft.customerId); }
-  customerFor(order: Order): Customer | undefined { return this.store.customerFor(order); }
-  statusLabel(status: OrderStatus): string { return { pending: 'รอจัดส่ง', assigned: 'จัดงานแล้ว', delivered: 'ส่งสำเร็จ' }[status]; }
+  selectedCustomer(): ApiCustomer | undefined { return this.customers().find((customer) => customer.id === this.draft.customerId); }
+  customerFor(order: ApiOrder): ApiCustomer | undefined { return this.customers().find((customer) => customer.id === order.customerId); }
+  statusLabel(status: ApiOrderStatus): string { return { PENDING: 'รอจัดส่ง', PLANNED: 'จัดงานแล้ว', DELIVERING: 'กำลังส่ง', DELIVERED: 'ส่งสำเร็จ', CANCELLED: 'ยกเลิก' }[status]; }
 
   startCreate(): void { this.draft = this.blankDraft(); this.customerQuery = ''; this.showForm = true; }
-  edit(order: Order): void { this.draft = { id: order.id, customerId: order.customerId, boxes: order.boxes, status: order.status }; this.customerQuery = ''; this.showForm = true; }
+  edit(order: ApiOrder): void { this.draft = { id: order.id, customerId: order.customerId, boxes: order.boxes, status: order.status }; this.customerQuery = ''; this.showForm = true; }
   cancel(): void { this.showForm = false; }
-  chooseCustomer(customer: Customer): void { this.draft.customerId = customer.id; this.customerQuery = ''; }
+  chooseCustomer(customer: ApiCustomer): void { this.draft.customerId = customer.id; this.customerQuery = ''; }
   adjustBoxes(step: number): void { this.draft.boxes = Math.max(1, Math.min(3, this.draft.boxes + step)); }
-  save(): void { if (!this.draft.customerId) return; const message = this.draft.id ? 'บันทึกการแก้ไขออเดอร์แล้ว' : 'เพิ่มออเดอร์แล้ว'; this.store.saveOrder(this.draft); this.cancel(); this.notify(message); }
-  simulate(): void { this.store.simulateOrder(); this.notify('สร้างออเดอร์จำลองแล้ว'); }
-  remove(order: Order): void { if (window.confirm(`ลบออเดอร์ ${order.id} หรือไม่?`)) { this.store.deleteOrder(order.id); this.notify(`ลบออเดอร์ ${order.id} แล้ว`); } }
-  private notify(message: string): void { clearTimeout(this.feedbackTimer); this.feedback = message; this.feedbackTimer = setTimeout(() => this.feedback = '', 3500); }
-  private blankDraft(): Draft { return { customerId: '', boxes: 1, status: 'pending' }; }
+  save(): void {
+    if (this.saving() || this.draft.customerId === null) return;
+    this.saving.set(true);
+    const input = { customerId: this.draft.customerId, boxes: this.draft.boxes, status: this.draft.status, orderDate: this.today };
+    const request = this.draft.id === undefined ? this.ordersApi.create(input) : this.ordersApi.update(this.draft.id, input);
+    request.subscribe({
+      next: () => { this.saving.set(false); this.cancel(); this.feedback = 'บันทึกออเดอร์แล้ว'; this.reload(); },
+      error: err => { this.saving.set(false); this.error.set(apiErrorMessage(err, 'บันทึกออเดอร์ไม่สำเร็จ')); },
+    });
+  }
+  simulate(): void {
+    this.ordersApi.simulate(this.today).subscribe({
+      next: () => { this.feedback = 'สร้างออเดอร์จำลองแล้ว'; this.reload(); },
+      error: err => this.error.set(apiErrorMessage(err, 'สร้างออเดอร์จำลองไม่สำเร็จ')),
+    });
+  }
+  remove(order: ApiOrder): void {
+    if (!window.confirm(`ลบออเดอร์ ${order.id} หรือไม่?`)) return;
+    this.ordersApi.delete(order.id).subscribe({
+      next: () => { this.feedback = `ลบออเดอร์ ${order.id} แล้ว`; this.reload(); },
+      error: err => this.error.set(apiErrorMessage(err, 'ลบออเดอร์ไม่สำเร็จ')),
+    });
+  }
+  private blankDraft(): Draft { return { customerId: null, boxes: 1, status: 'PENDING' }; }
 }
