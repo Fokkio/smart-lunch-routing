@@ -47,6 +47,18 @@ describe('DeliveryService route planning', () => {
     expect(service.plan()?.version).toBe(2);
   });
 
+  it('opens job codes only after confirmation and resets confirmation on plan changes', () => {
+    const plan = service.calculateRoutes();
+    const code = plan.routes[0].rider.jobCode;
+    expect(service.routeForJobCode(code)).toBeNull();
+    service.confirmPlan();
+    expect(service.routeForJobCode(code)).toEqual(plan.routes[0]);
+    expect(service.planHistory()).toHaveLength(1);
+    service.choosePlan(service.previewRoutes(2));
+    expect(service.routeForJobCode(code)).toBeNull();
+    expect(service.planHistory()).toHaveLength(1);
+  });
+
   it('invalidates a plan when customer details change', () => {
     service.calculateRoutes();
     const customer = service.customers()[0];

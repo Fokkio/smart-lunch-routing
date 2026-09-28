@@ -18,24 +18,27 @@ export class RiderComponent {
   stage: Stage = 'entry';
   stopIndex = 0;
   errorMessage = '';
+  confirmingStop = false;
 
   get currentStop(): RouteStop | null { return this.activeRoute?.stops[this.stopIndex] ?? null; }
 
   openJob(): void {
-    if (!this.store.plan()) { this.errorMessage = 'ยังไม่มีใบงาน กรุณาให้เจ้าของร้านจัดเส้นทางก่อน'; return; }
+    if (!this.store.confirmedPlan()) { this.errorMessage = 'ยังไม่มีใบงานที่ยืนยันแล้ว กรุณาให้เจ้าของร้านตรวจทานและยืนยันแผนก่อน'; return; }
     this.activeRoute = this.store.routeForJobCode(this.jobCode);
     this.errorMessage = this.activeRoute ? '' : 'ไม่พบใบงานนี้ กรุณาตรวจสอบเลขใบงานอีกครั้ง';
-    if (this.activeRoute) { this.stage = 'summary'; this.stopIndex = 0; }
+    if (this.activeRoute) { this.stage = 'summary'; this.stopIndex = 0; this.confirmingStop = false; }
   }
 
   useCode(code: string): void { this.jobCode = code; this.openJob(); }
-  begin(): void { if (this.activeRoute?.stops.length) this.stage = 'delivery'; }
+  begin(): void { if (this.activeRoute?.stops.length) { this.confirmingStop = false; this.stage = 'delivery'; } }
+  backToSummary(): void { this.confirmingStop = false; this.stage = 'summary'; }
   completeStop(): void {
-    if (!this.activeRoute || this.stage !== 'delivery') return;
+    if (!this.activeRoute || this.stage !== 'delivery' || !this.confirmingStop) return;
+    this.confirmingStop = false;
     this.stopIndex++;
     if (this.stopIndex >= this.activeRoute.stops.length) this.stage = 'completed';
   }
-  closeJob(): void { this.stage = 'entry'; this.activeRoute = null; this.jobCode = ''; this.errorMessage = ''; this.stopIndex = 0; }
+  closeJob(): void { this.stage = 'entry'; this.activeRoute = null; this.jobCode = ''; this.errorMessage = ''; this.stopIndex = 0; this.confirmingStop = false; }
   navigateTo(stop: RouteStop): string {
     const params = new URLSearchParams({ api: '1', destination: `${stop.customer.lat},${stop.customer.lng}`, travelmode: 'driving' });
     return `https://www.google.com/maps/dir/?${params.toString()}`;
