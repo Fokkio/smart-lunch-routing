@@ -1,8 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Customer } from '../../core/models';
+import { CustomersApiService } from '../../core/customer-api.service';
 import { DeliveryService } from '../../core/delivery.service';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
+import { single } from 'rxjs';
 
 type Draft = Omit<Customer, 'id'> & { id?: string };
 
@@ -12,7 +14,11 @@ type Draft = Omit<Customer, 'id'> & { id?: string };
   imports: [FormsModule, DeliveryMapComponent],
   templateUrl: './customers.component.html',
 })
-export class CustomersComponent {
+export class CustomersComponent implements OnInit {
+  private readonly customerApi = inject(CustomersApiService);
+  // รายชื่อ customers for show (from backend)
+  readonly apiCustomers = signal<Customer[]>([]);
+
   readonly store = inject(DeliveryService);
   query = '';
   placeQuery = '';
@@ -27,14 +33,39 @@ export class CustomersComponent {
   draft: Draft = this.blankDraft();
   private feedbackTimer?: ReturnType<typeof setTimeout>;
 
+  ngOnInit(): void {
+    // when open customer page ขอ customer API from backend
+    this.customerApi.getCustomers().subscribe({
+      next: (customers) => {
+        this.apiCustomers.set(
+          customers.map((customer) => ({
+            id: String(customer.id),
+            name: customer.name,
+            phone: customer.phone,
+            address: customer.address ?? '',
+            lat: customer.lat,
+            lng: customer.lng,
+          })),
+        );
+      },
+    });
+  }
+
   filteredCustomers(): Customer[] {
     const term = this.query.trim().toLowerCase();
-    return this.store.customers().filter((customer) => `${customer.name} ${customer.phone} ${customer.address}`.toLowerCase().includes(term));
+    return this.apiCustomers().filter((customer) =>
+      `${customer.name} ${customer.phone} ${customer.address}`.toLowerCase().includes(term),
+    );
   }
 
   placeMatches(): Customer[] {
     const term = this.placeQuery.trim().toLowerCase();
-    return term ? this.store.customers().filter((customer) => `${customer.name} ${customer.address}`.toLowerCase().includes(term)).slice(0, 5) : [];
+    return term
+      ? this.store
+          .customers()
+          .filter((customer) => `${customer.name} ${customer.address}`.toLowerCase().includes(term))
+          .slice(0, 5)
+      : [];
   }
 
   startCreate(): void {
@@ -61,7 +92,10 @@ export class CustomersComponent {
     this.showForm = true;
   }
 
-  cancel(): void { this.showForm = false; this.error = ''; }
+  cancel(): void {
+    this.showForm = false;
+    this.error = '';
+  }
 
   selectPlace(customer: Customer): void {
     this.setLocation({ lat: customer.lat, lng: customer.lng });
@@ -79,10 +113,20 @@ export class CustomersComponent {
     this.error = '';
   }
 
-  clearLocation(): void { this.locationSelected = false; this.pickerLocation = null; }
+  clearLocation(): void {
+    this.locationSelected = false;
+    this.pickerLocation = null;
+  }
 
   applyCoordinates(): void {
-    if (this.manualLat === null || this.manualLng === null || !Number.isFinite(this.manualLat) || !Number.isFinite(this.manualLng) || Math.abs(this.manualLat) > 90 || Math.abs(this.manualLng) > 180) {
+    if (
+      this.manualLat === null ||
+      this.manualLng === null ||
+      !Number.isFinite(this.manualLat) ||
+      !Number.isFinite(this.manualLng) ||
+      Math.abs(this.manualLat) > 90 ||
+      Math.abs(this.manualLng) > 180
+    ) {
       this.error = 'กรุณาตรวจสอบตำแหน่งจัดส่งอีกครั้ง';
       return;
     }
@@ -90,7 +134,10 @@ export class CustomersComponent {
   }
 
   save(): void {
-    if (!this.locationSelected) { this.error = 'กรุณาปักตำแหน่งจัดส่งของลูกค้า'; return; }
+    if (!this.locationSelected) {
+      this.error = 'กรุณาปักตำแหน่งจัดส่งของลูกค้า';
+      return;
+    }
     const message = this.draft.id ? 'บันทึกการแก้ไขลูกค้าแล้ว' : 'เพิ่มลูกค้าใหม่แล้ว';
     this.store.saveCustomer(this.draft);
     this.cancel();
@@ -99,14 +146,20 @@ export class CustomersComponent {
 
   remove(customer: Customer): void {
     if (!window.confirm(`ลบข้อมูลของ ${customer.name} หรือไม่?`)) return;
-    this.notify(this.store.deleteCustomer(customer.id) ? `ลบข้อมูลของ ${customer.name} แล้ว` : 'ลบไม่ได้ เพราะลูกค้ารายนี้ยังมีออเดอร์อยู่');
+    this.notify(
+      this.store.deleteCustomer(customer.id)
+        ? `ลบข้อมูลของ ${customer.name} แล้ว`
+        : 'ลบไม่ได้ เพราะลูกค้ารายนี้ยังมีออเดอร์อยู่',
+    );
   }
 
   private notify(message: string): void {
     clearTimeout(this.feedbackTimer);
     this.feedback = message;
-    this.feedbackTimer = setTimeout(() => this.feedback = '', 3500);
+    this.feedbackTimer = setTimeout(() => (this.feedback = ''), 3500);
   }
 
-  private blankDraft(): Draft { return { name: '', phone: '', address: '', lat: 16.24631, lng: 103.25286 }; }
+  private blankDraft(): Draft {
+    return { name: '', phone: '', address: '', lat: 16.24631, lng: 103.25286 };
+  }
 }

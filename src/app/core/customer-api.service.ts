@@ -16,7 +16,7 @@ export interface ApiCustomer {
 export class CustomersApiService {
   private readonly http = inject(HttpClient);
   private readonly url = 'http://localhost:3000/api/customers';
-
+    
   // ขอรายชื่อ customer จาก backend
   getCustomers() {
     return this.http.get<ApiCustomer[]>(this.url);
