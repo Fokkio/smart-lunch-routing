@@ -9,6 +9,7 @@ describe('Rider demo flow', () => {
     const store = TestBed.inject(DeliveryService);
     store.resetDemo();
     store.calculateRoutes();
+    store.confirmPlan();
     const fixture = TestBed.createComponent(RiderComponent);
     const rider = fixture.componentInstance;
     rider.jobCode = store.plan()!.routes[0].rider.jobCode;
@@ -17,7 +18,9 @@ describe('Rider demo flow', () => {
     rider.begin();
     expect(rider.stage).toBe('delivery');
     expect(rider.currentStop?.sequence).toBe(1);
-    for (const _ of rider.activeRoute!.stops) rider.completeStop();
+    rider.completeStop();
+    expect(rider.stopIndex).toBe(0);
+    for (const _ of rider.activeRoute!.stops) { rider.confirmingStop = true; rider.completeStop(); }
     expect(rider.stage).toBe('completed');
     expect(store.orders().every(order => order.status === 'pending')).toBe(true);
   });

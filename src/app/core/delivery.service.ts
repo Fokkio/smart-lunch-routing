@@ -12,6 +12,8 @@ export class DeliveryService {
   readonly orders = signal<Order[]>(this.load(ORDER_KEY, DEMO_ORDERS));
   readonly riders = signal(DEMO_RIDERS);
   readonly plan = signal<RoutePlan | null>(this.load<RoutePlan | null>(PLAN_KEY, null));
+  readonly confirmedPlan = signal<RoutePlan | null>(null);
+  readonly planHistory = signal<RoutePlan[]>([]);
   readonly pendingOrders = computed(() => this.orders().filter((order) => order.status === 'pending'));
   readonly pendingBoxes = computed(() => this.pendingOrders().reduce((sum, order) => sum + order.boxes, 0));
 
@@ -95,11 +97,19 @@ export class DeliveryService {
 
   choosePlan(plan: RoutePlan): void {
     this.plan.set(plan);
+    this.confirmedPlan.set(null);
     this.persist(PLAN_KEY, plan);
   }
 
+  confirmPlan(): void {
+    const plan = this.plan();
+    if (!plan) return;
+    this.confirmedPlan.set(plan);
+    this.planHistory.update(history => [plan, ...history]);
+  }
+
   routeForJobCode(jobCode: string): RiderRoute | null {
-    return this.plan()?.routes.find((route) => route.rider.jobCode.toLowerCase() === jobCode.trim().toLowerCase()) || null;
+    return this.confirmedPlan()?.routes.find((route) => route.rider.jobCode.toLowerCase() === jobCode.trim().toLowerCase()) || null;
   }
 
   customerFor(order: Order): Customer | undefined {
@@ -124,6 +134,8 @@ export class DeliveryService {
     this.customers.set(structuredClone(DEMO_CUSTOMERS));
     this.orders.set(structuredClone(DEMO_ORDERS));
     this.plan.set(null);
+    this.confirmedPlan.set(null);
+    this.planHistory.set([]);
     this.persist(CUSTOMER_KEY, this.customers());
     this.persist(ORDER_KEY, this.orders());
     localStorage.removeItem(PLAN_KEY);
@@ -186,6 +198,7 @@ export class DeliveryService {
 
   private clearPlan(): void {
     this.plan.set(null);
+    this.confirmedPlan.set(null);
     localStorage.removeItem(PLAN_KEY);
   }
 

@@ -17,6 +17,7 @@ export class DeliveryComponent {
   readonly String = String;
   candidate: RoutePlan | null = null;
   calculating = false;
+  reviewing = false;
 
   canCalculate(): boolean {
     const orders = this.store.pendingOrders();
@@ -25,9 +26,10 @@ export class DeliveryComponent {
       return customer && Number.isFinite(customer.lat) && Number.isFinite(customer.lng) && Number.isInteger(order.boxes) && order.boxes >= 1 && order.boxes <= 3;
     });
   }
-  calculate(): void { if (!this.canCalculate()) return; this.calculating = true; setTimeout(() => { this.store.calculateRoutes(); this.calculating = false; }, 450); }
+  calculate(): void { if (!this.canCalculate()) return; this.calculating = true; setTimeout(() => { this.store.calculateRoutes(); this.reviewing = false; this.calculating = false; }, 450); }
   compare(): void { this.candidate = this.store.previewRoutes((this.store.plan()?.version || 1) + 1); }
-  chooseCandidate(): void { if (!this.candidate) return; this.store.choosePlan(this.candidate); this.candidate = null; }
+  chooseCandidate(): void { if (!this.candidate) return; this.store.choosePlan(this.candidate); this.candidate = null; this.reviewing = false; }
+  confirm(): void { if (!this.reviewing || !this.store.plan()) return; this.store.confirmPlan(); this.reviewing = false; }
   longestMinutes(plan: RoutePlan): number { return Math.max(0, ...plan.routes.map(route => route.durationMinutes)); }
   finishTime(plan: RoutePlan): string { const minutes = 11 * 60 + 30 + this.longestMinutes(plan); return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`; }
   marginMinutes(plan: RoutePlan): number { return 60 - this.longestMinutes(plan); }
