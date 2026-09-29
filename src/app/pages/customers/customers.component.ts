@@ -19,6 +19,10 @@ export class CustomersComponent implements OnInit {
   // รายชื่อ customers for show (from backend)
   readonly apiCustomers = signal<Customer[]>([]);
 
+  // Status Load API
+  readonly loadingCustomers = signal(true);
+  readonly loadCustomersError = signal('');
+
   readonly store = inject(DeliveryService);
   query = '';
   placeQuery = '';
@@ -47,13 +51,21 @@ export class CustomersComponent implements OnInit {
             lng: customer.lng,
           })),
         );
+
+        this.loadingCustomers.set(false);
       },
+      error: (error) => {
+        console.error('โหลดลูกค้าจาก API ไม่สำเร็จ:', error);
+
+        this.loadCustomersError.set('โหลดรายชื่อลูกค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',);
+        this.loadingCustomers.set(false);
+      }
     });
   }
 
   filteredCustomers(): Customer[] {
     const term = this.query.trim().toLowerCase();
-    return this.apiCustomers().filter((customer) =>
+    return this.apiCustomers()  .filter((customer) =>
       `${customer.name} ${customer.phone} ${customer.address}`.toLowerCase().includes(term),
     );
   }
