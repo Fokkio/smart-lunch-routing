@@ -233,4 +233,59 @@ describe('CustomersComponent', () => {
       confirm.mockRestore();
     }
   });
+
+  // ============================================================== //
+  // บันทึกไม่สำเร็จแล้วข้อมูลในฟอร์มต้องยังอยู่
+  it('keeps the form data when creating a customer fails', async () => {
+    const createResponse = new Subject<ApiCustomer>();
+
+    const api = {
+      createCustomer: vi.fn().mockReturnValue(createResponse),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [CustomersComponent],
+      providers: [{ provide: CustomersApiService, useValue: api }],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CustomersComponent);
+    const component = fixture.componentInstance;
+
+    // ไม่เรียก detectChanges(): test นี้ตรวจ save() โดยตรง
+    // จึงไม่เริ่มโหลดรายการหรือสร้างแผนที่
+    component.showForm = true;
+    component.locationSelected = true;
+    component.draft = {
+      name: 'ลูกค้าทดสอบ',
+      phone: '0800000000',
+      address: 'ที่อยู่ที่กรอกไว้',
+      lat: 16.2469,
+      lng: 103.2531,
+    };
+
+    const originalDraft = { ...component.draft };
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      component.save();
+
+      expect(api.createCustomer).toHaveBeenCalledWith(originalDraft);
+      expect(component.savingCustomer()).toBe(true);
+
+      // กดบันทึกซ้ำระหว่างรอ ต้องไม่ส่งคำขอเพิ่ม
+      component.save();
+      expect(api.createCustomer).toHaveBeenCalledTimes(1);
+
+      // จำลอง backend ปฏิเสธข้อมูล
+      createResponse.error({ status: 400 });
+
+      expect(component.savingCustomer()).toBe(false);
+      expect(component.showForm).toBe(true);
+      expect(component.draft).toEqual(originalDraft);
+      expect(component.error).toContain('ข้อมูลไม่ถูกต้อง');
+      expect(component.apiCustomers()).toEqual([]);
+    } finally {
+      errorLog.mockRestore();
+    }
+  });
 });
