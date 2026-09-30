@@ -47,7 +47,8 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
 
   ngAfterViewInit(): void {
     this.map = L.map(this.mapElement.nativeElement, { zoomControl: false }).setView([SHOP.lat, SHOP.lng], 14);
-    L.control.zoom({ zoomInTitle: 'ซูมเข้า', zoomOutTitle: 'ซูมออก' }).addTo(this.map);
+    // ปุ่มซูมอยู่ขวาล่าง — ซ้ายบนมีป้ายสถานะแผนทับอยู่ (ดู delivery.component.html)
+    L.control.zoom({ position: 'bottomright', zoomInTitle: 'ซูมเข้า', zoomOutTitle: 'ซูมออก' }).addTo(this.map);
     this.tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
