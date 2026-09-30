@@ -65,4 +65,37 @@ describe('DeliveryService route planning', () => {
     service.saveCustomer({ ...customer, address: 'จุดส่งตัวอย่างที่แก้ไขแล้ว' });
     expect(service.plan()).toBeNull();
   });
+
+  it('returns an empty plan instead of crashing when there are no orders', () => {
+    service.orders.set([]);
+    const plan = service.previewRoutes(1);
+    expect(plan.routes).toEqual([]);
+    expect(plan.totalDistanceKm).toBe(0);
+    expect(plan.profit).toBe(0);
+    expect(service.pendingOrders()).toEqual([]);
+    expect(service.pendingBoxes()).toBe(0);
+  });
+
+  it('skips orders whose customer no longer exists instead of crashing', () => {
+    service.orders.set([
+      { id: 'ORD-GOOD', customerId: service.customers()[0].id, boxes: 2, status: 'pending', createdAt: new Date().toISOString() },
+      { id: 'ORD-STALE', customerId: 'c-deleted', boxes: 3, status: 'pending', createdAt: new Date().toISOString() },
+    ]);
+    const plan = service.previewRoutes(1);
+    expect(plan.routes.flatMap((route) => route.stops).map((stop) => stop.order.id)).toEqual(['ORD-GOOD']);
+  });
+
+  it('drops a stale saved plan that references deleted customers on startup', () => {
+    const plan = service.calculateRoutes();
+    expect(service.plan()).not.toBeNull();
+    // ลบออเดอร์ก่อนจึงลบลูกค้าได้ แล้วจำลองเปิดหน้าใหม่ด้วยแผนเก่าค้างอยู่
+    service.orders.set([]);
+    localStorage.setItem('smart-lunch-orders-v1', JSON.stringify([]));
+    for (const customer of service.customers()) service.deleteCustomer(customer.id);
+    expect(service.customers()).toEqual([]);
+    const fresh = new DeliveryService();
+    expect(fresh.plan()).toBeNull();
+    expect(fresh.pendingOrders()).toEqual([]);
+    expect(() => fresh.previewRoutes(1)).not.toThrow();
+  });
 });

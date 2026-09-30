@@ -17,6 +17,17 @@ export class DeliveryService {
   readonly pendingOrders = computed(() => this.orders().filter((order) => order.status === 'pending'));
   readonly pendingBoxes = computed(() => this.pendingOrders().reduce((sum, order) => sum + order.boxes, 0));
 
+  constructor() {
+    // แผนที่ค้างใน localStorage อาจอ้างลูกค้าที่ถูกลบไปแล้ว — ตรวจแล้วทิ้งทั้งแผน
+    // เพื่อให้หน้าเว็บยังแสดงผลได้ แทนที่จะพังทั้งหน้า
+    const pruned = this.pruneStalePlan(this.plan());
+    if (pruned !== this.plan()) {
+      this.plan.set(pruned);
+      if (pruned) this.persist(PLAN_KEY, pruned);
+      else localStorage.removeItem(PLAN_KEY);
+    }
+  }
+
   saveCustomer(input: Omit<Customer, 'id'> & { id?: string }): void {
     const current = this.customers();
     const customer: Customer = { ...input, id: input.id || `c-${Date.now()}` };
@@ -71,7 +82,13 @@ export class DeliveryService {
   previewRoutes(version: number): RoutePlan {
     const orders = this.pendingOrders();
     const customerById = new Map(this.customers().map((customer) => [customer.id, customer]));
-    const sorted = [...orders].sort((a, b) => {
+    // ข้ามออเดอร์ที่ลูกค้าถูกลบไปแล้ว แทนที่จะพังทั้งแผน
+    const known = orders.filter((order) => customerById.has(order.customerId));
+    // ไม่มีไรเดอร์เลยก็คืนแผนว่าง หน้าเว็บยังแสดงผลได้ตามปกติ
+    if (!known.length || !this.riders().length) {
+      return this.emptyPlan(version);
+    }
+    const sorted = [...known].sort((a, b) => {
       const ca = customerById.get(a.customerId)!;
       const cb = customerById.get(b.customerId)!;
       return Math.atan2(ca.lat - SHOP.lat, ca.lng - SHOP.lng) - Math.atan2(cb.lat - SHOP.lat, cb.lng - SHOP.lng);
@@ -93,6 +110,34 @@ export class DeliveryService {
       deadlineSafe: routes.every((route) => route.deadlineSafe),
     };
     return plan;
+  }
+
+  /** แผนค้างที่อ้างลูกค้าที่ไม่มีอยู่แล้วถือว่าใช้ไม่ได้ทั้งแผน — ยอดรวมจะเพี้ยนถ้าตัดบางจุดทิ้ง */
+  private pruneStalePlan(plan: RoutePlan | null): RoutePlan | null {
+    if (!plan || !Array.isArray(plan.routes)) return null;
+    const known = new Set(this.customers().map((customer) => customer.id));
+    const intact = plan.routes.every(
+      (route) =>
+        Array.isArray(route.stops) &&
+        route.stops.length > 0 &&
+        route.stops.every((stop) => !!stop?.customer && known.has(stop.customer.id)),
+    );
+    return intact ? plan : null;
+  }
+
+  private emptyPlan(version: number): RoutePlan {
+    return {
+      version,
+      generatedAt: new Date().toISOString(),
+      routes: [],
+      totalDistanceKm: 0,
+      totalDurationMinutes: 0,
+      deliveryCost: 0,
+      revenue: 0,
+      foodCost: 0,
+      profit: 0,
+      deadlineSafe: true,
+    };
   }
 
   choosePlan(plan: RoutePlan): void {
