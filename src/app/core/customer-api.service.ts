@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../environments/environment';
 
 // รูปแบบข้อมูล customer ที่ backend ส่งกลับมา
 export interface ApiCustomer {
@@ -25,7 +26,7 @@ export interface CreateCustomerInput {
 @Injectable({ providedIn: 'root' })
 export class CustomersApiService {
   private readonly http = inject(HttpClient);
-  private readonly url = 'http://localhost:3000/api/customers';
+  private readonly url = `${environment.apiBaseUrl}/customers`;
 
   // ไม่ระบุคำค้น = โหลดทั้งหมด / ระบุคำค้น = ให้ backend ค้นหา
   getCustomers(search: string = '') {
