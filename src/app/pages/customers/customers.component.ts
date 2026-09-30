@@ -34,7 +34,7 @@ export class CustomersComponent implements OnInit {
   locationSelected = false;
   pickerLocation: { lat: number; lng: number } | null = null;
   manualLat: number | null = null;
-  manualLng: number | null = null;  
+  manualLng: number | null = null;
   error = '';
   feedback = '';
   draft: Draft = this.blankDraft();
@@ -207,10 +207,18 @@ export class CustomersComponent implements OnInit {
         this.savingCustomer.set(false);
 
         // คงฟอร์มและข้อมูลที่กรอกไว้ ให้แก้หรือลองใหม่ได้
-        this.error =
-          error.status === 400
-            ? 'ข้อมูลไม่ถูกต้อง กรุณาตรวจชื่อ เบอร์โทร และพิกัด'
-            : 'บันทึกไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ';
+        // แสดงเหตุผลตามสถานะที่ backend ตอบกลับ
+        if (error.status === 400) {
+          this.error = 'ข้อมูลไม่ถูกต้อง กรุณาตรวจชื่อ เบอร์โทร และพิกัด';
+        } else if (error.status === 409) {
+          this.error = 'เบอร์โทรนี้มีลูกค้าใช้งานแล้ว กรุณาใช้เบอร์อื่น';
+        } else if (error.status === 404) {
+          this.error = 'ไม่พบลูกค้ารายนี้แล้ว กรุณารีเฟรชรายการ';
+        } else if (error.status === 0) {
+          this.error = 'ติดต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบการเชื่อมต่อ';
+        } else {
+          this.error = 'เซิร์ฟเวอร์บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง';
+        }
       },
     });
   }
