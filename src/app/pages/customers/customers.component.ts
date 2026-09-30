@@ -1,22 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { apiErrorMessage } from '../../core/api-error';
-import { ApiCustomer, ApiCustomerInput } from '../../core/customer-api.models';
-import { CustomerApiService } from '../../core/customer-api.service';
+import { Customer } from '../../core/models';
+import { CustomersApiService } from '../../core/customer-api.service';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
 
-type Draft = { id?: number; name: string; phone: string; address: string; lat: number; lng: number };
-
-/** Backend rules only (`CustomerService`) — no invented business rules. */
-const LAT_LIMIT = 90;
-const LNG_LIMIT = 180;
-
-function validateCustomer(payload: ApiCustomerInput): string | null {
-  if (!payload.name.trim() || !payload.phone.trim()) return 'name, phone, latitude and longitude are required';
-  if (!Number.isFinite(payload.lat) || payload.lat < -LAT_LIMIT || payload.lat > LAT_LIMIT) return 'latitude must be between -90 and 90';
-  if (!Number.isFinite(payload.lng) || payload.lng < -LNG_LIMIT || payload.lng > LNG_LIMIT) return 'longitude must be between -180 and 180';
-  return null;
-}
+type Draft = Omit<Customer, 'id'> & { id?: string };
 
 @Component({
   selector: 'app-customers',
@@ -24,17 +12,20 @@ function validateCustomer(payload: ApiCustomerInput): string | null {
   imports: [FormsModule, DeliveryMapComponent],
   templateUrl: './customers.component.html',
 })
-export class CustomersComponent {
-  private readonly api = inject(CustomerApiService);
+export class CustomersComponent implements OnInit {
+  private readonly customerApi = inject(CustomersApiService);
+  // รายชื่อ customers for show (from backend)
+  readonly apiCustomers = signal<Customer[]>([]);
 
-  /** API-backed page state — never seeded from localStorage. */
-  readonly customers = signal<ApiCustomer[]>([]);
-  readonly loading = signal(false);
-  readonly saving = signal(false);
-  readonly deletingId = signal<number | null>(null);
-  readonly listError = signal('');
-  readonly error = signal('');
-  feedback = '';
+  // Status Load API
+  readonly loadingCustomers = signal(true);
+  readonly loadCustomersError = signal('');
+
+  // สถานะบันทึก
+  readonly savingCustomer = signal(false);
+
+  // null = ไม่ได้กำลังลบ / string = id ของลูกค้าที่กำลังลบ
+  readonly deletingCustomerId = signal<string | null>(null);
 
   query = '';
   placeQuery = '';
@@ -44,27 +35,64 @@ export class CustomersComponent {
   pickerLocation: { lat: number; lng: number } | null = null;
   manualLat: number | null = null;
   manualLng: number | null = null;
+  error = '';
+  feedback = '';
   draft: Draft = this.blankDraft();
+  private feedbackTimer?: ReturnType<typeof setTimeout>;
 
   ngOnInit(): void {
-    this.load();
+    this.loadCustomers();
   }
 
-  reload(): void {
-    this.load();
+  // ใช้ทั้งตอนเปิดหน้าและตอนกดค้นหา
+  loadCustomers(): void {
+    this.loadingCustomers.set(true);
+    this.loadCustomersError.set('');
+
+    this.customerApi.getCustomers(this.query).subscribe({
+      next: (customers) => {
+        this.apiCustomers.set(
+          customers.map((customer) => ({
+            id: String(customer.id),
+            name: customer.name,
+            phone: customer.phone,
+            address: customer.address ?? '',
+            lat: customer.lat,
+            lng: customer.lng,
+          })),
+        );
+
+        this.loadingCustomers.set(false);
+      },
+      error: (error) => {
+        console.error('โหลดลูกค้าจาก API ไม่สำเร็จ:', error);
+
+        this.loadCustomersError.set('โหลดรายชื่อลูกค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+        this.loadingCustomers.set(false);
+      },
+    });
   }
 
-  filteredCustomers(): ApiCustomer[] {
-    const term = this.query.trim().toLowerCase();
-    return this.customers().filter((customer) => `${customer.name} ${customer.phone} ${customer.address ?? ''}`.toLowerCase().includes(term));
+  filteredCustomers(): Customer[] {
+    // backend ค้นให้แล้ว แสดงรายการที่ตอบกลับได้เลย
+    return this.apiCustomers();
   }
 
-  placeMatches(): ApiCustomer[] {
+  // เลือกตำแหน่งจากลูกค้าที่โหลดมาแล้ว
+  placeMatches(): Customer[] {
     const term = this.placeQuery.trim().toLowerCase();
-    return term ? this.customers().filter((customer) => `${customer.name} ${customer.address ?? ''}`.toLowerCase().includes(term)).slice(0, 5) : [];
+
+    return term
+      ? this.apiCustomers()
+          .filter((customer) => `${customer.name} ${customer.address}`.toLowerCase().includes(term))
+          .slice(0, 5)
+      : [];
   }
 
   startCreate(): void {
+    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ
+    if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
+
     this.draft = this.blankDraft();
     this.locationSelected = false;
     this.pickerLocation = null;
@@ -72,34 +100,36 @@ export class CustomersComponent {
     this.manualLng = null;
     this.placeQuery = '';
     this.showCoordinates = false;
-    this.error.set('');
+    this.error = '';
     this.showForm = true;
   }
 
-  edit(customer: ApiCustomer): void {
-    this.draft = {
-      id: customer.id,
-      name: customer.name,
-      phone: customer.phone,
-      address: customer.address ?? '',
-      lat: customer.lat,
-      lng: customer.lng,
-    };
+  edit(customer: Customer): void {
+    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ
+    if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
+
+    this.draft = { ...customer };
     this.locationSelected = true;
     this.pickerLocation = { lat: customer.lat, lng: customer.lng };
     this.manualLat = customer.lat;
     this.manualLng = customer.lng;
     this.placeQuery = '';
     this.showCoordinates = false;
-    this.error.set('');
+    this.error = '';
     this.showForm = true;
   }
 
-  cancel(): void { this.showForm = false; this.error.set(''); }
+  cancel(): void {
+    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ
+    if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
 
-  selectPlace(customer: ApiCustomer): void {
+    this.showForm = false;
+    this.error = '';
+  }
+
+  selectPlace(customer: Customer): void {
     this.setLocation({ lat: customer.lat, lng: customer.lng });
-    if (!this.draft.address.trim()) this.draft.address = customer.address ?? '';
+    if (!this.draft.address.trim()) this.draft.address = customer.address;
     this.placeQuery = '';
   }
 
@@ -110,83 +140,133 @@ export class CustomersComponent {
     this.pickerLocation = location;
     this.manualLat = location.lat;
     this.manualLng = location.lng;
-    this.error.set('');
+    this.error = '';
   }
 
-  clearLocation(): void { this.locationSelected = false; this.pickerLocation = null; }
+  clearLocation(): void {
+    this.locationSelected = false;
+    this.pickerLocation = null;
+  }
 
   applyCoordinates(): void {
-    if (this.manualLat === null || this.manualLng === null || !Number.isFinite(this.manualLat) || !Number.isFinite(this.manualLng) || Math.abs(this.manualLat) > LAT_LIMIT || Math.abs(this.manualLng) > LNG_LIMIT) {
-      this.error.set('กรุณาตรวจสอบตำแหน่งจัดส่งอีกครั้ง');
+    if (
+      this.manualLat === null ||
+      this.manualLng === null ||
+      !Number.isFinite(this.manualLat) ||
+      !Number.isFinite(this.manualLng) ||
+      Math.abs(this.manualLat) > 90 ||
+      Math.abs(this.manualLng) > 180
+    ) {
+      this.error = 'กรุณาตรวจสอบตำแหน่งจัดส่งอีกครั้ง';
       return;
     }
     this.setLocation({ lat: this.manualLat, lng: this.manualLng });
   }
 
   save(): void {
-    if (this.saving()) return; // guard against double submit
-    if (!this.locationSelected) { this.error.set('กรุณาปักตำแหน่งจัดส่งของลูกค้า'); return; }
+    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ ไม่เกิดขึ้นพร้อมกัน
+    if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
 
-    const payload: ApiCustomerInput = {
+    this.error = '';
+
+    if (!this.locationSelected) {
+      this.error = 'กรุณาปักตำแหน่งจัดส่งของลูกค้า';
+      return;
+    }
+
+    // หยิบข้อมูลจากฟอร์มเป็นข้อมูลที่จะส่ง โดยไม่ส่ง id
+    const input = {
       name: this.draft.name.trim(),
       phone: this.draft.phone.trim(),
-      address: this.draft.address.trim(),
+      address: this.draft.address.trim() || null,
       lat: this.draft.lat,
       lng: this.draft.lng,
     };
-    const invalid = validateCustomer(payload);
-    if (invalid) { this.error.set(invalid); return; } // never call the API with an invalid form
 
-    this.error.set('');
-    this.saving.set(true);
-    const creating = this.draft.id === undefined;
-    const request = creating ? this.api.create(payload) : this.api.update(this.draft.id!, payload);
+    this.savingCustomer.set(true);
+
+    // เก็บ id ของรายการที่กำลังแก้ไขไว้ก่อนส่งคำขอ
+    const editingId = this.draft.id;
+
+    // มี id = แก้คนเดิมด้วย PUT / ไม่มี id = เพิ่มคนใหม่ด้วย POST
+    const request = editingId
+      ? this.customerApi.updateCustomer(editingId, input)
+      : this.customerApi.createCustomer(input);
+
     request.subscribe({
-      next: (saved) => {
-        this.upsert(saved);
-        this.saving.set(false);
-        this.cancel();
-      },
-      error: (err) => {
-        this.error.set(apiErrorMessage(err, 'บันทึกข้อมูลลูกค้าไม่สำเร็จ'));
-        this.saving.set(false);
-      },
-    });
-  }
-
-  remove(customer: ApiCustomer): void {
-    if (this.deletingId() !== null) return;
-    if (!window.confirm(`ลบข้อมูลของ ${customer.name} หรือไม่?`)) return;
-    this.listError.set('');
-    this.deletingId.set(customer.id);
-    this.api.delete(customer.id).subscribe({
       next: () => {
-        this.customers.update((list) => list.filter((item) => item.id !== customer.id));
-        this.deletingId.set(null);
+        this.savingCustomer.set(false);
+        this.cancel();
+        this.notify(editingId ? 'บันทึกการแก้ไขลูกค้าแล้ว' : 'เพิ่มลูกค้าใหม่แล้ว');
+
+        // โหลดจาก backend ใหม่ เพื่อให้รายการตรงกับคำค้นและลำดับล่าสุด
+        this.loadCustomers();
       },
-      error: (err) => {
-        this.listError.set(apiErrorMessage(err, 'ลบข้อมูลลูกค้าไม่สำเร็จ'));
-        this.deletingId.set(null);
+      error: (error) => {
+        console.error('บันทึกลูกค้าไม่สำเร็จ:', error);
+        this.savingCustomer.set(false);
+
+        // คงฟอร์มและข้อมูลที่กรอกไว้ ให้แก้หรือลองใหม่ได้
+        // แสดงเหตุผลตามสถานะที่ backend ตอบกลับ
+        if (error.status === 400) {
+          this.error = 'ข้อมูลไม่ถูกต้อง กรุณาตรวจชื่อ เบอร์โทร และพิกัด';
+        } else if (error.status === 409) {
+          this.error = 'เบอร์โทรนี้มีลูกค้าใช้งานแล้ว กรุณาใช้เบอร์อื่น';
+        } else if (error.status === 404) {
+          this.error = 'ไม่พบลูกค้ารายนี้แล้ว กรุณารีเฟรชรายการ';
+        } else if (error.status === 0) {
+          this.error = 'ติดต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบการเชื่อมต่อ';
+        } else {
+          this.error = 'เซิร์ฟเวอร์บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง';
+        }
       },
     });
   }
 
-  private load(): void {
-    this.loading.set(true);
-    this.listError.set('');
-    this.api.list().subscribe({
-      next: (customers) => { this.customers.set(customers); this.loading.set(false); },
-      error: (err) => { this.listError.set(apiErrorMessage(err, 'โหลดรายชื่อลูกค้าไม่สำเร็จ')); this.loading.set(false); },
+  // REMOVE //
+  remove(customer: Customer): void {
+    // ไม่ให้ลบซ้ำ หรือลบระหว่างบันทึกฟอร์ม
+    if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
+
+    if (!window.confirm(`ลบข้อมูลของ ${customer.name} หรือไม่?`)) return;
+
+    this.deletingCustomerId.set(customer.id);
+
+    this.customerApi.deleteCustomer(customer.id).subscribe({
+      next: () => {
+        this.deletingCustomerId.set(null);
+
+        // backend ลบสำเร็จแล้ว จึงเอารายการออกจากหน้าจอ
+        this.apiCustomers.update((customers) =>
+          customers.filter((item) => item.id !== customer.id),
+        );
+
+        // ถ้าเปิดฟอร์มของคนที่ถูกลบอยู่ ให้ปิดฟอร์มด้วย
+        if (this.draft.id === customer.id) this.cancel();
+
+        this.notify(`ลบข้อมูลของ ${customer.name} แล้ว`);
+      },
+      error: (error) => {
+        this.deletingCustomerId.set(null);
+
+        if (error.status === 409) {
+          this.notify('ลบไม่ได้ เพราะลูกค้ารายนี้มีออเดอร์อ้างอิงอยู่');
+        } else if (error.status === 404) {
+          this.notify('ไม่พบลูกค้ารายนี้แล้ว กรุณารีเฟรชรายการ');
+        } else {
+          this.notify('ลบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+        }
+      },
     });
   }
 
-  /** Sync the list with the backend response (create → prepend, update → replace). */
-  private upsert(saved: ApiCustomer): void {
-    this.customers.update((list) => {
-      const index = list.findIndex((item) => item.id === saved.id);
-      return index === -1 ? [saved, ...list] : list.map((item) => (item.id === saved.id ? saved : item));
-    });
+  private notify(message: string): void {
+    clearTimeout(this.feedbackTimer);
+    this.feedback = message;
+    this.feedbackTimer = setTimeout(() => (this.feedback = ''), 3500);
   }
 
-  private blankDraft(): Draft { return { name: '', phone: '', address: '', lat: 16.24631, lng: 103.25286 }; }
+  private blankDraft(): Draft {
+    return { name: '', phone: '', address: '', lat: 16.24631, lng: 103.25286 };
+  }
 }

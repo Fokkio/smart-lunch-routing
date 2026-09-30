@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { apiErrorMessage } from '../../core/api-error';
 import { ApiCustomer } from '../../core/customer-api.models';
-import { CustomerApiService } from '../../core/customer-api.service';
+import { CustomersApiService } from '../../core/customer-api.service';
 import { ApiOrder, ApiOrderStatus, OrderApiService } from '../../core/order-api.service';
 
 type Draft = { id?: number; customerId: number | null; boxes: number; status: ApiOrderStatus };
@@ -17,7 +17,7 @@ type Draft = { id?: number; customerId: number | null; boxes: number; status: Ap
 })
 export class OrdersComponent {
   private readonly ordersApi = inject(OrderApiService);
-  private readonly customersApi = inject(CustomerApiService);
+  private readonly customersApi = inject(CustomersApiService);
   readonly orders = signal<ApiOrder[]>([]);
   readonly customers = signal<ApiCustomer[]>([]);
   readonly loading = signal(false);
@@ -34,7 +34,7 @@ export class OrdersComponent {
   reload(): void {
     this.loading.set(true);
     this.error.set('');
-    forkJoin({ orders: this.ordersApi.list(this.today), customers: this.customersApi.list() }).subscribe({
+    forkJoin({ orders: this.ordersApi.list(this.today), customers: this.customersApi.getCustomers('') }).subscribe({
       next: ({ orders, customers }) => {
         this.orders.set(orders);
         this.customers.set(customers);

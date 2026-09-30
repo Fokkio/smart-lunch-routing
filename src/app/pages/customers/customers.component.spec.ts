@@ -1,227 +1,291 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormsModule } from '@angular/forms';
-import { ApiCustomer } from '../../core/customer-api.models';
+import { TestBed } from '@angular/core/testing';
+import { Subject } from 'rxjs';
+import { vi } from 'vitest';
+import { ApiCustomer, CustomersApiService } from '../../core/customer-api.service';
 import { CustomersComponent } from './customers.component';
 
-const LIST: ApiCustomer[] = [
-  { id: 3, name: 'สมหญิง', phone: '0811111111', address: 'หอพัก เอ', lat: 16.25, lng: 103.25 },
-  { id: 2, name: 'สมชาย', phone: '0822222222', address: null, lat: 16.26, lng: 103.26 },
-];
+describe('CustomersComponent', () => {
+  //  ====================================== //
+  it('shows loading, then an error instead of an empty list', async () => {
+    // ควบคุมว่า API จะตอบเมื่อไร โดยไม่เรียก backend จริง
+    const response = new Subject<ApiCustomer[]>();
+    const api = {
+      getCustomers: vi.fn().mockReturnValue(response),
+    };
 
-/** Replaces the real Leaflet map, which cannot run in jsdom. */
-@Component({
-  selector: 'app-delivery-map',
-  standalone: true,
-  template: '<div class="stub-map">{{ customers.length }}</div>',
-})
-class DeliveryMapStubComponent {
-  @Input() customers: ApiCustomer[] = [];
-  @Input() pickable = false;
-  @Input() selectedLocation: { lat: number; lng: number } | null = null;
-  @Output() locationPicked = new EventEmitter<{ lat: number; lng: number }>();
-}
-
-describe('Customers page (backend Customers API)', () => {
-  let http: HttpTestingController;
-
-  beforeEach(() => {
-    TestBed.configureTestingModule({
+    await TestBed.configureTestingModule({
       imports: [CustomersComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
-    });
-    TestBed.overrideComponent(CustomersComponent, { set: { imports: [FormsModule, DeliveryMapStubComponent] } });
-    http = TestBed.inject(HttpTestingController);
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+      providers: [{ provide: CustomersApiService, useValue: api }],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CustomersComponent);
+
+    // เริ่มแสดงหน้า และเรียก ngOnInit()
+    fixture.detectChanges();
+
+    const page: HTMLElement = fixture.nativeElement;
+
+    expect(page.textContent).toContain('กำลังโหลดรายชื่อลูกค้า');
+    expect(page.textContent).not.toContain('ยังไม่มีข้อมูลลูกค้า');
+
+    // จำลอง API ตอบ error และซ่อน log ที่เราตั้งใจทดสอบ
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      response.error(new Error('Connection failed'));
+      fixture.detectChanges();
+
+      expect(page.querySelector('[role="alert"]')?.textContent).toContain(
+        'โหลดรายชื่อลูกค้าไม่สำเร็จ',
+      );
+
+      expect(page.textContent).not.toContain('กำลังโหลดรายชื่อลูกค้า');
+      expect(page.textContent).not.toContain('ยังไม่มีข้อมูลลูกค้า');
+    } finally {
+      errorLog.mockRestore();
+    }
   });
 
-  afterEach(() => {
-    http.verify();
-    vi.restoreAllMocks();
-  });
+  //   =================================================== //
+  it('shows an empty state when the API successfully returns no customers', async () => {
+    const response = new Subject<ApiCustomer[]>();
+    const api = {
+      getCustomers: vi.fn().mockReturnValue(response),
+    };
 
-  function open() {
+    await TestBed.configureTestingModule({
+      imports: [CustomersComponent],
+      providers: [{ provide: CustomersApiService, useValue: api }],
+    }).compileComponents();
+
     const fixture = TestBed.createComponent(CustomersComponent);
     fixture.detectChanges();
-    http.expectOne('/api/customers').flush(LIST);
+
+    // API สำเร็จ แต่ไม่มีรายการลูกค้า
+    response.next([]);
+    response.complete();
     fixture.detectChanges();
-    return fixture;
-  }
 
-  /**
-   * Refreshes after a plain-property mutation made outside Angular.
-   * The zoneless scheduler only marks views dirty for signals and event
-   * handlers, so `fixture.detectChanges()` would run `checkNoChanges()` against
-   * a view it never refreshed and report a false NG0100.
-   */
-  function refresh(fixture: ComponentFixture<CustomersComponent>): void {
-    fixture.changeDetectorRef.detectChanges();
-  }
+    const page: HTMLElement = fixture.nativeElement;
 
-  function prepareForm(component: CustomersComponent): void {
-    component.startCreate();
-    component.setLocation({ lat: 16.3, lng: 103.3 });
-    component.draft = { ...component.draft, name: 'ใหม่ ใจดี', phone: '0833333333', address: 'คอนโด บี' };
-  }
-
-  it('loads the list from GET /api/customers and renders every row', () => {
-    const fixture = open();
-    const rows = fixture.nativeElement.querySelectorAll('.customer-row');
-    expect(rows.length).toBe(2);
-    expect(rows[0].textContent).toContain('สมหญิง');
-    expect(rows[1].textContent).toContain('สมชาย');
-    expect(fixture.nativeElement.textContent).toContain('2 รายการ');
-    expect(fixture.componentInstance.loading()).toBe(false);
+    expect(page.textContent).toContain('ยังไม่มีข้อมูลลูกค้า');
+    expect(page.textContent).not.toContain('กำลังโหลดรายชื่อลูกค้า');
+    expect(page.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('passes the API list (not demo data) into the map picker', () => {
-    const fixture = open();
-    expect(fixture.nativeElement.querySelector('app-delivery-map')).toBeNull();
-    fixture.componentInstance.startCreate();
-    refresh(fixture);
-    expect(fixture.nativeElement.querySelector('.stub-map')?.textContent).toBe('2');
-  });
+  // ==================================================== //
+  // การโหลดรายการ
+  it('displays customers returned by the API', async () => {
+    const response = new Subject<ApiCustomer[]>();
+    const api = {
+      getCustomers: vi.fn().mockReturnValue(response),
+    };
 
-  it('filters the loaded list client-side', () => {
-    const component = open().componentInstance;
-    component.query = '081111';
-    expect(component.filteredCustomers().map((c) => c.id)).toEqual([3]);
-    component.query = 'หอพัก';
-    expect(component.filteredCustomers().map((c) => c.id)).toEqual([3]);
-    component.query = 'ไม่มีในระบบ';
-    expect(component.filteredCustomers()).toEqual([]);
-  });
+    await TestBed.configureTestingModule({
+      imports: [CustomersComponent],
+      providers: [{ provide: CustomersApiService, useValue: api }],
+    }).compileComponents();
 
-  it('creates a customer with POST /api/customers', () => {
-    const fixture = open();
-    const component = fixture.componentInstance;
-    prepareForm(component);
-    component.save();
-
-    const request = http.expectOne('/api/customers');
-    expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ name: 'ใหม่ ใจดี', phone: '0833333333', address: 'คอนโด บี', lat: 16.3, lng: 103.3 });
-    request.flush({ id: 9, name: 'ใหม่ ใจดี', phone: '0833333333', address: 'คอนโด บี', lat: 16.3, lng: 103.3 });
-
-    expect(component.showForm).toBe(false);
-    expect(component.saving()).toBe(false);
-    expect(component.customers().map((c) => c.id)).toEqual([9, 3, 2]);
-  });
-
-  it('updates an existing customer with PUT /api/customers/:id', () => {
-    const fixture = open();
-    const component = fixture.componentInstance;
-    component.edit(LIST[0]);
-    component.draft = { ...component.draft, name: 'สมหญิง แก้ไขแล้ว' };
-    component.save();
-
-    const request = http.expectOne('/api/customers/3');
-    expect(request.request.method).toBe('PUT');
-    expect(request.request.body.name).toBe('สมหญิง แก้ไขแล้ว');
-    request.flush({ ...LIST[0], name: 'สมหญิง แก้ไขแล้ว' });
-
-    expect(component.customers().find((c) => c.id === 3)?.name).toBe('สมหญิง แก้ไขแล้ว');
-    expect(component.showForm).toBe(false);
-  });
-
-  it('never calls the API when the form is invalid', () => {
-    const fixture = open();
-    const component = fixture.componentInstance;
-    component.startCreate();
-    component.setLocation({ lat: 16.3, lng: 103.3 });
-    component.draft = { ...component.draft, name: '   ', phone: '   ' };
-    component.save();
-
-    http.expectNone('/api/customers');
-    expect(component.error()).toBe('name, phone, latitude and longitude are required');
-    expect(component.saving()).toBe(false);
-  });
-
-  it('blocks a second save while one is in flight', () => {
-    const fixture = open();
-    const component = fixture.componentInstance;
-    prepareForm(component);
-    component.save();
-    component.save();
-
-    const pending = http.match('/api/customers');
-    expect(pending.length).toBe(1);
-    pending[0].flush({ id: 9, name: 'ใหม่ ใจดี', phone: '0833333333', address: 'คอนโด บี', lat: 16.3, lng: 103.3 });
-    expect(component.customers().length).toBe(3);
-  });
-
-  it('shows the backend message when saving fails', () => {
-    const fixture = open();
-    const component = fixture.componentInstance;
-    prepareForm(component);
-    component.save();
-
-    http.expectOne('/api/customers').flush({ message: 'Customer already exists' }, { status: 500, statusText: 'Server Error' });
-
-    expect(component.error()).toBe('Customer already exists');
-    expect(component.saving()).toBe(false);
-    expect(component.showForm).toBe(true);
-    expect(component.customers().length).toBe(2);
-  });
-
-  it('deletes a customer and drops the row from the list', () => {
-    const fixture = open();
-    const component = fixture.componentInstance;
-    component.remove(LIST[1]);
-
-    const request = http.expectOne('/api/customers/2');
-    expect(request.request.method).toBe('DELETE');
-    request.flush(null, { status: 204, statusText: 'No Content' });
-
-    expect(component.customers().map((c) => c.id)).toEqual([3]);
-    expect(component.deletingId()).toBeNull();
-  });
-
-  it('keeps the row and surfaces the backend message when delete fails', () => {
-    const fixture = open();
-    const component = fixture.componentInstance;
-    component.remove(LIST[1]);
-
-    http.expectOne('/api/customers/2').flush({ message: 'Customer is referenced by an order' }, { status: 500, statusText: 'Server Error' });
-
-    expect(component.customers().length).toBe(2);
-    expect(component.listError()).toBe('Customer is referenced by an order');
-    expect(component.deletingId()).toBeNull();
-  });
-
-  it('does not call DELETE when the user declines the confirmation', () => {
-    vi.mocked(window.confirm).mockReturnValue(false);
-    const component = open().componentInstance;
-    component.remove(LIST[1]);
-
-    http.expectNone('/api/customers/2');
-    expect(component.customers().length).toBe(2);
-  });
-
-  it('reports a failed initial load instead of silently showing an empty list', () => {
     const fixture = TestBed.createComponent(CustomersComponent);
     fixture.detectChanges();
-    http.expectOne('/api/customers').flush({ message: 'Service unavailable' }, { status: 503, statusText: 'Service Unavailable' });
 
-    expect(fixture.componentInstance.listError()).toBe('Service unavailable');
-    expect(fixture.componentInstance.loading()).toBe(false);
-    expect(fixture.componentInstance.customers()).toEqual([]);
+    response.next([
+      {
+        id: 42,
+        name: 'ลูกค้าจาก API',
+        phone: '0800000000',
+        address: null,
+        lat: 16.2469,
+        lng: 103.2531,
+      },
+    ]);
+    response.complete();
+    fixture.detectChanges();
 
-    refresh(fixture);
-    expect(fixture.nativeElement.querySelector('[role=alert]')?.textContent).toContain('Service unavailable');
-    expect(fixture.nativeElement.querySelector('.no-results')).toBeNull();
+    const page: HTMLElement = fixture.nativeElement;
+
+    expect(page.textContent).toContain('ลูกค้าจาก API');
+    expect(page.textContent).toContain('0800000000');
+    expect(page.textContent).toContain('ยังไม่มีรายละเอียดที่อยู่');
+    expect(page.textContent).not.toContain('ยังไม่มีข้อมูลลูกค้า');
+    expect(page.textContent).not.toContain('กำลังโหลดรายชื่อลูกค้า');
+    expect(page.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('reloads on demand after a failed load', () => {
+  // ===================================================== //
+  // เริ่มจากคลิกปุ่มใน HTML แล้วตรวจสิ่งที่ผู้ใช้เห็น ทั้งสถานะ “กำลังลบ” และการเก็บรายการไว้เมื่อเกิด error โดยยังใช้ API จำลอง
+  it('keeps the customer visible when deletion returns 409', async () => {
+    const listResponse = new Subject<ApiCustomer[]>();
+    const deleteResponse = new Subject<void>();
+
+    const api = {
+      getCustomers: vi.fn().mockReturnValue(listResponse),
+      deleteCustomer: vi.fn().mockReturnValue(deleteResponse),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [CustomersComponent],
+      providers: [{ provide: CustomersApiService, useValue: api }],
+    }).compileComponents();
+
     const fixture = TestBed.createComponent(CustomersComponent);
     fixture.detectChanges();
-    http.expectOne('/api/customers').flush({ message: 'Service unavailable' }, { status: 503, statusText: 'Service Unavailable' });
 
-    fixture.componentInstance.reload();
-    http.expectOne('/api/customers').flush(LIST);
-    expect(fixture.componentInstance.customers().length).toBe(2);
-    expect(fixture.componentInstance.listError()).toBe('');
+    // เตรียมลูกค้าหนึ่งคนบนหน้าจอ
+    listResponse.next([
+      {
+        id: 42,
+        name: 'ลูกค้าที่มีออเดอร์',
+        phone: '0800000000',
+        address: null,
+        lat: 16.2469,
+        lng: 103.2531,
+      },
+    ]);
+    listResponse.complete();
+    fixture.detectChanges();
+
+    const page: HTMLElement = fixture.nativeElement;
+
+    // จำลองการกดยืนยัน โดยไม่เปิดกล่อง confirm จริง
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    // ควบคุม timer ของข้อความแจ้งเตือนใน test นี้
+    vi.useFakeTimers();
+
+    try {
+      const deleteButton = Array.from(page.querySelectorAll<HTMLButtonElement>('button')).find(
+        (button) => button.textContent?.trim() === 'ลบ',
+      );
+
+      expect(deleteButton).toBeDefined();
+      deleteButton!.click();
+      fixture.detectChanges();
+
+      expect(api.deleteCustomer).toHaveBeenCalledWith('42');
+      expect(deleteButton!.disabled).toBe(true);
+      expect(deleteButton!.textContent).toContain('กำลังลบ');
+
+      // backend ปฏิเสธ เพราะมีออเดอร์อ้างอิง
+      deleteResponse.error({ status: 409 });
+      fixture.detectChanges();
+
+      expect(page.textContent).toContain('ลูกค้าที่มีออเดอร์');
+      expect(page.textContent).toContain('ลบไม่ได้ เพราะลูกค้ารายนี้มีออเดอร์อ้างอิงอยู่');
+      expect(deleteButton!.disabled).toBe(false);
+    } finally {
+      confirm.mockRestore();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  // ============================================================== //
+  // ผู้ใช้ไม่ยืนยัน จึงต้องหยุดก่อนส่งคำขอ
+  it('does not call the delete API when confirmation is cancelled', async () => {
+    const listResponse = new Subject<ApiCustomer[]>();
+
+    const api = {
+      getCustomers: vi.fn().mockReturnValue(listResponse),
+      deleteCustomer: vi.fn(),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [CustomersComponent],
+      providers: [{ provide: CustomersApiService, useValue: api }],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CustomersComponent);
+    fixture.detectChanges();
+
+    listResponse.next([
+      {
+        id: 42,
+        name: 'ลูกค้าที่ต้องเก็บไว้',
+        phone: '0800000000',
+        address: null,
+        lat: 16.2469,
+        lng: 103.2531,
+      },
+    ]);
+    listResponse.complete();
+    fixture.detectChanges();
+
+    const page: HTMLElement = fixture.nativeElement;
+
+    // false หมายถึงผู้ใช้กดยกเลิก
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    try {
+      const deleteButton = Array.from(page.querySelectorAll<HTMLButtonElement>('button')).find(
+        (button) => button.textContent?.trim() === 'ลบ',
+      );
+
+      expect(deleteButton).toBeDefined();
+      deleteButton!.click();
+      fixture.detectChanges();
+
+      expect(confirm).toHaveBeenCalled();
+      expect(api.deleteCustomer).not.toHaveBeenCalled();
+      expect(page.textContent).toContain('ลูกค้าที่ต้องเก็บไว้');
+      expect(deleteButton!.disabled).toBe(false);
+    } finally {
+      confirm.mockRestore();
+    }
+  });
+
+  // ============================================================== //
+  // บันทึกไม่สำเร็จแล้วข้อมูลในฟอร์มต้องยังอยู่
+  it('keeps the form data when creating a customer fails', async () => {
+    const createResponse = new Subject<ApiCustomer>();
+
+    const api = {
+      createCustomer: vi.fn().mockReturnValue(createResponse),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [CustomersComponent],
+      providers: [{ provide: CustomersApiService, useValue: api }],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CustomersComponent);
+    const component = fixture.componentInstance;
+
+    // ไม่เรียก detectChanges(): test นี้ตรวจ save() โดยตรง
+    // จึงไม่เริ่มโหลดรายการหรือสร้างแผนที่
+    component.showForm = true;
+    component.locationSelected = true;
+    component.draft = {
+      name: 'ลูกค้าทดสอบ',
+      phone: '0800000000',
+      address: 'ที่อยู่ที่กรอกไว้',
+      lat: 16.2469,
+      lng: 103.2531,
+    };
+
+    const originalDraft = { ...component.draft };
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      component.save();
+
+      expect(api.createCustomer).toHaveBeenCalledWith(originalDraft);
+      expect(component.savingCustomer()).toBe(true);
+
+      // กดบันทึกซ้ำระหว่างรอ ต้องไม่ส่งคำขอเพิ่ม
+      component.save();
+      expect(api.createCustomer).toHaveBeenCalledTimes(1);
+
+      // จำลอง backend ปฏิเสธข้อมูล
+      createResponse.error({ status: 400 });
+
+      expect(component.savingCustomer()).toBe(false);
+      expect(component.showForm).toBe(true);
+      expect(component.draft).toEqual(originalDraft);
+      expect(component.error).toContain('ข้อมูลไม่ถูกต้อง');
+      expect(component.apiCustomers()).toEqual([]);
+    } finally {
+      errorLog.mockRestore();
+    }
   });
 });
