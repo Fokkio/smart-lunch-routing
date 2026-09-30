@@ -1,0 +1,7 @@
+{
+  "/api": {
+    "target": "https://smart-lunch-api.f0kki0.me",
+    "secure": true,
+    "changeOrigin": true
+  }
+}

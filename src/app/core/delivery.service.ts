@@ -1,4 +1,6 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { BackendApiService } from './backend-api.service';
 import { DEMO_CUSTOMERS, DEMO_ORDERS, DEMO_RIDERS } from './demo-data';
 import { Customer, Order, RiderRoute, RoutePlan, RouteStop, SHOP } from './models';
 
@@ -16,10 +18,15 @@ export class DeliveryService {
   readonly planHistory = signal<RoutePlan[]>([]);
   readonly pendingOrders = computed(() => this.orders().filter((order) => order.status === 'pending'));
   readonly pendingBoxes = computed(() => this.pendingOrders().reduce((sum, order) => sum + order.boxes, 0));
+  /** true เมื่อข้อมูลมาจาก backend จริง — false คือโหมดข้อมูลจำลอง (offline/เทส) */
+  readonly usingBackend = signal(false);
+  private readonly api = inject(BackendApiService, { optional: true });
 
   constructor() {
     // แผนที่ค้างใน localStorage อาจอ้างลูกค้าที่ถูกลบไปแล้ว — ตรวจแล้วทิ้งทั้งแผน
     // เพื่อให้หน้าเว็บยังแสดงผลได้ แทนที่จะพังทั้งหน้า
+    // หมายเหตุ: constructor ไม่ต่อ backend เอง เพื่อให้เทสไม่ยิง HTTP —
+    // ให้ App component เรียก connect() ตอนเปิดแอป (ดู app.ts)
     const pruned = this.pruneStalePlan(this.plan());
     if (pruned !== this.plan()) {
       this.plan.set(pruned);
@@ -28,7 +35,56 @@ export class DeliveryService {
     }
   }
 
+  /**
+   * ดึงลูกค้า/ออเดอร์/ไรเดอร์จริงจาก backend ทับข้อมูลจำลอง
+   * backend ล่มหรือไม่มี HttpClient (เช่นในเทส) = อยู่โหมดจำลองต่อ หน้าเว็บไม่พัง
+   */
+  connect(): void {
+    if (!this.api || this.usingBackend()) return;
+    // ดัก error รายเส้น (ไม่ใช่ทั้งก้อน) เพื่อให้คำขอที่เหลือไม่โดนยกเลิก —
+    // ได้ข้อมูลบางส่วนยังดีกว่าไม่ได้เลย เส้นที่พังใช้ค่าปัจจุบันแทน
+    const attempt = <T>(source: Observable<T[]>, current: T[]) =>
+      source.pipe(
+        map((value) => ({ ok: true as const, value })),
+        catchError(() => of({ ok: false as const, value: current })),
+      );
+    forkJoin({
+      customers: attempt(this.api.listCustomers(), this.customers()),
+      orders: attempt(this.api.listOrders(), this.orders()),
+      riders: attempt(this.api.listRiders(), this.riders()),
+    }).subscribe((data) => {
+      if (!data.customers.ok && !data.orders.ok && !data.riders.ok) {
+        console.warn('[delivery] ใช้ข้อมูลจำลองเพราะต่อ backend ไม่ได้ทั้ง 3 เส้น');
+        return;
+      }
+      this.customers.set(data.customers.value);
+      this.orders.set(data.orders.value);
+      if (data.riders.value.length) this.riders.set(data.riders.value);
+      this.persist(CUSTOMER_KEY, data.customers.value);
+      this.persist(ORDER_KEY, data.orders.value);
+      const pruned = this.pruneStalePlan(this.plan());
+      this.plan.set(pruned);
+      if (!pruned) localStorage.removeItem(PLAN_KEY);
+      this.usingBackend.set(true);
+    });
+  }
+
   saveCustomer(input: Omit<Customer, 'id'> & { id?: string }): void {
+    if (this.usingBackend() && this.api) {
+      const payload = { name: input.name, phone: input.phone, address: input.address, lat: input.lat, lng: input.lng };
+      const request = input.id ? this.api.updateCustomer(input.id, payload) : this.api.createCustomer(payload);
+      request.subscribe({
+        next: (saved) => {
+          this.customers.update((list) =>
+            input.id ? list.map((item) => (item.id === saved.id ? saved : item)) : [...list, saved],
+          );
+          this.persist(CUSTOMER_KEY, this.customers());
+          this.clearPlan();
+        },
+        error: (error) => console.error('[delivery] บันทึกลูกค้าลง backend ไม่สำเร็จ:', error),
+      });
+      return;
+    }
     const current = this.customers();
     const customer: Customer = { ...input, id: input.id || `c-${Date.now()}` };
     const next = input.id ? current.map((item) => item.id === input.id ? customer : item) : [...current, customer];
@@ -39,6 +95,17 @@ export class DeliveryService {
 
   deleteCustomer(id: string): boolean {
     if (this.orders().some((order) => order.customerId === id)) return false;
+    if (this.usingBackend() && this.api) {
+      this.api.deleteCustomer(id).subscribe({
+        next: () => {
+          this.customers.update((list) => list.filter((customer) => customer.id !== id));
+          this.persist(CUSTOMER_KEY, this.customers());
+        },
+        // 409 = backend บอกว่ามีออเดอร์อ้างอิงอยู่ — คงรายการไว้แล้วให้ toast ฝั่ง UI ตัดสินใจ
+        error: (error) => console.error('[delivery] ลบลูกค้าใน backend ไม่สำเร็จ:', error),
+      });
+      return true;
+    }
     const next = this.customers().filter((customer) => customer.id !== id);
     this.customers.set(next);
     this.persist(CUSTOMER_KEY, next);
@@ -46,6 +113,22 @@ export class DeliveryService {
   }
 
   saveOrder(input: Omit<Order, 'id' | 'createdAt'> & { id?: string }): void {
+    if (this.usingBackend() && this.api) {
+      const request = input.id
+        ? this.api.updateOrder(input.id, { customerId: input.customerId, boxes: input.boxes, status: input.status })
+        : this.api.createOrder({ customerId: input.customerId, boxes: input.boxes });
+      request.subscribe({
+        next: (saved) => {
+          this.orders.update((list) =>
+            input.id ? list.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...list],
+          );
+          this.persist(ORDER_KEY, this.orders());
+          this.clearPlan();
+        },
+        error: (error) => console.error('[delivery] บันทึกออเดอร์ลง backend ไม่สำเร็จ:', error),
+      });
+      return;
+    }
     const current = this.orders();
     const existing = input.id ? current.find((order) => order.id === input.id) : undefined;
     const order: Order = {
@@ -60,6 +143,17 @@ export class DeliveryService {
   }
 
   deleteOrder(id: string): void {
+    if (this.usingBackend() && this.api) {
+      this.api.deleteOrder(id).subscribe({
+        next: () => {
+          this.orders.update((list) => list.filter((order) => order.id !== id));
+          this.persist(ORDER_KEY, this.orders());
+          this.clearPlan();
+        },
+        error: (error) => console.error('[delivery] ลบออเดอร์ใน backend ไม่สำเร็จ:', error),
+      });
+      return;
+    }
     const next = this.orders().filter((order) => order.id !== id);
     this.orders.set(next);
     this.persist(ORDER_KEY, next);
@@ -70,6 +164,7 @@ export class DeliveryService {
     const activeCustomerIds = new Set(this.pendingOrders().map((order) => order.customerId));
     const customer = this.customers().find((item) => !activeCustomerIds.has(item.id)) || this.customers()[0];
     if (!customer) return;
+    // โหมด backend ใช้ POST /orders ทีละใบ (ไม่ใช่ /simulate ที่สร้างที 20–30 ใบ)
     this.saveOrder({ customerId: customer.id, boxes: (this.orders().length % 3) + 1, status: 'pending' });
   }
 
@@ -176,6 +271,7 @@ export class DeliveryService {
   }
 
   resetDemo(): void {
+    this.usingBackend.set(false);
     this.customers.set(structuredClone(DEMO_CUSTOMERS));
     this.orders.set(structuredClone(DEMO_ORDERS));
     this.plan.set(null);

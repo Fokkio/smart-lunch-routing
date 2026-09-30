@@ -1,14 +1,24 @@
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { DeliveryService } from './delivery.service';
 
 describe('DeliveryService route planning', () => {
   let service: DeliveryService;
+  let http: HttpTestingController;
 
   beforeEach(() => {
     localStorage.clear();
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     service = TestBed.inject(DeliveryService);
+    http = TestBed.inject(HttpTestingController);
     service.resetDemo();
+  });
+
+  afterEach(() => {
+    http.verify();
   });
 
   it('assigns no more than three customer orders to each rider', () => {
@@ -93,9 +103,64 @@ describe('DeliveryService route planning', () => {
     localStorage.setItem('smart-lunch-orders-v1', JSON.stringify([]));
     for (const customer of service.customers()) service.deleteCustomer(customer.id);
     expect(service.customers()).toEqual([]);
-    const fresh = new DeliveryService();
+    // เปิด service ตัวใหม่ทับ localStorage เดิม (แผนเก่าค้างอยู่) แทน new ตรง ๆ
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    http = TestBed.inject(HttpTestingController);
+    const fresh = TestBed.inject(DeliveryService);
     expect(fresh.plan()).toBeNull();
     expect(fresh.pendingOrders()).toEqual([]);
     expect(() => fresh.previewRoutes(1)).not.toThrow();
+  });
+
+  describe('backend connection', () => {
+    const apiCustomers = [
+      { id: 1, name: 'สมชาย ใจดี', phone: '0812345678', address: 'ขอนแก่น', lat: 16.2469, lng: 103.2531 },
+    ];
+    const apiOrders = [{ id: 11, customerId: 1, boxes: 2, status: 'PENDING', orderDate: '2026-09-30' }];
+    const apiRiders = [{ id: 5, name: 'Rider Five', phone: '0810000005', isAvailable: true }];
+
+    it('replaces demo data with backend data on connect', () => {
+      expect(service.usingBackend()).toBe(false);
+      service.connect();
+
+      http.expectOne('/api/customers').flush(apiCustomers);
+      http.expectOne('/api/orders').flush(apiOrders);
+      http.expectOne('/api/riders').flush(apiRiders);
+
+      expect(service.usingBackend()).toBe(true);
+      expect(service.customers().map((customer) => customer.id)).toEqual(['1']);
+      expect(service.orders().map((order) => order.id)).toEqual(['11']);
+      expect(service.riders().map((rider) => rider.id)).toEqual(['5']);
+    });
+
+    it('keeps demo data when the backend is unreachable', () => {
+      const demoCount = service.customers().length;
+      service.connect();
+
+      http.expectOne('/api/customers').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
+      http.expectOne('/api/orders').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
+      http.expectOne('/api/riders').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
+
+      expect(service.usingBackend()).toBe(false);
+      expect(service.customers()).toHaveLength(demoCount);
+    });
+
+    it('saves a new customer through the backend when connected', () => {
+      service.connect();
+      http.expectOne('/api/customers').flush(apiCustomers);
+      http.expectOne('/api/orders').flush(apiOrders);
+      http.expectOne('/api/riders').flush(apiRiders);
+      expect(service.usingBackend()).toBe(true);
+
+      service.saveCustomer({ name: 'คนใหม่', phone: '0899999999', address: '', lat: 16.24, lng: 103.25 });
+      const request = http.expectOne('/api/customers');
+      expect(request.request.method).toBe('POST');
+      request.flush({ id: 99, name: 'คนใหม่', phone: '0899999999', address: null, lat: 16.24, lng: 103.25 });
+
+      expect(service.customers().some((customer) => customer.id === '99')).toBe(true);
+    });
   });
 });
