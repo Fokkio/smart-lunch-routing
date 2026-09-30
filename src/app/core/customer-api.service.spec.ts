@@ -53,7 +53,7 @@ describe('CustomersApiService', () => {
     });
 
     // ดักคำขอไว้ ไม่ส่งออกไป backend จริง
-    const request = http.expectOne((req) => req.url === 'http://localhost:3000/api/customers');
+    const request = http.expectOne((req) => req.url === '/api/customers');
 
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('search')).toBe('ลูกค้าทดสอบ');
@@ -89,7 +89,7 @@ describe('CustomersApiService', () => {
       received = customer;
     });
 
-    const request = http.expectOne('http://localhost:3000/api/customers');
+    const request = http.expectOne('/api/customers');
 
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual(input);
@@ -127,7 +127,7 @@ describe('CustomersApiService', () => {
     });
 
     // ต้องส่งไปยังลูกค้า 42 ไม่ใช่ URL สร้างลูกค้าใหม่
-    const request = http.expectOne('http://localhost:3000/api/customers/42');
+    const request = http.expectOne('/api/customers/42');
 
     expect(request.request.method).toBe('PUT');
     expect(request.request.body).toEqual(input);
@@ -150,7 +150,7 @@ describe('CustomersApiService', () => {
       },
     });
 
-    const request = http.expectOne('http://localhost:3000/api/customers/42');
+    const request = http.expectOne('/api/customers/42');
 
     expect(request.request.method).toBe('DELETE');
     expect(request.request.body).toBeNull();
@@ -180,7 +180,7 @@ describe('CustomersApiService', () => {
       },
     });
 
-    const request = http.expectOne('http://localhost:3000/api/customers/42');
+    const request = http.expectOne('/api/customers/42');
 
     // จำลองว่าฐานข้อมูลไม่ยอมให้ลบ เพราะมีออเดอร์อ้างอิง
     request.flush(
