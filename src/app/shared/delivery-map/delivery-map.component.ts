@@ -82,6 +82,10 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
     return !this.selectedRiderId || route.rider.id === this.selectedRiderId;
   }
 
+  private static validPoint(point: { lat: number; lng: number } | null | undefined): point is { lat: number; lng: number } {
+    return !!point && Number.isFinite(point.lat) && Number.isFinite(point.lng);
+  }
+
   private render(): void {
     if (!this.map) return;
     this.layer?.remove();
@@ -92,10 +96,13 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
 
     if (this.routes.length) {
       this.routes.forEach((route, routeIndex) => {
+        // ข้ามเส้นทางที่ข้อมูลไม่ครบ (ไรเดอร์หรือจุดส่งหาย) แทนที่จะพังทั้งแผนที่
+        if (!route?.rider || !Array.isArray(route.stops)) return;
         if (!this.isVisible(route)) return;
         const routeLabel = `R${String(routeIndex + 1).padStart(2, '0')}`;
         const points: L.LatLngExpression[] = [[SHOP.lat, SHOP.lng]];
         route.stops.forEach((stop) => {
+          if (!DeliveryMapComponent.validPoint(stop?.customer)) return;
           points.push([stop.customer.lat, stop.customer.lng]);
           L.marker([stop.customer.lat, stop.customer.lng], {
             title: `ไรเดอร์ ${routeLabel} จุดที่ ${stop.sequence} ${stop.customer.name}`,
@@ -106,9 +113,10 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
       });
     } else {
       this.customers.forEach((customer) => {
+        if (!DeliveryMapComponent.validPoint(customer)) return;
         L.circleMarker([customer.lat, customer.lng], {
           radius: 6, color: '#787774', fillColor: '#ffffff', fillOpacity: 1, weight: 2,
-        }).bindPopup(this.popup(customer.name, customer.address)).addTo(this.layer!);
+        }).bindPopup(this.popup(customer.name, customer.address ?? '')).addTo(this.layer!);
       });
     }
 
