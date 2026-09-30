@@ -12,13 +12,28 @@ export interface ApiCustomer {
   createdAt?: string;
 }
 
+// ข้อมูลจากฟอร์มสำหรับสร้างลูกค้า
+// ไม่ส่ง id หรือ createdAt เพราะฐานข้อมูลเป็นผู้สร้าง
+export interface CreateCustomerInput {
+  name: string;
+  phone: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CustomersApiService {
   private readonly http = inject(HttpClient);
   private readonly url = 'http://localhost:3000/api/customers';
-    
+
   // ขอรายชื่อ customer จาก backend
   getCustomers() {
     return this.http.get<ApiCustomer[]>(this.url);
+  }
+
+  // ส่งข้อมูลลูกค้าใหม่ และรับลูกค้าที่บันทึกสำเร็จกลับมา
+  createCustomer(input: CreateCustomerInput) {
+    return this.http.post<ApiCustomer>(this.url, input);
   }
 }

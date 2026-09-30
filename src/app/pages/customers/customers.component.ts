@@ -4,7 +4,6 @@ import { Customer } from '../../core/models';
 import { CustomersApiService } from '../../core/customer-api.service';
 import { DeliveryService } from '../../core/delivery.service';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
-import { single } from 'rxjs';
 
 type Draft = Omit<Customer, 'id'> & { id?: string };
 
@@ -22,6 +21,9 @@ export class CustomersComponent implements OnInit {
   // Status Load API
   readonly loadingCustomers = signal(true);
   readonly loadCustomersError = signal('');
+
+  // สถานะบันทึก
+  readonly savingCustomer = signal(false);
 
   readonly store = inject(DeliveryService);
   query = '';
@@ -57,15 +59,15 @@ export class CustomersComponent implements OnInit {
       error: (error) => {
         console.error('โหลดลูกค้าจาก API ไม่สำเร็จ:', error);
 
-        this.loadCustomersError.set('โหลดรายชื่อลูกค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',);
+        this.loadCustomersError.set('โหลดรายชื่อลูกค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
         this.loadingCustomers.set(false);
-      }
+      },
     });
   }
 
   filteredCustomers(): Customer[] {
     const term = this.query.trim().toLowerCase();
-    return this.apiCustomers()  .filter((customer) =>
+    return this.apiCustomers().filter((customer) =>
       `${customer.name} ${customer.phone} ${customer.address}`.toLowerCase().includes(term),
     );
   }
@@ -81,6 +83,9 @@ export class CustomersComponent implements OnInit {
   }
 
   startCreate(): void {
+    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก
+    if (this.savingCustomer()) return;
+
     this.draft = this.blankDraft();
     this.locationSelected = false;
     this.pickerLocation = null;
@@ -93,6 +98,9 @@ export class CustomersComponent implements OnInit {
   }
 
   edit(customer: Customer): void {
+    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก
+    if (this.savingCustomer()) return;
+
     this.draft = { ...customer };
     this.locationSelected = true;
     this.pickerLocation = { lat: customer.lat, lng: customer.lng };
@@ -105,6 +113,9 @@ export class CustomersComponent implements OnInit {
   }
 
   cancel(): void {
+    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก
+    if (this.savingCustomer()) return;
+
     this.showForm = false;
     this.error = '';
   }
@@ -146,14 +157,63 @@ export class CustomersComponent implements OnInit {
   }
 
   save(): void {
+    // ป้องกันส่งคำขอซ้ำระหว่างรอ backend
+    if (this.savingCustomer()) return;
+
+    this.error = '';
+
+    // ขั้นนี้เชื่อมเฉพาะเพิ่มลูกค้า ป้องกันเผลอสร้างซ้ำตอนแก้ไข
+    if (this.draft.id) {
+      this.error = 'การแก้ไขลูกค้ายังไม่ได้เชื่อม API';
+      return;
+    }
+
     if (!this.locationSelected) {
       this.error = 'กรุณาปักตำแหน่งจัดส่งของลูกค้า';
       return;
     }
-    const message = this.draft.id ? 'บันทึกการแก้ไขลูกค้าแล้ว' : 'เพิ่มลูกค้าใหม่แล้ว';
-    this.store.saveCustomer(this.draft);
-    this.cancel();
-    this.notify(message);
+
+    // หยิบข้อมูลจากฟอร์มเป็นข้อมูลที่จะส่ง โดยไม่ส่ง id
+    const input = {
+      name: this.draft.name.trim(),
+      phone: this.draft.phone.trim(),
+      address: this.draft.address.trim() || null,
+      lat: this.draft.lat,
+      lng: this.draft.lng,
+    };
+
+    this.savingCustomer.set(true);
+
+    // CREATE CUSTOMER
+    this.customerApi.createCustomer(input).subscribe({
+      next: (customer) => {
+        // ใช้ข้อมูลที่ backend ตอบกลับ รวมถึง id ที่ฐานข้อมูลสร้างให้
+        const savedCustomer: Customer = {
+          id: String(customer.id),
+          name: customer.name,
+          phone: customer.phone,
+          address: customer.address ?? '',
+          lat: customer.lat,
+          lng: customer.lng,
+        };
+
+        this.apiCustomers.update((customers) => [savedCustomer, ...customers]);
+
+        this.savingCustomer.set(false);
+        this.cancel();
+        this.notify('เพิ่มลูกค้าใหม่แล้ว');
+      },
+      error: (error) => {
+        console.error('เพิ่มลูกค้าไม่สำเร็จ:', error);
+        this.savingCustomer.set(false);
+
+        // คงฟอร์มและข้อมูลที่กรอกไว้ ให้แก้หรือลองใหม่ได้
+        this.error =
+          error.status === 400
+            ? 'ข้อมูลไม่ถูกต้อง กรุณาตรวจชื่อ เบอร์โทร และพิกัด'
+            : 'บันทึกไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ';
+      },
+    });
   }
 
   remove(customer: Customer): void {

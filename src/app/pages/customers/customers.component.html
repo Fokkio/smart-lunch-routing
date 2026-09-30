@@ -114,10 +114,22 @@
         </div> }
         @if (error) { <p class="rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-800" role="alert"
           aria-live="assertive">{{ error }}</p> }
-        <div class="flex justify-end gap-3 border-t border-white/70 pt-4"><button
-            class="neu-control min-h-11 rounded-xl px-4 font-bold" type="button"
-            (click)="cancel()">ยกเลิก</button><button class="neu-primary min-h-11 rounded-xl px-4 font-bold"
-            [disabled]="customerForm.invalid" type="submit">บันทึกข้อมูล</button></div>
+        <!-- ปุ่มท้ายฟอร์ม: ยกเลิกและบันทึกข้อมูลลูกค้า -->
+        <div class="flex justify-end gap-3 border-t border-white/70 pt-4">
+
+          <!-- ปิดฟอร์มโดยไม่บันทึก -->
+          <button class="neu-control min-h-11 rounded-xl px-4 font-bold" type="button" [disabled]="savingCustomer()"
+            (click)="cancel()">
+            ยกเลิก
+          </button>
+
+          <!-- ส่งฟอร์มไปเรียก save() และห้ามกดซ้ำระหว่างรอ API -->
+          <button class="neu-primary min-h-11 rounded-xl px-4 font-bold" type="submit"
+            [disabled]="customerForm.invalid || savingCustomer()">
+            {{ savingCustomer() ? 'กำลังบันทึก...' : 'บันทึกข้อมูล' }}
+          </button>
+
+        </div>
       </form>
     </aside>
     }
