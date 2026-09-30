@@ -41,4 +41,10 @@ export class CustomersApiService {
   updateCustomer(id: string, input: CreateCustomerInput) {
     return this.http.put<ApiCustomer>(`${this.url}/${id}`, input);
   }
-} 
+
+  // ขอให้ backend ลบลูกค้าตาม id
+  // เมื่อลบสำเร็จ API ตอบ 204 โดยไม่มีข้อมูลลูกค้ากลับมา
+  deleteCustomer(id: string) {
+    return this.http.delete<void>(`${this.url}/${id}`);
+  }
+}

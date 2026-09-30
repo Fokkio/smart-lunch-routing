@@ -25,6 +25,9 @@ export class CustomersComponent implements OnInit {
   // สถานะบันทึก
   readonly savingCustomer = signal(false);
 
+  // null = ไม่ได้กำลังลบ / string = id ของลูกค้าที่กำลังลบ
+  readonly deletingCustomerId = signal<string | null>(null);
+
   readonly store = inject(DeliveryService);
   query = '';
   placeQuery = '';
@@ -83,8 +86,8 @@ export class CustomersComponent implements OnInit {
   }
 
   startCreate(): void {
-    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก
-    if (this.savingCustomer()) return;
+    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ
+    if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
 
     this.draft = this.blankDraft();
     this.locationSelected = false;
@@ -98,8 +101,8 @@ export class CustomersComponent implements OnInit {
   }
 
   edit(customer: Customer): void {
-    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก
-    if (this.savingCustomer()) return;
+    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ
+    if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
 
     this.draft = { ...customer };
     this.locationSelected = true;
@@ -113,8 +116,8 @@ export class CustomersComponent implements OnInit {
   }
 
   cancel(): void {
-    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก
-    if (this.savingCustomer()) return;
+    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ
+    if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
 
     this.showForm = false;
     this.error = '';
@@ -157,8 +160,8 @@ export class CustomersComponent implements OnInit {
   }
 
   save(): void {
-    // ป้องกันส่งคำขอซ้ำระหว่างรอ backend
-    if (this.savingCustomer()) return;
+  // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ ไม่เกิดขึ้นพร้อมกัน
+    if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
 
     this.error = '';
 
@@ -224,13 +227,41 @@ export class CustomersComponent implements OnInit {
     });
   }
 
+  // REMOVE //
   remove(customer: Customer): void {
+    // ไม่ให้ลบซ้ำ หรือลบระหว่างบันทึกฟอร์ม
+    if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
+
     if (!window.confirm(`ลบข้อมูลของ ${customer.name} หรือไม่?`)) return;
-    this.notify(
-      this.store.deleteCustomer(customer.id)
-        ? `ลบข้อมูลของ ${customer.name} แล้ว`
-        : 'ลบไม่ได้ เพราะลูกค้ารายนี้ยังมีออเดอร์อยู่',
-    );
+
+    this.deletingCustomerId.set(customer.id);
+
+    this.customerApi.deleteCustomer(customer.id).subscribe({
+      next: () => {
+        this.deletingCustomerId.set(null);
+
+        // backend ลบสำเร็จแล้ว จึงเอารายการออกจากหน้าจอ
+        this.apiCustomers.update((customers) =>
+          customers.filter((item) => item.id !== customer.id),
+        );
+
+        // ถ้าเปิดฟอร์มของคนที่ถูกลบอยู่ ให้ปิดฟอร์มด้วย
+        if (this.draft.id === customer.id) this.cancel();
+
+        this.notify(`ลบข้อมูลของ ${customer.name} แล้ว`);
+      },
+      error: (error) => {
+        this.deletingCustomerId.set(null);
+
+        if (error.status === 409) {
+          this.notify('ลบไม่ได้ เพราะลูกค้ารายนี้มีออเดอร์อ้างอิงอยู่');
+        } else if (error.status === 404) {
+          this.notify('ไม่พบลูกค้ารายนี้แล้ว กรุณารีเฟรชรายการ');
+        } else {
+          this.notify('ลบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+        }
+      },
+    });
   }
 
   private notify(message: string): void {
