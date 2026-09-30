@@ -10,7 +10,7 @@
   <div [class]="showForm ? 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]' : 'grid gap-5'">
     <article class="neu-panel overflow-hidden rounded-2xl">
       <div class="flex flex-col gap-3 border-b border-white/70 p-5 sm:flex-row sm:items-end sm:justify-between">
-        
+
         <!-- ส่งคำค้นเมื่อกด Enter หรือปุ่มค้นหา -->
         <form class="flex w-full max-w-lg items-end gap-2"
           (ngSubmit)="!loadingCustomers() && !savingCustomer() && deletingCustomerId() === null && loadCustomers()">
@@ -91,10 +91,24 @@
             class="text-red-700">*</span><input id="customer-name"
             class="neu-field mt-1.5 min-h-11 w-full rounded-xl px-3 text-base" required name="name"
             [(ngModel)]="draft.name" autocomplete="name" autofocus /></label>
-        <label class="block text-sm font-semibold" for="customer-phone">เบอร์โทร <span
-            class="text-red-700">*</span><input id="customer-phone"
-            class="neu-field mt-1.5 min-h-11 w-full rounded-xl px-3 text-base" required name="phone"
-            [(ngModel)]="draft.phone" inputmode="tel" autocomplete="tel" /></label>
+
+        <!-- PHONE -->
+        <!-- เบอร์มือถือ: ใช้กฎเดียวกับ backend -->
+        <label class="block text-sm font-semibold" for="customer-phone">
+          เบอร์โทร <span class="text-red-700">*</span>
+
+          <input id="customer-phone" class="neu-field mt-1.5 min-h-11 w-full rounded-xl px-3 text-base" required
+            name="phone" [(ngModel)]="draft.phone" inputmode="tel" autocomplete="tel" placeholder="เช่น 081-234-5678"
+            aria-describedby="customer-phone-hint" />
+        </label>
+
+        <p id="customer-phone-hint" class="text-sm text-slate-600">
+          ใช้เบอร์มือถือไทย 10 หลัก ขึ้นต้น 06, 08 หรือ 09
+          ใส่ขีดหรือช่องว่างได้ ระบบจะตัดออกก่อนบันทึก
+        </p>
+      
+        <!-- END OF PHONE -->
+
         <label class="block text-sm font-semibold" for="customer-address">ที่อยู่ / จุดสังเกต<textarea
             id="customer-address" class="neu-field mt-1.5 w-full rounded-xl p-3 text-base" name="address"
             [(ngModel)]="draft.address" rows="2" placeholder="เช่น หอพัก อาคาร หรือจุดนัดรับ"></textarea></label>
@@ -102,18 +116,18 @@
           <h3 class="font-bold">ตำแหน่งจัดส่ง</h3>
           <p class="text-sm text-slate-600">คลิกบนแผนที่หรือลากหมุดเพื่อระบุตำแหน่ง</p>
         </div>
-        <label class="block text-sm font-semibold" for="place-query">เลือกตำแหน่งจากลูกค้าที่โหลดไว้<input id="place-query"
-            class="neu-field mt-1.5 min-h-11 w-full rounded-xl px-3 text-base" name="placeQuery"
+        <label class="block text-sm font-semibold" for="place-query">เลือกตำแหน่งจากลูกค้าที่โหลดไว้<input
+            id="place-query" class="neu-field mt-1.5 min-h-11 w-full rounded-xl px-3 text-base" name="placeQuery"
             [(ngModel)]="placeQuery" placeholder="ชื่อหรือที่อยู่" autocomplete="off" /></label>
         @if (placeMatches().length) { <div class="neu-inset divide-y divide-white/70 rounded-xl">@for (place of
           placeMatches(); track place.id) { <button
             class="block min-h-11 w-full px-3 py-2 text-left transition-colors hover:bg-white/30" type="button"
             (click)="selectPlace(place)"><strong class="block text-sm">{{ place.name }}</strong><span
               class="text-xs text-slate-600">{{ place.address }}</span></button> }</div> }
-        <p class="text-xs text-slate-500">ค้นจากรายการลูกค้าที่โหลดอยู่ หากต้องการทั้งหมดให้ล้างคำค้นด้านบนแล้วกดค้นหา</p>
-        <div class="neu-inset h-[320px] overflow-hidden rounded-2xl p-1"><app-delivery-map
-            [customers]="apiCustomers()" [pickable]="true" [selectedLocation]="pickerLocation"
-            (locationPicked)="setLocation($event)" /></div>
+        <p class="text-xs text-slate-500">ค้นจากรายการลูกค้าที่โหลดอยู่ หากต้องการทั้งหมดให้ล้างคำค้นด้านบนแล้วกดค้นหา
+        </p>
+        <div class="neu-inset h-[320px] overflow-hidden rounded-2xl p-1"><app-delivery-map [customers]="apiCustomers()"
+            [pickable]="true" [selectedLocation]="pickerLocation" (locationPicked)="setLocation($event)" /></div>
         @if (locationSelected) { <div
           class="location-confirm flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900">
           <span>เลือกตำแหน่งแล้ว</span><button class="min-h-11 px-2 underline" type="button"
