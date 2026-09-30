@@ -1,7 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DeliveryService } from '../../core/delivery.service';
-import { RiderRoute, RouteStop } from '../../core/models';
+import { forkJoin, of, switchMap } from 'rxjs';
+import { RoutePlanApiService } from '../../core/route-plan-api.service';
+import { DeliveryRouteModel, RouteStopModel } from '../../core/route-plan.models';
 
 type Stage = 'entry' | 'summary' | 'delivery' | 'completed';
 
@@ -12,21 +13,36 @@ type Stage = 'entry' | 'summary' | 'delivery' | 'completed';
   templateUrl: './rider.component.html',
 })
 export class RiderComponent {
-  readonly store = inject(DeliveryService);
+  private readonly api = inject(RoutePlanApiService);
   jobCode = '';
-  activeRoute: RiderRoute | null = null;
+  activeRoute: DeliveryRouteModel | null = null;
   stage: Stage = 'entry';
   stopIndex = 0;
   errorMessage = '';
   confirmingStop = false;
+  loading = false;
 
-  get currentStop(): RouteStop | null { return this.activeRoute?.stops[this.stopIndex] ?? null; }
+  get currentStop(): RouteStopModel | null { return this.activeRoute?.stops[this.stopIndex] ?? null; }
 
   openJob(): void {
-    if (!this.store.confirmedPlan()) { this.errorMessage = 'ยังไม่มีใบงานที่ยืนยันแล้ว กรุณาให้เจ้าของร้านตรวจทานและยืนยันแผนก่อน'; return; }
-    this.activeRoute = this.store.routeForJobCode(this.jobCode);
-    this.errorMessage = this.activeRoute ? '' : 'ไม่พบใบงานนี้ กรุณาตรวจสอบเลขใบงานอีกครั้ง';
-    if (this.activeRoute) { this.stage = 'summary'; this.stopIndex = 0; this.confirmingStop = false; }
+    const code = this.jobCode.trim().toUpperCase();
+    if (!code || this.loading) return;
+    this.loading = true;
+    this.errorMessage = '';
+    this.api.list().pipe(
+      switchMap(plans => {
+        const selected = plans.filter(plan => plan.status === 'SELECTED' && plan.routePlanId !== undefined);
+        return selected.length ? forkJoin(selected.map(plan => this.api.get(plan.routePlanId!))) : of([]);
+      }),
+    ).subscribe({
+      next: plans => {
+        this.loading = false;
+        this.activeRoute = plans.flatMap(plan => plan.jobs).find(job => job.jobCode?.toUpperCase() === code) ?? null;
+        this.errorMessage = this.activeRoute ? '' : 'ไม่พบใบงานที่ยืนยันแล้ว กรุณาตรวจสอบเลขใบงานอีกครั้ง';
+        if (this.activeRoute) { this.stage = 'summary'; this.stopIndex = 0; this.confirmingStop = false; }
+      },
+      error: () => { this.loading = false; this.errorMessage = 'โหลดใบงานไม่สำเร็จ กรุณาลองใหม่'; },
+    });
   }
 
   useCode(code: string): void { this.jobCode = code; this.openJob(); }
@@ -39,8 +55,8 @@ export class RiderComponent {
     if (this.stopIndex >= this.activeRoute.stops.length) this.stage = 'completed';
   }
   closeJob(): void { this.stage = 'entry'; this.activeRoute = null; this.jobCode = ''; this.errorMessage = ''; this.stopIndex = 0; this.confirmingStop = false; }
-  navigateTo(stop: RouteStop): string {
-    const params = new URLSearchParams({ api: '1', destination: `${stop.customer.lat},${stop.customer.lng}`, travelmode: 'driving' });
+  navigateTo(stop: RouteStopModel): string {
+    const params = new URLSearchParams({ api: '1', destination: `${stop.latitude},${stop.longitude}`, travelmode: 'driving' });
     return `https://www.google.com/maps/dir/?${params.toString()}`;
   }
 }

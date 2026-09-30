@@ -33,7 +33,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   readonly String = String;
   readonly tilesUnavailable = signal(false);
   selectedRiderId: string | null = null;
-  @Input() customers: Customer[] = [];
+  @Input() customers: Array<Pick<Customer, "name" | "lat" | "lng"> & { address: string | null }> = [];
   @Input() routes: RiderRoute[] = [];
   @Input() compact = false;
   @Input() pickable = false;

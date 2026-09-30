@@ -1,6 +1,14 @@
-// เบส URL ของ backend — dev ใช้ '/api' ผ่าน proxy.conf.json ไปที่ localhost:3000
-// ส่วน production จะถูกแทนด้วย environment.production.ts ตอน build
-export const environment = {
-  production: false,
+import type { AppEnvironment } from './environment.model';
+
+/**
+ * Development environment (the default file — no replacement applied).
+ *
+ * `apiBaseUrl` is origin-relative on purpose: `ng serve` forwards `/api/**`
+ * to the hosted backend through `proxy.conf.json` (wired in `angular.json`
+ * under `serve.configurations.development.proxyConfig`). No localhost port is
+ * ever hard-coded in a feature service.
+ */
+export const environment: AppEnvironment = {
+  name: 'development',
   apiBaseUrl: '/api',
 };
