@@ -36,4 +36,9 @@ export class CustomersApiService {
   createCustomer(input: CreateCustomerInput) {
     return this.http.post<ApiCustomer>(this.url, input);
   }
-}
+
+  // แก้ไขลูกค้าตาม id และรับข้อมูลหลังบันทึกกลับมา
+  updateCustomer(id: string, input: CreateCustomerInput) {
+    return this.http.put<ApiCustomer>(`${this.url}/${id}`, input);
+  }
+} 

@@ -162,12 +162,6 @@ export class CustomersComponent implements OnInit {
 
     this.error = '';
 
-    // ขั้นนี้เชื่อมเฉพาะเพิ่มลูกค้า ป้องกันเผลอสร้างซ้ำตอนแก้ไข
-    if (this.draft.id) {
-      this.error = 'การแก้ไขลูกค้ายังไม่ได้เชื่อม API';
-      return;
-    }
-
     if (!this.locationSelected) {
       this.error = 'กรุณาปักตำแหน่งจัดส่งของลูกค้า';
       return;
@@ -184,8 +178,15 @@ export class CustomersComponent implements OnInit {
 
     this.savingCustomer.set(true);
 
-    // CREATE CUSTOMER
-    this.customerApi.createCustomer(input).subscribe({
+    // เก็บ id ของรายการที่กำลังแก้ไขไว้ก่อนส่งคำขอ
+    const editingId = this.draft.id;
+
+    // มี id = แก้คนเดิมด้วย PUT / ไม่มี id = เพิ่มคนใหม่ด้วย POST
+    const request = editingId
+      ? this.customerApi.updateCustomer(editingId, input)
+      : this.customerApi.createCustomer(input);
+
+    request.subscribe({
       next: (customer) => {
         // ใช้ข้อมูลที่ backend ตอบกลับ รวมถึง id ที่ฐานข้อมูลสร้างให้
         const savedCustomer: Customer = {
@@ -197,14 +198,21 @@ export class CustomersComponent implements OnInit {
           lng: customer.lng,
         };
 
-        this.apiCustomers.update((customers) => [savedCustomer, ...customers]);
+        // EDIT CUSTOMER
+        this.apiCustomers.update((customers) =>
+          editingId
+            ? // แก้ไข: แทนข้อมูลคนเดิมด้วยข้อมูลที่ backend ตอบกลับ
+              customers.map((item) => (item.id === editingId ? savedCustomer : item))
+            : // เพิ่มใหม่: วางลูกค้าใหม่ไว้ต้นรายการ
+              [savedCustomer, ...customers],
+        );
 
         this.savingCustomer.set(false);
         this.cancel();
-        this.notify('เพิ่มลูกค้าใหม่แล้ว');
+        this.notify(editingId ? 'บันทึกการแก้ไขลูกค้าแล้ว' : 'เพิ่มลูกค้าใหม่แล้ว');
       },
       error: (error) => {
-        console.error('เพิ่มลูกค้าไม่สำเร็จ:', error);
+        console.error('บันทึกลูกค้าไม่สำเร็จ:', error);
         this.savingCustomer.set(false);
 
         // คงฟอร์มและข้อมูลที่กรอกไว้ ให้แก้หรือลองใหม่ได้
