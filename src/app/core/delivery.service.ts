@@ -3,6 +3,7 @@ import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 import { BackendApiService } from './backend-api.service';
 import { DEMO_CUSTOMERS, DEMO_ORDERS, DEMO_RIDERS } from './demo-data';
 import { Customer, Order, RiderRoute, RoutePlan, RouteStop, SHOP } from './models';
+import { ShopSettings, ShopSettingsApiService } from './shop-settings-api.service';
 
 const CUSTOMER_KEY = 'smart-lunch-customers-v1';
 const ORDER_KEY = 'smart-lunch-orders-v1';
@@ -20,7 +21,10 @@ export class DeliveryService {
   readonly pendingBoxes = computed(() => this.pendingOrders().reduce((sum, order) => sum + order.boxes, 0));
   /** true เมื่อข้อมูลมาจาก backend จริง — false คือโหมดข้อมูลจำลอง (offline/เทส) */
   readonly usingBackend = signal(false);
+  /** ค่าตั้งร้านจาก backend (null = ยังโหลดไม่ได้ ใช้ค่า default เดียวกับ backend seed) */
+  readonly settings = signal<ShopSettings | null>(null);
   private readonly api = inject(BackendApiService, { optional: true });
+  private readonly settingsApi = inject(ShopSettingsApiService, { optional: true });
 
   constructor() {
     // แผนที่ค้างใน localStorage อาจอ้างลูกค้าที่ถูกลบไปแล้ว — ตรวจแล้วทิ้งทั้งแผน
@@ -66,6 +70,11 @@ export class DeliveryService {
       this.plan.set(pruned);
       if (!pruned) localStorage.removeItem(PLAN_KEY);
       this.usingBackend.set(true);
+    });
+    // ค่าตั้งร้านแยกเส้นต่างหาก — พังก็แค่ใช้ default ไม่กระทบข้อมูลหลัก
+    this.settingsApi?.get().subscribe({
+      next: (settings) => this.settings.set(settings),
+      error: (error) => console.warn('[delivery] โหลดค่าตั้งร้านไม่สำเร็จ ใช้ค่า default:', error),
     });
   }
 
@@ -304,9 +313,12 @@ export class DeliveryService {
     const totalBoxes = orders.reduce((sum, order) => sum + order.boxes, 0);
     const distanceKm = this.round(totalDistance);
     const durationMinutes = Math.ceil(distanceKm / 30 * 60);
-    const deliveryCost = this.round(15 + (2 * distanceKm * totalBoxes));
-    const revenue = totalBoxes * 65;
-    const foodCost = totalBoxes * 40;
+    // สูตรเดียวกับ backend cost-calculator (riderBaseCost + km × riderCostPerKm) —
+    // สูตรเก่า (15 + 2×km×กล่อง) เลิกใช้แล้วเพราะ backend ไม่คูณตามกล่อง
+    const pricing = this.settings();
+    const deliveryCost = this.round((pricing?.riderBaseCost ?? 15) + distanceKm * (pricing?.riderCostPerKm ?? 4));
+    const revenue = totalBoxes * (pricing?.boxSalePrice ?? 65);
+    const foodCost = totalBoxes * (pricing?.boxFoodCost ?? 40);
     return {
       rider: this.riders()[riderIndex % this.riders().length],
       stops,

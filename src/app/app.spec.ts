@@ -21,6 +21,6 @@ describe('App', () => {
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('aside a[aria-label*="ครัวเที่ยงตรง"]')?.textContent).toContain('ครัวเที่ยงตรง');
-    expect(compiled.querySelectorAll('aside nav a').length).toBe(4);
+    expect(compiled.querySelectorAll('aside nav a').length).toBe(5);
   });
 });

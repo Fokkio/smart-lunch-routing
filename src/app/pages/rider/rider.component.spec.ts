@@ -13,7 +13,7 @@ describe('Rider backend job lookup', () => {
     const rider = TestBed.createComponent(RiderComponent).componentInstance;
     rider.jobCode = 'JOB-1';
     rider.openJob();
-    http.expectOne('/api/route-plans').flush([{ routePlanId: 5, status: 'SELECTED' }]);
+    http.expectOne((req) => req.url === '/api/route-plans' && req.params.has('date')).flush([{ routePlanId: 5, status: 'SELECTED' }]);
     http.expectOne('/api/route-plans/5').flush({
       jobs: [{
         jobCode: 'JOB-1', totalBoxes: 2, distanceKm: 1,

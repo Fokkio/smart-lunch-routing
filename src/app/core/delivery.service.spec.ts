@@ -28,13 +28,14 @@ describe('DeliveryService route planning', () => {
     expect(plan.routes.reduce((sum, route) => sum + route.stops.length, 0)).toBe(service.pendingOrders().length);
   });
 
-  it('uses the PDF revenue, food-cost, and rider-cost formula', () => {
+  it('uses the backend revenue, food-cost, and rider-cost formula', () => {
     const plan = service.calculateRoutes();
     expect(plan.revenue).toBe(service.pendingBoxes() * 65);
     expect(plan.foodCost).toBe(service.pendingBoxes() * 40);
     expect(plan.profit).toBeCloseTo(plan.revenue - plan.foodCost - plan.deliveryCost, 2);
     for (const route of plan.routes) {
-      expect(route.deliveryCost).toBeCloseTo(15 + 2 * route.distanceKm * route.totalBoxes, 2);
+      // สูตรเดียวกับ backend cost-calculator: ฐาน + กม. × ต่อกม. (ไม่คูณตามกล่อง)
+      expect(route.deliveryCost).toBeCloseTo(15 + 4 * route.distanceKm, 2);
     }
   });
 
@@ -121,6 +122,11 @@ describe('DeliveryService route planning', () => {
     ];
     const apiOrders = [{ id: 11, customerId: 1, boxes: 2, status: 'PENDING', orderDate: '2026-09-30' }];
     const apiRiders = [{ id: 5, name: 'Rider Five', phone: '0810000005', isAvailable: true }];
+    const apiSettings = {
+      settingId: 1, shopName: 'ครัวเที่ยงตรง', latitude: 16.24631, longitude: 103.25286,
+      deliveryStartTime: '11:30:00', deliveryDeadline: '12:30:00', maxOrdersPerRider: 3,
+      riderSpeedKmh: 30, boxSalePrice: 65, boxFoodCost: 40, riderBaseCost: 15, riderCostPerKm: 4,
+    };
 
     it('replaces demo data with backend data on connect', () => {
       expect(service.usingBackend()).toBe(false);
@@ -129,11 +135,13 @@ describe('DeliveryService route planning', () => {
       http.expectOne('/api/customers').flush(apiCustomers);
       http.expectOne('/api/orders').flush(apiOrders);
       http.expectOne('/api/riders').flush(apiRiders);
+      http.expectOne('/api/settings').flush(apiSettings);
 
       expect(service.usingBackend()).toBe(true);
       expect(service.customers().map((customer) => customer.id)).toEqual(['1']);
       expect(service.orders().map((order) => order.id)).toEqual(['11']);
       expect(service.riders().map((rider) => rider.id)).toEqual(['5']);
+      expect(service.settings()).toEqual(apiSettings);
     });
 
     it('keeps demo data when the backend is unreachable', () => {
@@ -143,9 +151,11 @@ describe('DeliveryService route planning', () => {
       http.expectOne('/api/customers').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
       http.expectOne('/api/orders').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
       http.expectOne('/api/riders').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
+      http.expectOne('/api/settings').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
 
       expect(service.usingBackend()).toBe(false);
       expect(service.customers()).toHaveLength(demoCount);
+      expect(service.settings()).toBeNull();
     });
 
     it('saves a new customer through the backend when connected', () => {
@@ -153,6 +163,7 @@ describe('DeliveryService route planning', () => {
       http.expectOne('/api/customers').flush(apiCustomers);
       http.expectOne('/api/orders').flush(apiOrders);
       http.expectOne('/api/riders').flush(apiRiders);
+      http.expectOne('/api/settings').flush(apiSettings);
       expect(service.usingBackend()).toBe(true);
 
       service.saveCustomer({ name: 'คนใหม่', phone: '0899999999', address: '', lat: 16.24, lng: 103.25 });

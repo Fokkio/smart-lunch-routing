@@ -29,7 +29,9 @@ export class RiderComponent {
     if (!code || this.loading) return;
     this.loading = true;
     this.errorMessage = '';
-    this.api.list().pipe(
+    // ดึงเฉพาะแผนของวันนี้เพื่อเลี่ยง N+1 กับแผนเก่า (backend รองรับ ?date=)
+    const today = new Date().toLocaleDateString('en-CA');
+    this.api.list(today).pipe(
       switchMap(plans => {
         const selected = plans.filter(plan => plan.status === 'SELECTED' && plan.routePlanId !== undefined);
         return selected.length ? forkJoin(selected.map(plan => this.api.get(plan.routePlanId!))) : of([]);
