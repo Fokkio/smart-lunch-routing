@@ -166,7 +166,7 @@ describe('CustomersApiService', () => {
 
   //   =============================================================== //
   // ERROR
-//   HTTP จำลองตอบ 409 → API service → เข้า error ของผู้เรียก
+  //   HTTP จำลองตอบ 409 → API service → เข้า error ของผู้เรียก
   it('passes a delete conflict to the caller without reporting success', () => {
     let receivedError: HttpErrorResponse | undefined;
     let succeeded = false;
