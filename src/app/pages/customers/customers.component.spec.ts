@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 import { ApiCustomer, CustomersApiService } from '../../core/customer-api.service';
 import { CustomersComponent } from './customers.component';
 
-describe('CustomersComponent loading', () => {
+describe('CustomersComponent', () => {
   //  ====================================== //
   it('shows loading, then an error instead of an empty list', async () => {
     // ควบคุมว่า API จะตอบเมื่อไร โดยไม่เรียก backend จริง
@@ -73,7 +73,6 @@ describe('CustomersComponent loading', () => {
     expect(page.querySelector('[role="alert"]')).toBeNull();
   });
 
-
   // ==================================================== //
   // การโหลดรายการ
   it('displays customers returned by the API', async () => {
@@ -111,5 +110,127 @@ describe('CustomersComponent loading', () => {
     expect(page.textContent).not.toContain('ยังไม่มีข้อมูลลูกค้า');
     expect(page.textContent).not.toContain('กำลังโหลดรายชื่อลูกค้า');
     expect(page.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  // ===================================================== //
+  // เริ่มจากคลิกปุ่มใน HTML แล้วตรวจสิ่งที่ผู้ใช้เห็น ทั้งสถานะ “กำลังลบ” และการเก็บรายการไว้เมื่อเกิด error โดยยังใช้ API จำลอง
+  it('keeps the customer visible when deletion returns 409', async () => {
+    const listResponse = new Subject<ApiCustomer[]>();
+    const deleteResponse = new Subject<void>();
+
+    const api = {
+      getCustomers: vi.fn().mockReturnValue(listResponse),
+      deleteCustomer: vi.fn().mockReturnValue(deleteResponse),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [CustomersComponent],
+      providers: [{ provide: CustomersApiService, useValue: api }],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CustomersComponent);
+    fixture.detectChanges();
+
+    // เตรียมลูกค้าหนึ่งคนบนหน้าจอ
+    listResponse.next([
+      {
+        id: 42,
+        name: 'ลูกค้าที่มีออเดอร์',
+        phone: '0800000000',
+        address: null,
+        lat: 16.2469,
+        lng: 103.2531,
+      },
+    ]);
+    listResponse.complete();
+    fixture.detectChanges();
+
+    const page: HTMLElement = fixture.nativeElement;
+
+    // จำลองการกดยืนยัน โดยไม่เปิดกล่อง confirm จริง
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    // ควบคุม timer ของข้อความแจ้งเตือนใน test นี้
+    vi.useFakeTimers();
+
+    try {
+      const deleteButton = Array.from(page.querySelectorAll<HTMLButtonElement>('button')).find(
+        (button) => button.textContent?.trim() === 'ลบ',
+      );
+
+      expect(deleteButton).toBeDefined();
+      deleteButton!.click();
+      fixture.detectChanges();
+
+      expect(api.deleteCustomer).toHaveBeenCalledWith('42');
+      expect(deleteButton!.disabled).toBe(true);
+      expect(deleteButton!.textContent).toContain('กำลังลบ');
+
+      // backend ปฏิเสธ เพราะมีออเดอร์อ้างอิง
+      deleteResponse.error({ status: 409 });
+      fixture.detectChanges();
+
+      expect(page.textContent).toContain('ลูกค้าที่มีออเดอร์');
+      expect(page.textContent).toContain('ลบไม่ได้ เพราะลูกค้ารายนี้มีออเดอร์อ้างอิงอยู่');
+      expect(deleteButton!.disabled).toBe(false);
+    } finally {
+      confirm.mockRestore();
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+
+  // ============================================================== //
+  // ผู้ใช้ไม่ยืนยัน จึงต้องหยุดก่อนส่งคำขอ
+  it('does not call the delete API when confirmation is cancelled', async () => {
+    const listResponse = new Subject<ApiCustomer[]>();
+
+    const api = {
+      getCustomers: vi.fn().mockReturnValue(listResponse),
+      deleteCustomer: vi.fn(),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [CustomersComponent],
+      providers: [{ provide: CustomersApiService, useValue: api }],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(CustomersComponent);
+    fixture.detectChanges();
+
+    listResponse.next([
+      {
+        id: 42,
+        name: 'ลูกค้าที่ต้องเก็บไว้',
+        phone: '0800000000',
+        address: null,
+        lat: 16.2469,
+        lng: 103.2531,
+      },
+    ]);
+    listResponse.complete();
+    fixture.detectChanges();
+
+    const page: HTMLElement = fixture.nativeElement;
+
+    // false หมายถึงผู้ใช้กดยกเลิก
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    try {
+      const deleteButton = Array.from(page.querySelectorAll<HTMLButtonElement>('button')).find(
+        (button) => button.textContent?.trim() === 'ลบ',
+      );
+
+      expect(deleteButton).toBeDefined();
+      deleteButton!.click();
+      fixture.detectChanges();
+
+      expect(confirm).toHaveBeenCalled();
+      expect(api.deleteCustomer).not.toHaveBeenCalled();
+      expect(page.textContent).toContain('ลูกค้าที่ต้องเก็บไว้');
+      expect(deleteButton!.disabled).toBe(false);
+    } finally {
+      confirm.mockRestore();
+    }
   });
 });
