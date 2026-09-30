@@ -6,17 +6,17 @@ import { Customer, RiderRoute, SHOP } from '../../core/models';
   selector: 'app-delivery-map',
   standalone: true,
   template: `
-    <div class="relative h-full min-h-[320px] w-full">
-      <div #map class="h-full min-h-[320px] w-full bg-neu" role="region" aria-label="แผนที่จุดส่งและเส้นทางไรเดอร์"></div>
+    <div class="relative h-full min-h-80 w-full">
+      <div #map class="h-full min-h-80 w-full bg-neu" role="region" aria-label="แผนที่จุดส่งและเส้นทางไรเดอร์"></div>
       @if (tilesUnavailable()) {
-        <div class="absolute inset-x-3 top-16 z-[500] rounded-xl border border-amber-300 bg-warning-soft p-3 text-sm text-amber-950" role="status">
+        <div class="absolute inset-x-3 top-16 z-500 rounded-xl border border-amber-300 bg-warning-soft p-3 text-sm text-amber-950" role="status">
           <strong class="block">พื้นแผนที่โหลดไม่ได้</strong>
           <p class="mt-1">จุดส่งยังแสดงอยู่ แต่ตำแหน่งถนนอาจดูไม่ได้ ตรวจการเชื่อมต่อแล้วลองใหม่</p>
           <button class="neu-control mt-2 min-h-11 rounded-lg px-3 font-bold" type="button" (click)="retryTiles()">ลองโหลดแผนที่อีกครั้ง</button>
         </div>
       }
       @if (routes.length) {
-        <div class="neu-panel-soft absolute bottom-6 left-3 z-[500] w-[min(280px,calc(100%-24px))] rounded-xl p-3 text-sm">
+        <div class="neu-panel-soft absolute bottom-6 left-3 z-500 w-[min(280px,calc(100%-24px))] rounded-xl p-3 text-sm">
           <label class="block font-semibold text-ink">ดูเส้นทางไรเดอร์
             <select class="neu-field mt-1 min-h-11 w-full rounded-lg px-3 text-sm font-medium" [value]="selectedRiderId || ''" (change)="selectRoute($event)">
               <option value="">ทุกเส้นทาง ({{ routes.length }} คน)</option>
