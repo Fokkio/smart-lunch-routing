@@ -23,7 +23,7 @@ import { Customer, RiderRoute, SHOP } from '../../core/models';
               @for (route of routes; track route.rider.id; let i = $index) { <option [value]="route.rider.id">R{{ String(i + 1).padStart(2, '0') }} · {{ route.rider.name }}</option> }
             </select>
           </label>
-          <p class="mt-2 text-[13px] text-slate-600">สีเส้นและกรอบหมุดบอกไรเดอร์ · R01-2 คือจุดที่ 2 ของ R01</p>
+          <p class="mt-2 text-[13px] text-slate-600">สีเส้นและกรอบหมุดบอกไรเดอร์ · ป้าย R01-2 = ไรเดอร์คันที่ 1 จุดส่งที่ 2</p>
         </div>
       }
     </div>
@@ -38,6 +38,9 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   @Input() compact = false;
   @Input() pickable = false;
   @Input() selectedLocation: { lat: number; lng: number } | null = null;
+  /** index เส้นทางที่ parent เลือก (แชร์กับการ์ด) — map กับ rider.id ข้างใน */
+  @Input() selectedIndex: number | null = null;
+  @Output() selectedIndexChange = new EventEmitter<number | null>();
   @Output() locationPicked = new EventEmitter<{ lat: number; lng: number }>();
   @ViewChild('map', { static: true }) mapElement!: ElementRef<HTMLDivElement>;
 
@@ -61,6 +64,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   ngOnChanges(_changes: SimpleChanges): void {
+    this.syncSelectedIndex();
     if (this.selectedRiderId && !this.routes.some(route => route.rider.id === this.selectedRiderId)) this.selectedRiderId = null;
     if (this.map) this.render();
   }
@@ -75,8 +79,20 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   selectRoute(event: Event): void {
-    this.selectedRiderId = (event.target as HTMLSelectElement).value || null;
+    const id = (event.target as HTMLSelectElement).value || null;
+    this.selectedRiderId = id;
+    const index = id ? this.routes.findIndex(route => route.rider.id === id) : -1;
+    this.selectedIndexChange.emit(index >= 0 ? index : null);
     this.render();
+  }
+
+  private syncSelectedIndex(): void {
+    if (this.selectedIndex === null) {
+      this.selectedRiderId = null;
+      return;
+    }
+    const route = this.routes[this.selectedIndex];
+    this.selectedRiderId = route ? route.rider.id : null;
   }
 
   isVisible(route: RiderRoute): boolean {

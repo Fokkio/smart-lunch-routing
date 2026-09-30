@@ -25,7 +25,10 @@ export class OrderApiService {
   create(input: ApiOrderInput): Observable<ApiOrder> { return this.http.post<ApiOrder>(this.url, input); }
   update(id: number, input: ApiOrderInput): Observable<ApiOrder> { return this.http.put<ApiOrder>(`${this.url}/${id}`, input); }
   delete(id: number): Observable<void> { return this.http.delete<void>(`${this.url}/${id}`); }
-  simulate(date: string): Observable<{ createdCount: number; orders: ApiOrder[] }> {
-    return this.http.post<{ createdCount: number; orders: ApiOrder[] }>(`${this.url}/simulate`, { count: 25, orderDate: date });
+  simulate(date: string, count = 25): Observable<{ createdCount: number; orders: ApiOrder[] }> {
+    return this.http.post<{ createdCount: number; orders: ApiOrder[] }>(`${this.url}/simulate`, { count, orderDate: date });
+  }
+  clearSimulated(): Observable<{ deletedCount: number }> {
+    return this.http.delete<{ deletedCount: number }>(`${this.url}/simulated`);
   }
 }

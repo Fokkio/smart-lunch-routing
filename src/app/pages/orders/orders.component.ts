@@ -26,6 +26,8 @@ export class OrdersComponent {
   readonly today = new Date().toLocaleDateString('en-CA');
   query = '';
   customerQuery = '';
+  simulateCount = 25;
+  simFilter: 'all' | 'real' | 'simulated' = 'all';
   showForm = false;
   feedback = '';
   draft: Draft = this.blankDraft();
@@ -52,7 +54,15 @@ export class OrdersComponent {
 
   filteredOrders(): ApiOrder[] {
     const term = this.query.trim().toLowerCase();
-    return this.orders().filter((order) => `${order.id} ${this.customerFor(order)?.name ?? ''} ${this.customerFor(order)?.phone ?? ''}`.toLowerCase().includes(term));
+    return this.orders().filter((order) => {
+      if (this.simFilter === 'real' && order.isSimulated) return false;
+      if (this.simFilter === 'simulated' && !order.isSimulated) return false;
+      return `${order.id} ${this.customerFor(order)?.name ?? ''} ${this.customerFor(order)?.phone ?? ''}`.toLowerCase().includes(term);
+    });
+  }
+
+  simulatedCount(): number {
+    return this.orders().filter((order) => order.isSimulated).length;
   }
 
   matchingCustomers(): ApiCustomer[] {
@@ -80,9 +90,16 @@ export class OrdersComponent {
     });
   }
   simulate(): void {
-    this.ordersApi.simulate(this.today).subscribe({
+    this.ordersApi.simulate(this.today, this.simulateCount).subscribe({
       next: () => { this.feedback = 'สร้างออเดอร์จำลองแล้ว'; this.reload(); },
       error: err => this.error.set(apiErrorMessage(err, 'สร้างออเดอร์จำลองไม่สำเร็จ')),
+    });
+  }
+  clearSimulated(): void {
+    if (!this.simulatedCount() || !window.confirm(`ล้างออเดอร์จำลอง ${this.simulatedCount()} รายการหรือไม่?`)) return;
+    this.ordersApi.clearSimulated().subscribe({
+      next: (result) => { this.feedback = `ล้างออเดอร์จำลอง ${result.deletedCount} รายการแล้ว`; this.reload(); },
+      error: err => this.error.set(apiErrorMessage(err, 'ล้างออเดอร์จำลองไม่สำเร็จ')),
     });
   }
   remove(order: ApiOrder): void {
