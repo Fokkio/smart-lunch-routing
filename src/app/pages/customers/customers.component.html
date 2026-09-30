@@ -102,7 +102,7 @@
           <h3 class="font-bold">ตำแหน่งจัดส่ง</h3>
           <p class="text-sm text-slate-600">คลิกบนแผนที่หรือลากหมุดเพื่อระบุตำแหน่ง</p>
         </div>
-        <label class="block text-sm font-semibold" for="place-query">ค้นหาจากลูกค้าในเดโม<input id="place-query"
+        <label class="block text-sm font-semibold" for="place-query">เลือกตำแหน่งจากลูกค้าที่โหลดไว้<input id="place-query"
             class="neu-field mt-1.5 min-h-11 w-full rounded-xl px-3 text-base" name="placeQuery"
             [(ngModel)]="placeQuery" placeholder="ชื่อหรือที่อยู่" autocomplete="off" /></label>
         @if (placeMatches().length) { <div class="neu-inset divide-y divide-white/70 rounded-xl">@for (place of
@@ -110,9 +110,9 @@
             class="block min-h-11 w-full px-3 py-2 text-left transition-colors hover:bg-white/30" type="button"
             (click)="selectPlace(place)"><strong class="block text-sm">{{ place.name }}</strong><span
               class="text-xs text-slate-600">{{ place.address }}</span></button> }</div> }
-        <p class="text-xs text-slate-500">ค้นหาเฉพาะข้อมูลตัวอย่างในระบบ ไม่ใช่ฐานข้อมูลที่อยู่ทั่วประเทศ</p>
+        <p class="text-xs text-slate-500">ค้นจากรายการลูกค้าที่โหลดอยู่ หากต้องการทั้งหมดให้ล้างคำค้นด้านบนแล้วกดค้นหา</p>
         <div class="neu-inset h-[320px] overflow-hidden rounded-2xl p-1"><app-delivery-map
-            [customers]="store.customers()" [pickable]="true" [selectedLocation]="pickerLocation"
+            [customers]="apiCustomers()" [pickable]="true" [selectedLocation]="pickerLocation"
             (locationPicked)="setLocation($event)" /></div>
         @if (locationSelected) { <div
           class="location-confirm flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900">

@@ -2,7 +2,6 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Customer } from '../../core/models';
 import { CustomersApiService } from '../../core/customer-api.service';
-import { DeliveryService } from '../../core/delivery.service';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
 
 type Draft = Omit<Customer, 'id'> & { id?: string };
@@ -28,7 +27,6 @@ export class CustomersComponent implements OnInit {
   // null = ไม่ได้กำลังลบ / string = id ของลูกค้าที่กำลังลบ
   readonly deletingCustomerId = signal<string | null>(null);
 
-  readonly store = inject(DeliveryService);
   query = '';
   placeQuery = '';
   showForm = false;
@@ -36,7 +34,7 @@ export class CustomersComponent implements OnInit {
   locationSelected = false;
   pickerLocation: { lat: number; lng: number } | null = null;
   manualLat: number | null = null;
-  manualLng: number | null = null;
+  manualLng: number | null = null;  
   error = '';
   feedback = '';
   draft: Draft = this.blankDraft();
@@ -80,11 +78,12 @@ export class CustomersComponent implements OnInit {
     return this.apiCustomers();
   }
 
+  // เลือกตำแหน่งจากลูกค้าที่โหลดมาแล้ว
   placeMatches(): Customer[] {
     const term = this.placeQuery.trim().toLowerCase();
+
     return term
-      ? this.store
-          .customers()
+      ? this.apiCustomers()
           .filter((customer) => `${customer.name} ${customer.address}`.toLowerCase().includes(term))
           .slice(0, 5)
       : [];
