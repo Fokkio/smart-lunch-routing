@@ -10,10 +10,22 @@
   <div [class]="showForm ? 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]' : 'grid gap-5'">
     <article class="neu-panel overflow-hidden rounded-2xl">
       <div class="flex flex-col gap-3 border-b border-white/70 p-5 sm:flex-row sm:items-end sm:justify-between">
-        <label class="block w-full max-w-lg text-sm font-semibold text-slate-700" for="customer-list-search"><span
-            class="mb-1.5 block">ค้นหาลูกค้า</span><input id="customer-list-search"
-            class="neu-field min-h-11 w-full rounded-xl px-4 text-base" [(ngModel)]="query"
-            placeholder="ชื่อ เบอร์โทร หรือที่อยู่" /></label>
+        
+        <!-- ส่งคำค้นเมื่อกด Enter หรือปุ่มค้นหา -->
+        <form class="flex w-full max-w-lg items-end gap-2"
+          (ngSubmit)="!loadingCustomers() && !savingCustomer() && deletingCustomerId() === null && loadCustomers()">
+          <label class="block min-w-0 flex-1 text-sm font-semibold text-slate-700" for="customer-list-search">
+            <span class="mb-1.5 block">ค้นหาลูกค้า</span>
+            <input id="customer-list-search" name="search" class="neu-field min-h-11 w-full rounded-xl px-4 text-base"
+              [(ngModel)]="query" [disabled]="loadingCustomers() || savingCustomer() || deletingCustomerId() !== null"
+              placeholder="ชื่อ เบอร์โทร หรือที่อยู่" />
+          </label>
+
+          <button class="neu-control min-h-11 rounded-xl px-3 font-semibold" type="submit"
+            [disabled]="loadingCustomers() || savingCustomer() || deletingCustomerId() !== null">
+            ค้นหา
+          </button>
+        </form>
         <span class="text-sm text-slate-500">{{ filteredCustomers().length }} รายการ</span>
       </div>
 

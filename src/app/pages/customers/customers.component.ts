@@ -43,8 +43,15 @@ export class CustomersComponent implements OnInit {
   private feedbackTimer?: ReturnType<typeof setTimeout>;
 
   ngOnInit(): void {
-    // when open customer page ขอ customer API from backend
-    this.customerApi.getCustomers().subscribe({
+    this.loadCustomers();
+  }
+
+  // ใช้ทั้งตอนเปิดหน้าและตอนกดค้นหา
+  loadCustomers(): void {
+    this.loadingCustomers.set(true);
+    this.loadCustomersError.set('');
+
+    this.customerApi.getCustomers(this.query).subscribe({
       next: (customers) => {
         this.apiCustomers.set(
           customers.map((customer) => ({
@@ -69,10 +76,8 @@ export class CustomersComponent implements OnInit {
   }
 
   filteredCustomers(): Customer[] {
-    const term = this.query.trim().toLowerCase();
-    return this.apiCustomers().filter((customer) =>
-      `${customer.name} ${customer.phone} ${customer.address}`.toLowerCase().includes(term),
-    );
+    // backend ค้นให้แล้ว แสดงรายการที่ตอบกลับได้เลย
+    return this.apiCustomers();
   }
 
   placeMatches(): Customer[] {
@@ -160,7 +165,7 @@ export class CustomersComponent implements OnInit {
   }
 
   save(): void {
-  // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ ไม่เกิดขึ้นพร้อมกัน
+    // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ ไม่เกิดขึ้นพร้อมกัน
     if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
 
     this.error = '';
@@ -190,29 +195,13 @@ export class CustomersComponent implements OnInit {
       : this.customerApi.createCustomer(input);
 
     request.subscribe({
-      next: (customer) => {
-        // ใช้ข้อมูลที่ backend ตอบกลับ รวมถึง id ที่ฐานข้อมูลสร้างให้
-        const savedCustomer: Customer = {
-          id: String(customer.id),
-          name: customer.name,
-          phone: customer.phone,
-          address: customer.address ?? '',
-          lat: customer.lat,
-          lng: customer.lng,
-        };
-
-        // EDIT CUSTOMER
-        this.apiCustomers.update((customers) =>
-          editingId
-            ? // แก้ไข: แทนข้อมูลคนเดิมด้วยข้อมูลที่ backend ตอบกลับ
-              customers.map((item) => (item.id === editingId ? savedCustomer : item))
-            : // เพิ่มใหม่: วางลูกค้าใหม่ไว้ต้นรายการ
-              [savedCustomer, ...customers],
-        );
-
+      next: () => {
         this.savingCustomer.set(false);
         this.cancel();
         this.notify(editingId ? 'บันทึกการแก้ไขลูกค้าแล้ว' : 'เพิ่มลูกค้าใหม่แล้ว');
+
+        // โหลดจาก backend ใหม่ เพื่อให้รายการตรงกับคำค้นและลำดับล่าสุด
+        this.loadCustomers();
       },
       error: (error) => {
         console.error('บันทึกลูกค้าไม่สำเร็จ:', error);

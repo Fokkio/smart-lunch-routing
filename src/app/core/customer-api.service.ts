@@ -27,11 +27,12 @@ export class CustomersApiService {
   private readonly http = inject(HttpClient);
   private readonly url = 'http://localhost:3000/api/customers';
 
-  // ขอรายชื่อ customer จาก backend
-  getCustomers() {
-    return this.http.get<ApiCustomer[]>(this.url);
+  // ไม่ระบุคำค้น = โหลดทั้งหมด / ระบุคำค้น = ให้ backend ค้นหา
+  getCustomers(search: string = '') {
+    return this.http.get<ApiCustomer[]>(this.url, {
+      params: { search: search.trim() },
+    });
   }
-
   // ส่งข้อมูลลูกค้าใหม่ และรับลูกค้าที่บันทึกสำเร็จกลับมา
   createCustomer(input: CreateCustomerInput) {
     return this.http.post<ApiCustomer>(this.url, input);
