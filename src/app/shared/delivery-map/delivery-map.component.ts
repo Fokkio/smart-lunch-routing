@@ -33,7 +33,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   readonly String = String;
   readonly tilesUnavailable = signal(false);
   selectedRiderId: string | null = null;
-  @Input() customers: Customer[] = [];
+  @Input() customers: Array<Pick<Customer, "name" | "lat" | "lng"> & { address: string | null }> = [];
   @Input() routes: RiderRoute[] = [];
   @Input() compact = false;
   @Input() pickable = false;
@@ -108,7 +108,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
       this.customers.forEach((customer) => {
         L.circleMarker([customer.lat, customer.lng], {
           radius: 6, color: '#787774', fillColor: '#ffffff', fillOpacity: 1, weight: 2,
-        }).bindPopup(this.popup(customer.name, customer.address)).addTo(this.layer!);
+        }).bindPopup(this.popup(customer.name, customer.address ?? '')).addTo(this.layer!);
       });
     }
 

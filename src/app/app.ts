@@ -1,6 +1,5 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { DeliveryService } from './core/delivery.service';
 
 @Component({
   selector: 'app-root',
@@ -9,7 +8,6 @@ import { DeliveryService } from './core/delivery.service';
 })
 export class App {
   readonly router = inject(Router);
-  readonly store = inject(DeliveryService);
 
   pageTitle(): string {
     if (this.router.url.includes('/customers')) return 'ข้อมูลลูกค้า';

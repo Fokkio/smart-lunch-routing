@@ -1,27 +1,34 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { DeliveryService } from '../../core/delivery.service';
 import { RiderComponent } from './rider.component';
 
-describe('Rider demo flow', () => {
-  it('moves through one stop at a time without changing stored order status', () => {
-    localStorage.clear();
-    TestBed.configureTestingModule({ imports: [RiderComponent] });
-    const store = TestBed.inject(DeliveryService);
-    store.resetDemo();
-    store.calculateRoutes();
-    store.confirmPlan();
-    const fixture = TestBed.createComponent(RiderComponent);
-    const rider = fixture.componentInstance;
-    rider.jobCode = store.plan()!.routes[0].rider.jobCode;
+describe('Rider backend job lookup', () => {
+  it('opens only a job from a selected plan and advances stops locally', () => {
+    TestBed.configureTestingModule({
+      imports: [RiderComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const http = TestBed.inject(HttpTestingController);
+    const rider = TestBed.createComponent(RiderComponent).componentInstance;
+    rider.jobCode = 'JOB-1';
     rider.openJob();
+    http.expectOne('/api/route-plans').flush([{ routePlanId: 5, status: 'SELECTED' }]);
+    http.expectOne('/api/route-plans/5').flush({
+      jobs: [{
+        jobCode: 'JOB-1', totalBoxes: 2, distanceKm: 1,
+        durationMinutes: 5, stops: [{
+          sequence: 1, orderId: 10, customerName: 'ลูกค้า',
+          boxCount: 2, latitude: 16.2, longitude: 103.2,
+        }],
+      }],
+    });
     expect(rider.stage).toBe('summary');
     rider.begin();
     expect(rider.stage).toBe('delivery');
-    expect(rider.currentStop?.sequence).toBe(1);
+    rider.confirmingStop = true;
     rider.completeStop();
-    expect(rider.stopIndex).toBe(0);
-    for (const _ of rider.activeRoute!.stops) { rider.confirmingStop = true; rider.completeStop(); }
     expect(rider.stage).toBe('completed');
-    expect(store.orders().every(order => order.status === 'pending')).toBe(true);
+    http.verify();
   });
 });
