@@ -14,7 +14,7 @@ const ROAD_JOB: DeliveryRouteModel = {
   geometry: { type: 'LineString', coordinates: [[103.25, 16.24], [103.26, 16.25]] },
   approximate: false,
   stops: [
-    { sequence: 1, orderId: 7, customerId: 3, customerName: 'C', phone: '0803', address: null, latitude: 16.25, longitude: 103.26, boxCount: 3, distanceFromPreviousKm: 4.3, travelTimeFromPreviousMin: 18, estimatedArrivalTime: '11:48' },
+    { sequence: 1, orderId: 7, customerId: 3, customerName: 'C', phone: '0803', address: null, latitude: 16.25, longitude: 103.26, boxCount: 3, distanceFromPreviousKm: 4.3, travelTimeFromPreviousMin: 18, estimatedArrivalTime: '11:48', deliveryStatus: 'WAITING' },
   ],
 };
 

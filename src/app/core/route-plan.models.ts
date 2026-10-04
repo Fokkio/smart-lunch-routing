@@ -18,6 +18,7 @@ export interface RouteStopModel {
   distanceFromPreviousKm: number;
   travelTimeFromPreviousMin: number;
   estimatedArrivalTime: string;
+  deliveryStatus: 'WAITING' | 'DELIVERING' | 'DELIVERED';
 }
 
 export interface GeoJsonLineString {

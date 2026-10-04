@@ -99,7 +99,9 @@ export class OrdersComponent {
     if (!this.simulatedCount() || !window.confirm(`ล้างออเดอร์จำลอง ${this.simulatedCount()} รายการหรือไม่?`)) return;
     this.ordersApi.clearSimulated().subscribe({
       next: (result) => { this.feedback = `ล้างออเดอร์จำลอง ${result.deletedCount} รายการแล้ว`; this.reload(); },
-      error: err => this.error.set(apiErrorMessage(err, 'ล้างออเดอร์จำลองไม่สำเร็จ')),
+      error: err => this.error.set(err?.status === 409
+        ? 'ออเดอร์จำลองยังอยู่ในแผนส่ง กรุณาไปหน้าจัดเส้นทางและลบแผนที่เกี่ยวข้องก่อนล้าง'
+        : apiErrorMessage(err, 'ล้างออเดอร์จำลองไม่สำเร็จ')),
     });
   }
   remove(order: ApiOrder): void {
