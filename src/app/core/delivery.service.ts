@@ -66,9 +66,11 @@ export class DeliveryService {
       if (data.riders.value.length) this.riders.set(data.riders.value);
       this.persist(CUSTOMER_KEY, data.customers.value);
       this.persist(ORDER_KEY, data.orders.value);
-      const pruned = this.pruneStalePlan(this.plan());
-      this.plan.set(pruned);
-      if (!pruned) localStorage.removeItem(PLAN_KEY);
+      // A persisted local preview has no backend geometry or durable status.
+      // Load the saved backend plan afresh on the dispatch page instead.
+      this.plan.set(null);
+      this.confirmedPlan.set(null);
+      localStorage.removeItem(PLAN_KEY);
       this.usingBackend.set(true);
     });
     // ค่าตั้งร้านแยกเส้นต่างหาก — พังก็แค่ใช้ default ไม่กระทบข้อมูลหลัก

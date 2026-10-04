@@ -2,7 +2,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Component, ElementRef, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, timeout } from 'rxjs';
 import { todayLocal } from '../../core/backend-api.service';
 import { DeliveryService } from '../../core/delivery.service';
 import { RiderRoute, RoutePlan } from '../../core/models';
@@ -25,10 +25,12 @@ export class DeliveryComponent {
   readonly Math = Math;
   readonly String = String;
   @ViewChild('candidateBox') private candidateBox?: ElementRef<HTMLElement>;
+  @ViewChild('dispatchPanel') private dispatchPanel?: ElementRef<HTMLElement>;
   @ViewChild('ackLate') private ackLateBox?: ElementRef<HTMLInputElement>;
   @ViewChild('ackCandidate') private ackCandidateBox?: ElementRef<HTMLInputElement>;
   candidate: RoutePlan | null = null;
   calculating = false;
+  discardingCandidate = false;
   reviewing = false;
   /** index เส้นทางที่เลือกโฟกัส (แชร์ระหว่างแผนที่กับ价值卡) null = ดูทั้งหมด */
   selectedRoute: number | null = null;
@@ -47,11 +49,23 @@ export class DeliveryComponent {
   /** ใบงานที่บันทึกไว้ฝั่ง backend ของวันนี้ */
   savedPlans: RoutePlanSummaryModel[] = [];
   loadingPlans = false;
+  loadingPlanDetail = false;
+  showAllSavedPlans = false;
   /** ข้อความ error ตอนโหลดใบงานที่บันทึกไว้ (null = ไม่มี error) */
   plansError: string | null = null;
   /** โมเดล backend ดิบของแผนที่เลือก — เก็บ geometry เส้นถนนไว้ให้แผนที่ (adapter ทิ้ง field นี้) */
   backendPlan: RoutePlanModel | null = null;
   private candidateBackend: RoutePlanModel | null = null;
+  private viewRequestId = 0;
+
+  get visibleSavedPlans(): RoutePlanSummaryModel[] {
+    if (this.showAllSavedPlans) return this.savedPlans;
+    const current = this.savedPlans.find((plan) => plan.routePlanId === this.backendPlanId)
+      ?? this.savedPlans.find((plan) => plan.status === 'SELECTED');
+    return current
+      ? [current, ...this.savedPlans.filter((plan) => plan !== current)].slice(0, 4)
+      : this.savedPlans.slice(0, 4);
+  }
 
   constructor() {
     // connect() เป็น async — effect นี้รันครั้งแรกตอนสร้าง component และรันซ้ำ
@@ -72,34 +86,22 @@ export class DeliveryComponent {
     if (this.loadingPlans) return; // กันยิงซ้ำตอนกำลังโหลด
     this.loadingPlans = true;
     this.plansError = null;
-    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const sub = this.routePlans.list(todayLocal()).pipe(
-        finalize(() => {
-          if (timer) clearTimeout(timer);
-          this.loadingPlans = false;
-        }),
+      this.routePlans.list(todayLocal()).pipe(
+        timeout(15000),
+        finalize(() => { this.loadingPlans = false; }),
       ).subscribe({
         next: (plans) => {
           this.savedPlans = plans;
-          const selected = plans.find((plan) => plan.status === 'SELECTED');
-          if (selected?.routePlanId != null && this.backendPlanId === null) {
-            this.viewSavedPlan(selected.routePlanId);
+          const current = plans.find((plan) => plan.status === 'SELECTED') ?? plans[0];
+          if (current?.routePlanId != null && this.backendPlanId === null && !this.loadingPlanDetail) {
+            this.viewSavedPlan(current.routePlanId);
           }
         },
-        error: () => { this.savedPlans = []; this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
+        error: () => { this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
       });
-      // ตัด request ที่ค้างเกิน 15 วิ แล้วแสดงข้อความให้กดรีเฟรชใหม่
-      timer = setTimeout(() => {
-        sub.unsubscribe();
-        this.loadingPlans = false;
-        this.savedPlans = [];
-        this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง';
-      }, 15000);
     } catch {
-      if (timer) clearTimeout(timer);
       this.loadingPlans = false;
-      this.savedPlans = [];
       this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง';
     }
   }
@@ -109,20 +111,30 @@ export class DeliveryComponent {
   }
 
   /** เปิดดูใบงานที่บันทึกไว้ */
-  viewSavedPlan(id: number): void {
+  viewSavedPlan(id: number, review = false): void {
     if (!this.routePlans) return;
-    this.routePlans.get(id).subscribe({
-      next: (backend) => { this.selectedRoute = null; this.adoptBackend(backend); },
-      error: () => { this.plansError = 'เปิดรายละเอียดใบงานไม่สำเร็จ กรุณาลองใหม่'; },
-    });
-  }
-
-  /** ยืนยันใบงานที่บันทึกไว้ */
-  selectSavedPlan(id: number): void {
-    if (!this.routePlans) return;
-    this.routePlans.select(id).subscribe({
-      next: (backend) => { this.adoptBackend(backend); this.loadSavedPlans(); },
-      error: () => { this.plansError = 'ยืนยันใบงานไม่สำเร็จ กรุณาลองใหม่'; },
+    const requestId = ++this.viewRequestId;
+    this.loadingPlanDetail = true;
+    this.plansError = null;
+    this.routePlans.get(id).pipe(timeout(15000)).subscribe({
+      next: (backend) => {
+        if (requestId !== this.viewRequestId) return;
+        this.loadingPlanDetail = false;
+        this.selectedRoute = null;
+        this.adoptBackend(backend);
+        if (review && backend.status === 'GENERATED') {
+          this.startReview();
+          setTimeout(() => {
+            this.dispatchPanel?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            this.dispatchPanel?.nativeElement.focus();
+          }, 0);
+        }
+      },
+      error: () => {
+        if (requestId !== this.viewRequestId) return;
+        this.loadingPlanDetail = false;
+        this.plansError = 'เปิดรายละเอียดใบงานไม่สำเร็จ กรุณาลองใหม่';
+      },
     });
   }
 
@@ -134,8 +146,12 @@ export class DeliveryComponent {
     this.routePlans.delete(id).subscribe({
       next: () => {
         if (this.backendPlanId === id) {
+          this.viewRequestId++;
+          this.loadingPlanDetail = false;
           this.backendPlanId = null;
           this.backendPlan = null;
+          this.store.plan.set(null);
+          this.store.confirmedPlan.set(null);
         }
         this.loadSavedPlans();
       },
@@ -175,7 +191,7 @@ export class DeliveryComponent {
     if (this.store.usingBackend() && this.routePlans) {
       this.calculating = true;
       this.routePlans.generate(todayLocal()).subscribe({
-        next: (backend) => this.adoptBackend(backend),
+        next: (backend) => { this.adoptBackend(backend); this.loadSavedPlans(); },
         error: (error) => {
           this.calculating = false;
           if (error?.status === 422) {
@@ -206,6 +222,7 @@ export class DeliveryComponent {
     this.backendPlanId = backend.routePlanId ?? null;
     this.backendPlan = backend;
     this.candidateBackend = null;
+    this.candidate = null;
     this.fallbackNotice = false;
     this.acknowledgeLate = false;
     this.lateOverride = false;
@@ -214,12 +231,14 @@ export class DeliveryComponent {
     if (backend.status === 'SELECTED') this.store.confirmedPlan.set(plan);
     this.reviewing = false;
     this.calculating = false;
-    this.loadSavedPlans();
   }
   compare(): void {
+    if (this.candidate || this.calculating) return;
     if (this.store.usingBackend() && this.routePlans) {
+      this.calculating = true;
       this.routePlans.recalculate(todayLocal()).subscribe({
         next: (backend) => {
+          this.calculating = false;
           this.acknowledgeCandidate = false;
           this.candidateBackend = backend;
           this.selectedRoute = null;
@@ -228,8 +247,10 @@ export class DeliveryComponent {
             orders: this.store.orders(),
             riders: this.store.riders(),
           });
+          this.loadSavedPlans();
         },
         error: (error) => {
+          this.calculating = false;
           if (error?.status === 422) {
             this.plansError = 'คำนวณแผนใหม่ไม่ได้: จำนวนไรเดอร์ที่พร้อมไม่พอหรือส่งไม่ทันเวลา';
             return;
@@ -249,6 +270,22 @@ export class DeliveryComponent {
     this.candidate = this.store.previewRoutes((this.store.plan()?.version || 1) + 1);
   }
   discardCandidate(): void {
+    const id = this.candidateBackend?.routePlanId;
+    if (id != null && this.routePlans) {
+      if (this.discardingCandidate) return;
+      this.discardingCandidate = true;
+      this.routePlans.delete(id).subscribe({
+        next: () => { this.clearCandidate(); this.discardingCandidate = false; this.loadSavedPlans(); },
+        error: () => {
+          this.discardingCandidate = false;
+          this.plansError = 'ลบแผนใหม่ไม่สำเร็จ กรุณาลองอีกครั้ง';
+        },
+      });
+      return;
+    }
+    this.clearCandidate();
+  }
+  private clearCandidate(): void {
     this.candidate = null;
     this.candidateBackend = null;
     this.acknowledgeCandidate = false;
@@ -299,7 +336,7 @@ export class DeliveryComponent {
     };
     if (this.backendPlanId != null && this.routePlans) {
       this.routePlans.select(this.backendPlanId).subscribe({
-        next: (backend) => { this.adoptBackend(backend); finish(); },
+        next: (backend) => { this.adoptBackend(backend); finish(); this.loadSavedPlans(); },
         error: () => { this.plansError = 'ยืนยันใบงานไม่สำเร็จ กรุณาตรวจสอบไรเดอร์และลองใหม่'; },
       });
       return;
@@ -307,6 +344,7 @@ export class DeliveryComponent {
     finish();
   }
   longestMinutes(plan: RoutePlan): number { return Math.max(0, ...plan.routes.map(route => route.durationMinutes)); }
+  totalStops(plan: RoutePlan): number { return plan.routes.reduce((total, route) => total + route.stops.length, 0); }
   finishTime(plan: RoutePlan): string { const minutes = 11 * 60 + 30 + this.longestMinutes(plan); return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`; }
   marginMinutes(plan: RoutePlan): number { return 60 - this.longestMinutes(plan); }
   finishTimeForRoute(durationMinutes: number): string { const minutes = 11 * 60 + 30 + durationMinutes; return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`; }
@@ -314,7 +352,7 @@ export class DeliveryComponent {
   isLate(route: RiderRoute): boolean { return this.finishTimeForRoute(route.durationMinutes) > '12:30'; }
   /** เกินเส้นตายไปกี่นาที (เรียกเมื่อ isLate เท่านั้น) */
   lateMinutes(route: RiderRoute): number { return Math.max(0, route.durationMinutes - 60); }
-  capacityPercent(routeCount: number): number { return routeCount ? Math.min(100, this.store.pendingOrders().length / (routeCount * 3) * 100) : 0; }
+  capacityPercent(plan: RoutePlan): number { return plan.routes.length ? Math.min(100, this.totalStops(plan) / (plan.routes.length * 3) * 100) : 0; }
   callFee(plan: RoutePlan): number { return plan.routes.length * 15; }
   distanceFee(plan: RoutePlan): number { return Math.round((plan.deliveryCost - this.callFee(plan)) * 100) / 100; }
 }

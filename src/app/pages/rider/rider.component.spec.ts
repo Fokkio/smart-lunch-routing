@@ -10,7 +10,8 @@ describe('Rider backend job lookup', () => {
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     const http = TestBed.inject(HttpTestingController);
-    const rider = TestBed.createComponent(RiderComponent).componentInstance;
+    const fixture = TestBed.createComponent(RiderComponent);
+    const rider = fixture.componentInstance;
     rider.jobCode = 'JOB-1';
     rider.openJob();
     http.expectOne((req) => req.url === '/api/route-plans' && req.params.has('date')).flush([{ routePlanId: 5, status: 'SELECTED' }]);
@@ -24,6 +25,9 @@ describe('Rider backend job lookup', () => {
       }],
     });
     expect(rider.stage).toBe('summary');
+    expect(rider.mapJobs).toHaveLength(1);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-route-plan-map')).not.toBeNull();
     rider.begin();
     expect(rider.stage).toBe('delivery');
     rider.confirmingStop = true;

@@ -17,7 +17,7 @@ const SHOP: LatLng = [16.24631, 103.25286];
   imports: [FormsModule],
   template: `
     <div class="relative h-full w-full">
-      <div #map class="route-plan-map" role="region" aria-label="แผนที่เส้นทางจากระบบหลังบ้าน"></div>
+      <div #map class="route-plan-map" [class.compact]="compact" role="region" aria-label="แผนที่เส้นทางจากระบบหลังบ้าน"></div>
       @if (tilesUnavailable()) {
         <div class="absolute inset-x-3 top-16 z-[500] rounded-xl border border-amber-300 bg-warning-soft p-3 text-sm text-amber-950" role="status">
           <strong class="block">พื้นแผนที่โหลดไม่ได้</strong>
@@ -42,10 +42,11 @@ const SHOP: LatLng = [16.24631, 103.25286];
       }
     </div>
   `,
-  styles: [`.route-plan-map { width: 100%; height: 100%; min-height: 420px; background: #f7f6f3; }`],
+  styles: [`.route-plan-map { width: 100%; height: 100%; min-height: 420px; background: #f7f6f3; } .route-plan-map.compact { min-height: 260px; }`],
 })
 export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() jobs: DeliveryRouteModel[] = [];
+  @Input() compact = false;
   @Input() selectedJob: number | null = null;
   @Output() selectedJobChange = new EventEmitter<number | null>();
   /** ชื่อไรเดอร์ตามลำดับใบงาน (จาก parent) — ใช้ป้ายเดียวกับการ์ด */

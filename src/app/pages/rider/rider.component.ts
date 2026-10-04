@@ -1,21 +1,24 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, map, of, switchMap } from 'rxjs';
+import { todayLocal } from '../../core/backend-api.service';
 import { RoutePlanApiService } from '../../core/route-plan-api.service';
 import { DeliveryRouteModel, RouteStopModel } from '../../core/route-plan.models';
+import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
 
 type Stage = 'entry' | 'summary' | 'delivery' | 'completed';
 
 @Component({
   selector: 'app-rider',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RoutePlanMapComponent],
   templateUrl: './rider.component.html',
 })
 export class RiderComponent {
   private readonly api = inject(RoutePlanApiService);
   jobCode = '';
   activeRoute: DeliveryRouteModel | null = null;
+  mapJobs: DeliveryRouteModel[] = [];
   activePlanId: number | null = null;
   stage: Stage = 'entry';
   stopIndex = 0;
@@ -32,7 +35,7 @@ export class RiderComponent {
     this.loading = true;
     this.errorMessage = '';
     // ดึงเฉพาะแผนของวันนี้เพื่อเลี่ยง N+1 กับแผนเก่า (backend รองรับ ?date=)
-    const today = new Date().toLocaleDateString('en-CA');
+    const today = todayLocal();
     this.api.list(today).pipe(
       switchMap(plans => {
         const selected = plans.filter(plan => plan.status === 'SELECTED' && plan.routePlanId !== undefined);
@@ -46,6 +49,7 @@ export class RiderComponent {
         const match = plans.flatMap(plan => plan.jobs.map(job => ({ job, planId: plan.planId })))
           .find(item => item.job.jobCode?.toUpperCase() === code);
         this.activeRoute = match?.job ?? null;
+        this.mapJobs = match ? [match.job] : [];
         this.activePlanId = match?.planId ?? null;
         this.errorMessage = this.activeRoute ? '' : 'ไม่พบใบงานที่ยืนยันแล้ว กรุณาตรวจสอบเลขใบงานอีกครั้ง';
         if (this.activeRoute) {
@@ -84,7 +88,7 @@ export class RiderComponent {
       },
     });
   }
-  closeJob(): void { this.stage = 'entry'; this.activeRoute = null; this.activePlanId = null; this.jobCode = ''; this.errorMessage = ''; this.stopIndex = 0; this.confirmingStop = false; }
+  closeJob(): void { this.stage = 'entry'; this.activeRoute = null; this.mapJobs = []; this.activePlanId = null; this.jobCode = ''; this.errorMessage = ''; this.stopIndex = 0; this.confirmingStop = false; }
   navigateTo(stop: RouteStopModel): string {
     const params = new URLSearchParams({ api: '1', destination: `${stop.latitude},${stop.longitude}`, travelmode: 'driving' });
     return `https://www.google.com/maps/dir/?${params.toString()}`;

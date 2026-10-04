@@ -130,6 +130,8 @@ describe('DeliveryService route planning', () => {
 
     it('replaces demo data with backend data on connect', () => {
       expect(service.usingBackend()).toBe(false);
+      service.plan.set({ version: 99 } as never);
+      localStorage.setItem('smart-lunch-plan-v1', '{"version":99}');
       service.connect();
 
       http.expectOne('/api/customers').flush(apiCustomers);
@@ -142,6 +144,8 @@ describe('DeliveryService route planning', () => {
       expect(service.orders().map((order) => order.id)).toEqual(['11']);
       expect(service.riders().map((rider) => rider.id)).toEqual(['5']);
       expect(service.settings()).toEqual(apiSettings);
+      expect(service.plan()).toBeNull();
+      expect(localStorage.getItem('smart-lunch-plan-v1')).toBeNull();
     });
 
     it('keeps demo data when the backend is unreachable', () => {

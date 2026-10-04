@@ -12,23 +12,25 @@ describe('DeliveryComponent saved plans loading', () => {
   let component: DeliveryComponent;
   let listSpy: ReturnType<typeof vi.fn>;
   let getSpy: ReturnType<typeof vi.fn>;
+  let deleteSpy: ReturnType<typeof vi.fn>;
   let confirmSpy: ReturnType<typeof vi.fn>;
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  function setup(listReturn: any, backendReady: boolean, selectReturn = NEVER) {
+  function setup(listReturn: any, backendReady: boolean, selectReturn = NEVER, getReturn: any = NEVER) {
     const usingBackend = signal(backendReady);
     listSpy = vi.fn().mockReturnValue(listReturn);
-    getSpy = vi.fn().mockReturnValue(NEVER);
+    getSpy = vi.fn().mockReturnValue(getReturn);
+    deleteSpy = vi.fn().mockReturnValue(NEVER);
     confirmSpy = vi.fn();
     TestBed.configureTestingModule({
       imports: [DeliveryComponent],
       providers: [
         provideRouter([]),
         { provide: DeliveryService, useValue: { usingBackend, customers: signal([]), orders: signal([]), riders: signal([]), plan: signal(null), confirmedPlan: signal(null), planHistory: signal([]), pendingOrders: () => [], pendingBoxes: () => 0, customerFor: () => null, calculateRoutes: () => {}, choosePlan: () => {}, confirmPlan: confirmSpy } },
-        { provide: RoutePlanApiService, useValue: { list: listSpy, get: getSpy, select: () => selectReturn, delete: () => NEVER, generate: () => NEVER, recalculate: () => NEVER } },
+        { provide: RoutePlanApiService, useValue: { list: listSpy, get: getSpy, select: () => selectReturn, delete: deleteSpy, generate: () => NEVER, recalculate: () => NEVER } },
       ],
     });
     fixture = TestBed.createComponent(DeliveryComponent);
@@ -69,11 +71,31 @@ describe('DeliveryComponent saved plans loading', () => {
     fixture.detectChanges();
     await vi.advanceTimersByTimeAsync(60000);
     expect(listSpy).toHaveBeenCalledTimes(1);
+    expect(component.plansError).toBeNull();
   });
 
   it('loads the selected plan detail after the saved-plan list', () => {
     setup(of([{ routePlanId: 5, status: 'SELECTED' }]), true);
     expect(getSpy).toHaveBeenCalledWith(5);
+  });
+
+  it('opens a saved draft automatically so the map can use its road geometry', () => {
+    const geometry = { type: 'LineString', coordinates: [[103.25286, 16.24631], [103.2531, 16.2469]] };
+    setup(of([{ routePlanId: 12, status: 'GENERATED' }]), true, NEVER, of({
+      routePlanId: 12, planDate: '2026-10-04', status: 'GENERATED', routingSource: 'ROAD',
+      approximate: false, riderCount: 1, totalDistanceKm: 1, estimatedFinishTime: '11:32',
+      totalBoxes: 1, totalRevenue: 65, totalFoodCost: 40, totalDeliveryCost: 17,
+      estimatedProfit: 8, jobs: [{ riderIndex: 0, riderId: 1, totalOrders: 1, totalBoxes: 1,
+        distanceKm: 1, durationMinutes: 2, estimatedStartTime: '11:30',
+        estimatedFinishTime: '11:32', deliveryCost: 17, geometry, approximate: false,
+        stops: [{ sequence: 1, orderId: 1, customerId: 1, customerName: 'Test', phone: '',
+          address: '', latitude: 16.2469, longitude: 103.2531, boxCount: 1,
+          distanceFromPreviousKm: 1, travelTimeFromPreviousMin: 2,
+          estimatedArrivalTime: '11:32', deliveryStatus: 'WAITING' }] }],
+    }));
+    expect(getSpy).toHaveBeenCalledWith(12);
+    expect(component.backendPlanId).toBe(12);
+    expect(component.mapJobs()?.[0]?.geometry).toEqual(geometry);
   });
 
   it('does not show a confirmed plan when the backend rejects selection', () => {
@@ -84,5 +106,18 @@ describe('DeliveryComponent saved plans loading', () => {
     component.confirm();
     expect(confirmSpy).not.toHaveBeenCalled();
     expect(component.plansError).toContain('ยืนยันใบงานไม่สำเร็จ');
+  });
+
+  it('removes a newly generated backend draft when the comparison is discarded', () => {
+    setup(of([]), true);
+    component.candidate = { deadlineSafe: true } as never;
+    (component as any).candidateBackend = { routePlanId: 23 };
+    deleteSpy.mockReturnValue(of(undefined));
+
+    component.discardCandidate();
+
+    expect(deleteSpy).toHaveBeenCalledWith(23);
+    expect(component.candidate).toBeNull();
+    expect(listSpy).toHaveBeenCalledTimes(2);
   });
 });
