@@ -2,14 +2,14 @@ import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnChanges, O
 import { FormsModule } from '@angular/forms';
 import * as L from 'leaflet';
 import { DeliveryRouteModel } from '../core/route-plan.models';
-import { approximateLine, geometryToLatLngs, LatLng, routeColor } from '../core/route-plan-view';
+import { geometryToLatLngs, LatLng, routeColor, stopLine } from '../core/route-plan-view';
 
 const SHOP: LatLng = [16.24631, 103.25286];
 
 /**
  * Leaflet map for a backend-generated RoutePlan (OpenStreetMap tiles).
- * Renders backend GeoJSON geometry as road polylines; jobs without
- * geometry (fallback) render as a clearly labelled dashed approximate line.
+ * Renders per-order road legs when available. Older plans retain their
+ * whole-job road line in overview and use dashed approximate order legs.
  */
 @Component({
   selector: 'app-route-plan-map',
@@ -35,10 +35,23 @@ const SHOP: LatLng = [16.24631, 103.25286];
           </label>
           <p class="mt-2 text-[13px] text-slate-600">เส้นประ = เส้นทางโดยประมาณ ไม่ใช่เส้นถนนจริง</p>
         </div>
-      } @else if (jobs.length === 1 && !jobs[0]?.geometry) {
+      } @else if (hasApproximateLegs()) {
         <div class="neu-panel-soft absolute bottom-6 left-3 z-[500] rounded-xl p-3 text-sm text-slate-700">
           เส้นประ = เส้นทางโดยประมาณ ไม่ใช่เส้นถนนจริง
         </div>
+      }
+      @if (!compact && hasStops()) {
+        <label class="neu-panel-soft absolute right-3 top-16 z-[500] max-w-[min(270px,calc(100%-24px))] rounded-xl p-2 text-sm font-semibold">
+          เส้นทางออเดอร์
+          <select class="neu-field mt-1 min-h-11 w-full rounded-lg px-2" [ngModel]="selectedOrderId" (ngModelChange)="onOrderChange($event)">
+            <option [ngValue]="null">ทุกออเดอร์</option>
+            @for (job of jobs; track $index) {
+              @for (stop of job.stops; track stop.orderId) {
+                <option [ngValue]="stop.orderId">#{{ stop.orderId }} · {{ stop.customerName }}</option>
+              }
+            }
+          </select>
+        </label>
       }
     </div>
   `,
@@ -46,9 +59,12 @@ const SHOP: LatLng = [16.24631, 103.25286];
 })
 export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() jobs: DeliveryRouteModel[] = [];
+  @Input() shop: LatLng = SHOP;
   @Input() compact = false;
   @Input() selectedJob: number | null = null;
   @Output() selectedJobChange = new EventEmitter<number | null>();
+  @Input() selectedOrderId: number | null = null;
+  @Output() selectedOrderIdChange = new EventEmitter<number | null>();
   /** ชื่อไรเดอร์ตามลำดับใบงาน (จาก parent) — ใช้ป้ายเดียวกับการ์ด */
   @Input() riderNames: string[] = [];
   readonly tilesUnavailable = signal(false);
@@ -60,7 +76,7 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
   private layer?: L.FeatureGroup;
 
   ngAfterViewInit(): void {
-    this.map = L.map(this.mapElement.nativeElement, { zoomControl: true }).setView(SHOP, 14);
+    this.map = L.map(this.mapElement.nativeElement, { zoomControl: true }).setView(this.shop, 14);
     this.tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -86,13 +102,28 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
   }
 
   onFilterChange(value: number | null): void {
+    this.selectedOrderId = null;
+    this.selectedOrderIdChange.emit(null);
     this.selectedJobChange.emit(value);
+    this.render();
+  }
+
+  onOrderChange(value: number | null): void {
+    if (value !== null) {
+      this.selectedJob = null;
+      this.selectedJobChange.emit(null);
+    }
+    this.selectedOrderId = value;
+    this.selectedOrderIdChange.emit(value);
     this.render();
   }
 
   riderName(index: number): string {
     return this.riderNames[index] ?? `ไรเดอร์ ${index + 1}`;
   }
+
+  hasStops(): boolean { return this.jobs.some(job => job.stops.length > 0); }
+  hasApproximateLegs(): boolean { return this.jobs.some(job => job.stops.some(stop => !stop.geometry)); }
 
   private effectiveSelected(): number | null {
     return this.selectedJob;
@@ -102,7 +133,7 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
     if (!this.map) return;
     this.layer?.remove();
     this.layer = L.featureGroup().addTo(this.map);
-    L.circleMarker(SHOP, {
+    L.circleMarker(this.shop, {
       radius: 9, color: '#111111', fillColor: '#ffffff', fillOpacity: 1, weight: 3,
     }).bindPopup('<strong>ครัวเที่ยงตรง</strong><br>จุดเริ่มต้น 11:30 น.').addTo(this.layer);
 
@@ -111,24 +142,29 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
       const color = routeColor(job.riderIndex);
       const focused = selected === null || selected === index;
       if (!focused) return;
-      const line = geometryToLatLngs(job) ?? approximateLine(SHOP, job);
-      L.polyline(line, {
-        color, weight: selected === index ? 7 : 5,
-        opacity: focused ? 0.9 : 0.3,
-        dashArray: job.geometry ? undefined : '8 8',
-      })
-        .bindPopup(job.geometry ? `ไรเดอร์ ${index + 1} · ${job.distanceKm} กม.` : `ไรเดอร์ ${index + 1} · เส้นทางโดยประมาณ (เส้นประ)`)
-        .addTo(this.layer!);
-      job.stops.forEach((stop) => {
+      // Plans created before per-order legs still retain their accurate whole
+      // road route in the overview. A selected order remains clearly approximate.
+      const legacyRoad = this.selectedOrderId === null && job.geometry &&
+        job.stops.every(stop => !stop.geometry) ? geometryToLatLngs(job) : null;
+      if (legacyRoad) L.polyline(legacyRoad, { color, weight: 5, opacity: 0.9 })
+        .bindPopup(`ไรเดอร์ ${index + 1} · เส้นถนนรวมของแผนเก่า`).addTo(this.layer!);
+      job.stops.forEach((stop, stopIndex) => {
+        if (this.selectedOrderId !== null && stop.orderId !== this.selectedOrderId) return;
+        const leg = stopLine(this.shop, job, stopIndex);
+        if (!legacyRoad) L.polyline(leg.points, {
+          color, weight: this.selectedOrderId === stop.orderId ? 7 : 5,
+          opacity: 0.9, dashArray: leg.approximate ? '8 8' : undefined,
+        }).bindPopup(`ออเดอร์ #${stop.orderId} · ${leg.approximate ? 'เส้นทางโดยประมาณ' : 'เส้นถนนตามแผน'}`).addTo(this.layer!);
+        const popup = document.createElement('div');
+        popup.style.whiteSpace = 'pre-line';
+        popup.textContent = `${stop.sequence}. ${stop.customerName}\nออเดอร์ #${stop.orderId} · ${stop.boxCount} กล่อง\n${stop.address ?? ''}\nถึงโดยประมาณ ${stop.estimatedArrivalTime} น.`;
         L.marker([stop.latitude, stop.longitude], {
           icon: L.divIcon({
             className: 'stop-badge',
             html: `<span style="background:${color};color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">${stop.sequence}</span>`,
             iconSize: [24, 24],
           }),
-        }).bindPopup(
-          `<strong>${stop.sequence}. ${stop.customerName}</strong><br>ออเดอร์ #${stop.orderId} · ${stop.boxCount} กล่อง<br>${stop.address ?? ''}<br>ถึงโดยประมาณ ${stop.estimatedArrivalTime} น.`,
-        ).addTo(this.layer!);
+        }).bindPopup(popup).addTo(this.layer!);
       });
     });
 

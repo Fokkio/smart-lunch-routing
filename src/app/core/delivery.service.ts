@@ -4,6 +4,7 @@ import { BackendApiService } from './backend-api.service';
 import { DEMO_CUSTOMERS, DEMO_ORDERS, DEMO_RIDERS } from './demo-data';
 import { Customer, Order, RiderRoute, RoutePlan, RouteStop, SHOP } from './models';
 import { ShopSettings, ShopSettingsApiService } from './shop-settings-api.service';
+import { RoutePlanApiService } from './route-plan-api.service';
 
 const CUSTOMER_KEY = 'smart-lunch-customers-v1';
 const ORDER_KEY = 'smart-lunch-orders-v1';
@@ -25,6 +26,7 @@ export class DeliveryService {
   readonly settings = signal<ShopSettings | null>(null);
   private readonly api = inject(BackendApiService, { optional: true });
   private readonly settingsApi = inject(ShopSettingsApiService, { optional: true });
+  private readonly routePlans = inject(RoutePlanApiService, { optional: true });
 
   constructor() {
     // แผนที่ค้างใน localStorage อาจอ้างลูกค้าที่ถูกลบไปแล้ว — ตรวจแล้วทิ้งทั้งแผน
@@ -45,34 +47,32 @@ export class DeliveryService {
    */
   connect(): void {
     if (!this.api || this.usingBackend()) return;
-    // ดัก error รายเส้น (ไม่ใช่ทั้งก้อน) เพื่อให้คำขอที่เหลือไม่โดนยกเลิก —
-    // ได้ข้อมูลบางส่วนยังดีกว่าไม่ได้เลย เส้นที่พังใช้ค่าปัจจุบันแทน
-    const attempt = <T>(source: Observable<T[]>, current: T[]) =>
-      source.pipe(
-        map((value) => ({ ok: true as const, value })),
-        catchError(() => of({ ok: false as const, value: current })),
-      );
+    // Refresh all lists together. Partial responses never replace one part of a snapshot.
+    const attempt = <T>(source: Observable<T[]>) => source.pipe(
+      map(value => ({ ok: true as const, value })),
+      catchError(() => of({ ok: false as const, value: [] as T[] })),
+    );
     forkJoin({
-      customers: attempt(this.api.listCustomers(), this.customers()),
-      orders: attempt(this.api.listOrders(), this.orders()),
-      riders: attempt(this.api.listRiders(), this.riders()),
-    }).subscribe((data) => {
-      if (!data.customers.ok && !data.orders.ok && !data.riders.ok) {
-        console.warn('[delivery] ใช้ข้อมูลจำลองเพราะต่อ backend ไม่ได้ทั้ง 3 เส้น');
+      customers: attempt(this.api.listCustomers()),
+      orders: attempt(this.api.listOrders()),
+      riders: attempt(this.api.listRiders()),
+    }).subscribe({ next: (data) => {
+      if (!data.customers.ok || !data.orders.ok || !data.riders.ok) {
+        console.warn('[delivery] โหลดข้อมูลจาก backend ไม่ครบ ใช้ข้อมูลในเครื่องที่ยังไม่ยืนยันความปัจจุบัน');
         return;
       }
       this.customers.set(data.customers.value);
       this.orders.set(data.orders.value);
-      if (data.riders.value.length) this.riders.set(data.riders.value);
+      this.riders.set(data.riders.value);
       this.persist(CUSTOMER_KEY, data.customers.value);
       this.persist(ORDER_KEY, data.orders.value);
       // A persisted local preview has no backend geometry or durable status.
       // Load the saved backend plan afresh on the dispatch page instead.
       this.plan.set(null);
       this.confirmedPlan.set(null);
-      localStorage.removeItem(PLAN_KEY);
+      try { localStorage.removeItem(PLAN_KEY); } catch { /* browser storage unavailable */ }
       this.usingBackend.set(true);
-    });
+    } });
     // ค่าตั้งร้านแยกเส้นต่างหาก — พังก็แค่ใช้ default ไม่กระทบข้อมูลหลัก
     this.settingsApi?.get().subscribe({
       next: (settings) => this.settings.set(settings),
@@ -90,6 +90,7 @@ export class DeliveryService {
             input.id ? list.map((item) => (item.id === saved.id ? saved : item)) : [...list, saved],
           );
           this.persist(CUSTOMER_KEY, this.customers());
+          this.routePlans?.invalidateCache();
           this.clearPlan();
         },
         error: (error) => console.error('[delivery] บันทึกลูกค้าลง backend ไม่สำเร็จ:', error),
@@ -111,6 +112,7 @@ export class DeliveryService {
         next: () => {
           this.customers.update((list) => list.filter((customer) => customer.id !== id));
           this.persist(CUSTOMER_KEY, this.customers());
+          this.routePlans?.invalidateCache();
         },
         // 409 = backend บอกว่ามีออเดอร์อ้างอิงอยู่ — คงรายการไว้แล้วให้ toast ฝั่ง UI ตัดสินใจ
         error: (error) => console.error('[delivery] ลบลูกค้าใน backend ไม่สำเร็จ:', error),
@@ -134,6 +136,7 @@ export class DeliveryService {
             input.id ? list.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...list],
           );
           this.persist(ORDER_KEY, this.orders());
+          this.routePlans?.invalidateCache();
           this.clearPlan();
         },
         error: (error) => console.error('[delivery] บันทึกออเดอร์ลง backend ไม่สำเร็จ:', error),
@@ -159,6 +162,7 @@ export class DeliveryService {
         next: () => {
           this.orders.update((list) => list.filter((order) => order.id !== id));
           this.persist(ORDER_KEY, this.orders());
+          this.routePlans?.invalidateCache();
           this.clearPlan();
         },
         error: (error) => console.error('[delivery] ลบออเดอร์ใน backend ไม่สำเร็จ:', error),
@@ -267,20 +271,6 @@ export class DeliveryService {
     return this.customers().find((customer) => customer.id === order.customerId);
   }
 
-  googleMapsUrl(route: RiderRoute): string {
-    const waypoints = route.stops.slice(0, -1).map((stop) => `${stop.customer.lat},${stop.customer.lng}`).join('|');
-    const destination = route.stops.at(-1)?.customer;
-    if (!destination) return 'https://www.google.com/maps';
-    const params = new URLSearchParams({
-      api: '1',
-      origin: `${SHOP.lat},${SHOP.lng}`,
-      destination: `${destination.lat},${destination.lng}`,
-      travelmode: 'driving',
-    });
-    if (waypoints) params.set('waypoints', waypoints);
-    return `https://www.google.com/maps/dir/?${params.toString()}`;
-  }
-
   resetDemo(): void {
     this.usingBackend.set(false);
     this.customers.set(structuredClone(DEMO_CUSTOMERS));
@@ -357,7 +347,8 @@ export class DeliveryService {
   }
 
   private persist(key: string, value: unknown): void {
-    localStorage.setItem(key, JSON.stringify(value));
+    try { localStorage.setItem(key, JSON.stringify(value)); }
+    catch { console.warn('[delivery] บันทึก cache ในเครื่องไม่ได้ จะใช้ข้อมูลที่อยู่ในหน่วยความจำ'); }
   }
 
   private load<T>(key: string, fallback: T): T {

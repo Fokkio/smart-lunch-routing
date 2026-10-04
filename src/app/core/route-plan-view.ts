@@ -56,6 +56,21 @@ export function routingSourceLabel(plan: RoutePlanModel): string {
     : 'ระยะทางและเส้นทางโดยประมาณ (สำรอง)';
 }
 
+/** A single order's leg starts at the shop or the previous delivery stop. */
+export function stopLine(shop: LatLng, job: DeliveryRouteModel, index: number): { points: LatLng[]; approximate: boolean } {
+  const stop = job.stops[index];
+  if (!stop) return { points: [], approximate: true };
+  const coordinates = stop.geometry?.coordinates;
+  if (coordinates && coordinates.length >= 2) {
+    return { points: coordinates.map(([lng, lat]) => [lat, lng]), approximate: false };
+  }
+  const previous = job.stops[index - 1];
+  return {
+    points: [previous ? [previous.latitude, previous.longitude] : shop, [stop.latitude, stop.longitude]],
+    approximate: true,
+  };
+}
+
 export function deadlineLabel(plan: RoutePlanModel, deadline: string): string {
   return plan.estimatedFinishTime <= deadline ? 'ส่งทันภายในกำหนด' : 'เกินกำหนด';
 }

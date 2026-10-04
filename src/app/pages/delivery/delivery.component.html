@@ -73,7 +73,7 @@
       </header>
       <div class="relative h-[430px] bg-surface-subtle sm:h-[560px] xl:min-h-[650px]">
         @if (mapJobs(); as jobs) {
-          <app-route-plan-map [jobs]="jobs" [riderNames]="mapRiderNames()" [selectedJob]="selectedRoute" (selectedJobChange)="selectedRoute = $event" />
+          <app-route-plan-map [jobs]="jobs" [shop]="shopPoint()" [riderNames]="mapRiderNames()" [selectedJob]="selectedRoute" (selectedJobChange)="selectedRoute = $event" />
         } @else {
           <app-delivery-map [customers]="store.customers()" [routes]="store.plan()?.routes || []" [selectedIndex]="selectedRoute" (selectedIndexChange)="selectedRoute = $event" />
         }

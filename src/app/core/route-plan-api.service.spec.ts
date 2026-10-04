@@ -26,6 +26,7 @@ describe('RoutePlanApiService', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
+    localStorage.clear();
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
@@ -51,6 +52,17 @@ describe('RoutePlanApiService', () => {
     const request = httpMock.expectOne('/api/route-plans/recalculate');
     expect(request.request.method).toBe('POST');
     request.flush(PLAN);
+  });
+
+  it('reuses a recent plan detail and invalidates it after selecting', () => {
+    api.get(2).subscribe(plan => expect(plan.routePlanId).toBe(2));
+    httpMock.expectOne('/api/route-plans/2').flush(PLAN);
+    api.get(2).subscribe(plan => expect(plan.status).toBe('GENERATED'));
+    httpMock.expectNone('/api/route-plans/2');
+    api.select(2).subscribe();
+    httpMock.expectOne('/api/route-plans/2/select').flush({ ...PLAN, status: 'SELECTED' });
+    api.get(2).subscribe(plan => expect(plan.status).toBe('SELECTED'));
+    httpMock.expectOne('/api/route-plans/2').flush({ ...PLAN, status: 'SELECTED' });
   });
 
   it('surfaces backend errors (e.g. no orders, infeasible) to the page', () => {

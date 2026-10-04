@@ -1,11 +1,11 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Component, ElementRef, ViewChild, effect, inject } from '@angular/core';
+import { Component, ElementRef, ViewChild, computed, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
 import { todayLocal } from '../../core/backend-api.service';
 import { DeliveryService } from '../../core/delivery.service';
-import { RiderRoute, RoutePlan } from '../../core/models';
+import { RiderRoute, RoutePlan, SHOP } from '../../core/models';
 import { adaptBackendPlan } from '../../core/route-plan-adapter';
 import type { DeliveryRouteModel, RoutePlanModel, RoutePlanStatus, RoutePlanSummaryModel } from '../../core/route-plan.models';
 import { RoutePlanApiService } from '../../core/route-plan-api.service';
@@ -21,6 +21,10 @@ import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
 })
 export class DeliveryComponent {
   readonly store = inject(DeliveryService);
+  readonly shopPoint = computed<[number, number]>(() => {
+    const settings = this.store.settings();
+    return settings ? [settings.latitude, settings.longitude] : [SHOP.lat, SHOP.lng];
+  });
   private readonly routePlans = inject(RoutePlanApiService, { optional: true });
   readonly Math = Math;
   readonly String = String;

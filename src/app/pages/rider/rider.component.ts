@@ -1,8 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, map, of, switchMap } from 'rxjs';
 import { todayLocal } from '../../core/backend-api.service';
 import { RoutePlanApiService } from '../../core/route-plan-api.service';
+import { DeliveryService } from '../../core/delivery.service';
+import { SHOP } from '../../core/models';
 import { DeliveryRouteModel, RouteStopModel } from '../../core/route-plan.models';
 import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
 
@@ -16,6 +18,11 @@ type Stage = 'entry' | 'summary' | 'delivery' | 'completed';
 })
 export class RiderComponent {
   private readonly api = inject(RoutePlanApiService);
+  private readonly store = inject(DeliveryService);
+  readonly shopPoint = computed<[number, number]>(() => {
+    const settings = this.store.settings();
+    return settings ? [settings.latitude, settings.longitude] : [SHOP.lat, SHOP.lng];
+  });
   jobCode = '';
   activeRoute: DeliveryRouteModel | null = null;
   mapJobs: DeliveryRouteModel[] = [];
@@ -40,7 +47,7 @@ export class RiderComponent {
       switchMap(plans => {
         const selected = plans.filter(plan => plan.status === 'SELECTED' && plan.routePlanId !== undefined);
         return selected.length ? forkJoin(selected.map(plan =>
-          this.api.get(plan.routePlanId!).pipe(map(full => ({ planId: plan.routePlanId!, jobs: full.jobs }))),
+          this.api.get(plan.routePlanId!, true).pipe(map(full => ({ planId: plan.routePlanId!, jobs: full.jobs }))),
         )) : of([]);
       }),
     ).subscribe({
@@ -89,8 +96,4 @@ export class RiderComponent {
     });
   }
   closeJob(): void { this.stage = 'entry'; this.activeRoute = null; this.mapJobs = []; this.activePlanId = null; this.jobCode = ''; this.errorMessage = ''; this.stopIndex = 0; this.confirmingStop = false; }
-  navigateTo(stop: RouteStopModel): string {
-    const params = new URLSearchParams({ api: '1', destination: `${stop.latitude},${stop.longitude}`, travelmode: 'driving' });
-    return `https://www.google.com/maps/dir/?${params.toString()}`;
-  }
 }

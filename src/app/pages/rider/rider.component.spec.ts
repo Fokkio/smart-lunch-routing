@@ -30,6 +30,10 @@ describe('Rider backend job lookup', () => {
     expect(fixture.nativeElement.querySelector('app-route-plan-map')).not.toBeNull();
     rider.begin();
     expect(rider.stage).toBe('delivery');
+    fixture.detectChanges();
+    const stopMap = fixture.nativeElement.querySelector('app-route-plan-map');
+    expect(stopMap).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href*="google.com/maps"]')).toBeNull();
     rider.confirmingStop = true;
     rider.completeStop();
     expect(rider.stage).toBe('delivery');

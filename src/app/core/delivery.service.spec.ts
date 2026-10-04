@@ -162,6 +162,17 @@ describe('DeliveryService route planning', () => {
       expect(service.settings()).toBeNull();
     });
 
+    it('does not mix a partial backend response with old local data', () => {
+      const before = service.customers();
+      service.connect();
+      http.expectOne('/api/customers').flush(apiCustomers);
+      http.expectOne('/api/orders').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
+      http.expectOne('/api/riders').flush(apiRiders);
+      http.expectOne('/api/settings').flush(apiSettings);
+      expect(service.usingBackend()).toBe(false);
+      expect(service.customers()).toEqual(before);
+    });
+
     it('saves a new customer through the backend when connected', () => {
       service.connect();
       http.expectOne('/api/customers').flush(apiCustomers);
