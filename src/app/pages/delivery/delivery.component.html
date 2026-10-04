@@ -150,6 +150,36 @@
     </aside>
   </div>
 
+  @if (store.usingBackend()) {
+    <section class="neu-panel mt-4 rounded-xl p-5" aria-labelledby="saved-plans-title">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div><h2 id="saved-plans-title" class="font-bold">ใบงานที่บันทึกไว้</h2><p class="mt-1 text-sm text-slate-600">ใบงานของวันนี้ที่เคยคำนวณหรือยืนยันไว้ เปิดดู ยืนยัน หรือลบได้จากที่นี่</p></div>
+        <button class="neu-control inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold" type="button" [disabled]="loadingPlans" (click)="loadSavedPlans()"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 12a8 8 0 1 1-2.34-5.66M20 4v6h-6"/></svg><span>{{ loadingPlans ? 'กำลังโหลด...' : 'รีเฟรช' }}</span></button>
+      </div>
+      @if (savedPlans.length) {
+        <ol class="mt-3 divide-y divide-line">
+          @for (saved of savedPlans; track saved.routePlanId) {
+            <li class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 text-sm">
+              <strong class="font-mono">#{{ saved.routePlanId }}</strong>
+              <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" [class.bg-emerald-100]="saved.status === 'SELECTED'" [class.text-emerald-800]="saved.status === 'SELECTED'" [class.bg-slate-100]="saved.status !== 'SELECTED'" [class.text-slate-700]="saved.status !== 'SELECTED'">{{ planStatusLabel(saved.status) }}</span>
+              <span class="text-slate-600">{{ saved.riderCount }} ไรเดอร์ · {{ saved.totalBoxes }} กล่อง · {{ saved.totalDistanceKm | number:'1.1-2' }} กม.</span>
+              <span class="font-mono font-bold" [class.text-emerald-700]="saved.estimatedProfit >= 0" [class.text-red-700]="saved.estimatedProfit < 0">{{ saved.estimatedProfit | currency:'THB':'symbol-narrow':'1.0-0' }}</span>
+              <span class="ml-auto flex flex-wrap gap-2">
+                <button class="neu-control min-h-11 rounded-lg px-3 text-sm font-bold" type="button" (click)="viewSavedPlan(saved.routePlanId!)">ดู</button>
+                @if (saved.status === 'GENERATED') {
+                  <button class="neu-primary min-h-11 rounded-lg px-3 text-sm font-bold" type="button" (click)="selectSavedPlan(saved.routePlanId!)">ยืนยัน</button>
+                }
+                <button class="neu-control min-h-11 rounded-lg px-3 text-sm font-bold text-red-700" type="button" (click)="deleteSavedPlan(saved)">ลบ</button>
+              </span>
+            </li>
+          }
+        </ol>
+      } @else if (!loadingPlans) {
+        <p class="mt-3 text-sm text-slate-500">ยังไม่มีใบงานที่บันทึกไว้สำหรับวันนี้</p>
+      }
+    </section>
+  }
+
   @if (store.planHistory().length) {
     <section class="neu-panel mt-4 rounded-xl p-5" aria-labelledby="plan-history-title">
       <h2 id="plan-history-title" class="font-bold">ประวัติการยืนยันในรอบนี้</h2>

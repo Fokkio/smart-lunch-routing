@@ -1,12 +1,12 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Component, ElementRef, ViewChild, inject } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { todayLocal } from '../../core/backend-api.service';
 import { DeliveryService } from '../../core/delivery.service';
 import { RiderRoute, RoutePlan } from '../../core/models';
 import { adaptBackendPlan } from '../../core/route-plan-adapter';
-import type { DeliveryRouteModel, RoutePlanModel } from '../../core/route-plan.models';
+import type { DeliveryRouteModel, RoutePlanModel, RoutePlanStatus, RoutePlanSummaryModel } from '../../core/route-plan.models';
 import { RoutePlanApiService } from '../../core/route-plan-api.service';
 import { routingSourceLabel } from '../../core/route-plan-view';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
@@ -18,7 +18,7 @@ import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
   imports: [CurrencyPipe, DecimalPipe, FormsModule, RouterLink, DeliveryMapComponent, RoutePlanMapComponent],
   templateUrl: './delivery.component.html',
 })
-export class DeliveryComponent {
+export class DeliveryComponent implements OnInit {
   readonly store = inject(DeliveryService);
   private readonly routePlans = inject(RoutePlanApiService, { optional: true });
   readonly Math = Math;
@@ -43,9 +43,68 @@ export class DeliveryComponent {
   fallbackNotice = false;
   /** id แผนฝั่ง backend (null = ยังไม่เคยคำนวณ/ใช้โหมดคำนวณในเครื่อง) */
   backendPlanId: number | null = null;
+  /** ใบงานที่บันทึกไว้ฝั่ง backend ของวันนี้ */
+  savedPlans: RoutePlanSummaryModel[] = [];
+  loadingPlans = false;
   /** โมเดล backend ดิบของแผนที่เลือก — เก็บ geometry เส้นถนนไว้ให้แผนที่ (adapter ทิ้ง field นี้) */
   backendPlan: RoutePlanModel | null = null;
   private candidateBackend: RoutePlanModel | null = null;
+
+  ngOnInit(): void {
+    this.loadSavedPlans();
+  }
+
+  /** ดึงรายการใบงานที่บันทึกไว้ (backend เท่านั้น) */
+  loadSavedPlans(): void {
+    if (!this.store.usingBackend() || !this.routePlans) {
+      this.savedPlans = [];
+      return;
+    }
+    this.loadingPlans = true;
+    this.routePlans.list(todayLocal()).subscribe({
+      next: (plans) => { this.savedPlans = plans; this.loadingPlans = false; },
+      error: () => { this.savedPlans = []; this.loadingPlans = false; },
+    });
+  }
+
+  planStatusLabel(status: RoutePlanStatus): string {
+    return status === 'SELECTED' ? 'ยืนยันแล้ว' : status === 'REJECTED' ? 'ปฏิเสธ' : 'ฉบับร่าง';
+  }
+
+  /** เปิดดูใบงานที่บันทึกไว้ */
+  viewSavedPlan(id: number): void {
+    if (!this.routePlans) return;
+    this.routePlans.get(id).subscribe({
+      next: (backend) => { this.selectedRoute = null; this.adoptBackend(backend); },
+      error: () => undefined,
+    });
+  }
+
+  /** ยืนยันใบงานที่บันทึกไว้ */
+  selectSavedPlan(id: number): void {
+    if (!this.routePlans) return;
+    this.routePlans.select(id).subscribe({
+      next: (backend) => { this.adoptBackend(backend); this.loadSavedPlans(); },
+      error: () => undefined,
+    });
+  }
+
+  /** ลบใบงานที่บันทึกไว้ — ออเดอร์ในใบงานจะกลับเป็นสถานะรอจัดส่ง */
+  deleteSavedPlan(plan: RoutePlanSummaryModel): void {
+    const id = plan.routePlanId;
+    if (id == null || !this.routePlans) return;
+    if (!window.confirm(`ลบใบงาน #${id} หรือไม่? ออเดอร์ในใบงานจะกลับไปรอจัดส่ง`)) return;
+    this.routePlans.delete(id).subscribe({
+      next: () => {
+        if (this.backendPlanId === id) {
+          this.backendPlanId = null;
+          this.backendPlan = null;
+        }
+        this.loadSavedPlans();
+      },
+      error: () => undefined,
+    });
+  }
 
   /** jobs สำหรับแผนที่ถนนจริง (null = วาดเส้นตรงแบบเดิม) */
   mapJobs(): DeliveryRouteModel[] | null {
@@ -109,6 +168,7 @@ export class DeliveryComponent {
     this.store.choosePlan(plan);
     this.reviewing = false;
     this.calculating = false;
+    this.loadSavedPlans();
   }
   compare(): void {
     if (this.store.usingBackend() && this.routePlans) {
@@ -180,7 +240,10 @@ export class DeliveryComponent {
     const wasLate = !plan.deadlineSafe;
     // ล็อกแผนฝั่ง backend ด้วย แต่ UI ยืนยันแบบเดิมทันที ไม่รอให้เสียจังหวะ
     if (this.backendPlanId != null && this.routePlans) {
-      this.routePlans.select(this.backendPlanId).subscribe({ error: () => undefined });
+      this.routePlans.select(this.backendPlanId).subscribe({
+        next: () => this.loadSavedPlans(),
+        error: () => undefined,
+      });
     }
     this.store.confirmPlan();
     this.reviewing = false;

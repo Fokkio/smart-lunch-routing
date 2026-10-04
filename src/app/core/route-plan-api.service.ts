@@ -36,4 +36,8 @@ export class RoutePlanApiService {
   select(id: number): Observable<RoutePlanModel> {
     return this.http.post<RoutePlanModel>(`${this.baseUrl}/${id}/select`, {});
   }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }
