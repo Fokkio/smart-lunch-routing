@@ -1,11 +1,24 @@
 <section class="mx-auto max-w-[1480px] p-4 sm:p-6 lg:p-8">
-  <header class="mb-5 flex justify-end">
+  <header class="mb-5 flex flex-wrap justify-end gap-3">
+    <button class="neu-control inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-bold" type="button"
+      (click)="showOverviewMap = !showOverviewMap">
+      <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+      </svg>
+      <span>{{ showOverviewMap ? 'ซ่อนแผนที่' : 'ดูตำแหน่งบนแผนที่ (' + apiCustomers().length + ' คน)' }}</span>
+    </button>
     <button class="neu-primary inline-flex min-h-11 items-center gap-2 rounded-xl px-5 font-bold" type="button"
       (click)="startCreate()"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         aria-hidden="true">
         <path stroke-linecap="round" d="M12 5v14M5 12h14" />
       </svg><span>เพิ่มลูกค้า</span></button>
   </header>
+
+  @if (showOverviewMap) {
+    <div class="neu-panel mb-5 h-[380px] overflow-hidden rounded-2xl p-2 sm:h-[450px]">
+      <app-delivery-map [customers]="apiCustomers()" [pickable]="false" />
+    </div>
+  }
 
   <div [class]="showForm ? 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]' : 'grid gap-5'">
     <article class="neu-panel overflow-hidden rounded-2xl">

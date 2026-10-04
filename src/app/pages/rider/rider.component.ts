@@ -1,9 +1,9 @@
-import { Component, computed, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, map, of, switchMap } from 'rxjs';
 import { todayLocal } from '../../core/backend-api.service';
 import { RoutePlanApiService } from '../../core/route-plan-api.service';
-import { DeliveryService } from '../../core/delivery.service';
+import { AuthService } from '../../core/auth.service';
 import { SHOP } from '../../core/models';
 import { DeliveryRouteModel, RouteStopModel } from '../../core/route-plan.models';
 import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
@@ -16,14 +16,14 @@ type Stage = 'entry' | 'summary' | 'delivery' | 'completed';
   imports: [FormsModule, RoutePlanMapComponent],
   templateUrl: './rider.component.html',
 })
-export class RiderComponent {
+export class RiderComponent implements OnInit {
   private readonly api = inject(RoutePlanApiService);
-  private readonly store = inject(DeliveryService);
-  readonly shopPoint = computed<[number, number]>(() => {
-    const settings = this.store.settings();
-    return settings ? [settings.latitude, settings.longitude] : [SHOP.lat, SHOP.lng];
-  });
-  jobCode = '';
+  private readonly cdr = inject(ChangeDetectorRef);
+  readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  readonly shopPoint = signal<[number, number]>([SHOP.lat, SHOP.lng]);
+  jobs: Array<{ planId: number; job: DeliveryRouteModel; shop: { latitude: number; longitude: number; deliveryDeadline: string } }> = [];
+  deliveryDeadline = '';
   activeRoute: DeliveryRouteModel | null = null;
   mapJobs: DeliveryRouteModel[] = [];
   activePlanId: number | null = null;
@@ -33,44 +33,43 @@ export class RiderComponent {
   confirmingStop = false;
   loading = false;
   savingStop = false;
+  currentPassword = '';
+  newPassword = '';
+  passwordMessage = '';
+  changingPassword = false;
 
   get currentStop(): RouteStopModel | null { return this.activeRoute?.stops[this.stopIndex] ?? null; }
 
-  openJob(): void {
-    const code = this.jobCode.trim().toUpperCase();
-    if (!code || this.loading) return;
+  ngOnInit(): void { this.loadJobs(); }
+
+  loadJobs(): void {
+    if (this.loading) return;
     this.loading = true;
     this.errorMessage = '';
-    // ดึงเฉพาะแผนของวันนี้เพื่อเลี่ยง N+1 กับแผนเก่า (backend รองรับ ?date=)
-    const today = todayLocal();
-    this.api.list(today).pipe(
-      switchMap(plans => {
-        const selected = plans.filter(plan => plan.status === 'SELECTED' && plan.routePlanId !== undefined);
-        return selected.length ? forkJoin(selected.map(plan =>
-          this.api.get(plan.routePlanId!, true).pipe(map(full => ({ planId: plan.routePlanId!, jobs: full.jobs }))),
-        )) : of([]);
-      }),
-    ).subscribe({
-      next: plans => {
+    this.api.myJobs(todayLocal()).subscribe({
+      next: jobs => {
         this.loading = false;
-        const match = plans.flatMap(plan => plan.jobs.map(job => ({ job, planId: plan.planId })))
-          .find(item => item.job.jobCode?.toUpperCase() === code);
-        this.activeRoute = match?.job ?? null;
-        this.mapJobs = match ? [match.job] : [];
-        this.activePlanId = match?.planId ?? null;
-        this.errorMessage = this.activeRoute ? '' : 'ไม่พบใบงานที่ยืนยันแล้ว กรุณาตรวจสอบเลขใบงานอีกครั้ง';
-        if (this.activeRoute) {
-          this.stopIndex = this.activeRoute.stops.findIndex(stop => stop.deliveryStatus !== 'DELIVERED');
-          if (this.stopIndex < 0) this.stopIndex = this.activeRoute.stops.length;
-          this.stage = this.stopIndex === this.activeRoute.stops.length ? 'completed' : 'summary';
-          this.confirmingStop = false;
+        this.jobs = jobs;
+        if (jobs[0]) {
+          this.shopPoint.set([jobs[0].shop.latitude, jobs[0].shop.longitude]);
+          this.deliveryDeadline = jobs[0].shop.deliveryDeadline;
         }
+        this.cdr.markForCheck();
       },
-      error: () => { this.loading = false; this.errorMessage = 'โหลดใบงานไม่สำเร็จ กรุณาลองใหม่'; },
+      error: () => { this.loading = false; this.errorMessage = 'โหลดงานของคุณไม่สำเร็จ กรุณาลองใหม่'; this.cdr.markForCheck(); },
     });
   }
 
-  useCode(code: string): void { this.jobCode = code; this.openJob(); }
+  selectJob(item: { planId: number; job: DeliveryRouteModel; shop: { latitude: number; longitude: number; deliveryDeadline: string } }): void {
+    this.activeRoute = item.job;
+    this.mapJobs = [item.job];
+    this.activePlanId = item.planId;
+    this.stopIndex = item.job.stops.findIndex(stop => stop.deliveryStatus !== 'DELIVERED');
+    if (this.stopIndex < 0) this.stopIndex = item.job.stops.length;
+    this.stage = this.stopIndex === item.job.stops.length ? 'completed' : 'summary';
+    this.confirmingStop = false;
+    this.cdr.markForCheck();
+  }
   begin(): void { if (this.currentStop) { this.confirmingStop = false; this.stage = 'delivery'; } }
   backToSummary(): void { this.confirmingStop = false; this.stage = 'summary'; }
   completeStop(): void {
@@ -80,7 +79,7 @@ export class RiderComponent {
     const route = this.activeRoute;
     this.savingStop = true;
     this.errorMessage = '';
-    this.api.deliverStop(this.activePlanId, this.activeRoute.jobId, stop.orderId).subscribe({
+    this.api.deliverMyStop(this.activeRoute.jobId, stop.orderId).subscribe({
       next: () => {
         this.savingStop = false;
         if (this.activeRoute !== route) return;
@@ -88,12 +87,24 @@ export class RiderComponent {
         this.confirmingStop = false;
         this.stopIndex++;
         if (this.stopIndex >= route.stops.length) this.stage = 'completed';
+        this.cdr.markForCheck();
       },
       error: () => {
         this.savingStop = false;
         this.errorMessage = 'บันทึกสถานะส่งไม่สำเร็จ กรุณาลองใหม่';
+        this.cdr.markForCheck();
       },
     });
   }
-  closeJob(): void { this.stage = 'entry'; this.activeRoute = null; this.mapJobs = []; this.activePlanId = null; this.jobCode = ''; this.errorMessage = ''; this.stopIndex = 0; this.confirmingStop = false; }
+  closeJob(): void { this.stage = 'entry'; this.activeRoute = null; this.mapJobs = []; this.activePlanId = null; this.errorMessage = ''; this.stopIndex = 0; this.confirmingStop = false; this.loadJobs(); }
+  logout(): void { this.auth.logout(); void this.router.navigateByUrl('/login'); }
+  changePassword(): void {
+    if (this.changingPassword || this.newPassword.length < 12 || !this.currentPassword) return;
+    this.changingPassword = true;
+    this.passwordMessage = '';
+    this.auth.changePassword(this.currentPassword, this.newPassword).subscribe({
+      next: () => { this.currentPassword = ''; this.newPassword = ''; this.changingPassword = false; this.logout(); },
+      error: () => { this.currentPassword = ''; this.newPassword = ''; this.changingPassword = false; this.passwordMessage = 'เปลี่ยนรหัสผ่านไม่สำเร็จ ตรวจสอบรหัสเดิมและรหัสใหม่'; this.cdr.markForCheck(); },
+    });
+  }
 }

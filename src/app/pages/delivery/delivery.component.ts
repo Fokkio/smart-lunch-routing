@@ -355,14 +355,18 @@ export class DeliveryComponent {
   }
   longestMinutes(plan: RoutePlan): number { return Math.max(0, ...plan.routes.map(route => route.durationMinutes)); }
   totalStops(plan: RoutePlan): number { return plan.routes.reduce((total, route) => total + route.stops.length, 0); }
-  finishTime(plan: RoutePlan): string { const minutes = 11 * 60 + 30 + this.longestMinutes(plan); return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`; }
-  marginMinutes(plan: RoutePlan): number { return 60 - this.longestMinutes(plan); }
-  finishTimeForRoute(durationMinutes: number): string { const minutes = 11 * 60 + 30 + durationMinutes; return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`; }
-  /** คันนี้คาดว่าถึงจุดสุดท้ายเกิน 12:30 หรือไม่ — ใช้กางรายการจุดส่งอัตโนมัติ */
-  isLate(route: RiderRoute): boolean { return this.finishTimeForRoute(route.durationMinutes) > '12:30'; }
+  private timeMinutes(value: string): number { const [hours, minutes] = value.slice(0, 5).split(':').map(Number); return hours * 60 + minutes; }
+  private startMinutes(): number { return this.timeMinutes(this.store.settings()?.deliveryStartTime ?? '11:30'); }
+  private deadlineMinutes(): number { return this.timeMinutes(this.store.settings()?.deliveryDeadline ?? '12:30'); }
+  deadlineLabel(): string { return (this.store.settings()?.deliveryDeadline ?? '12:30').slice(0, 5); }
+  finishTime(plan: RoutePlan): string { return this.finishTimeForRoute(this.longestMinutes(plan)); }
+  marginMinutes(plan: RoutePlan): number { return this.deadlineMinutes() - this.startMinutes() - this.longestMinutes(plan); }
+  finishTimeForRoute(durationMinutes: number): string { const minutes = this.startMinutes() + durationMinutes; return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`; }
+  /** คันนี้คาดว่าถึงจุดสุดท้ายเกินเวลาส่งของร้านหรือไม่ */
+  isLate(route: RiderRoute): boolean { return this.startMinutes() + route.durationMinutes > this.deadlineMinutes(); }
   /** เกินเส้นตายไปกี่นาที (เรียกเมื่อ isLate เท่านั้น) */
-  lateMinutes(route: RiderRoute): number { return Math.max(0, route.durationMinutes - 60); }
-  capacityPercent(plan: RoutePlan): number { return plan.routes.length ? Math.min(100, this.totalStops(plan) / (plan.routes.length * 3) * 100) : 0; }
-  callFee(plan: RoutePlan): number { return plan.routes.length * 15; }
+  lateMinutes(route: RiderRoute): number { return Math.max(0, this.startMinutes() + route.durationMinutes - this.deadlineMinutes()); }
+  capacityPercent(plan: RoutePlan): number { return plan.routes.length ? Math.min(100, this.totalStops(plan) / (plan.routes.length * (this.store.settings()?.maxOrdersPerRider ?? 3)) * 100) : 0; }
+  callFee(plan: RoutePlan): number { return plan.routes.length * (this.store.settings()?.riderBaseCost ?? 15); }
   distanceFee(plan: RoutePlan): number { return Math.round((plan.deliveryCost - this.callFee(plan)) * 100) / 100; }
 }

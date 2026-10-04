@@ -20,6 +20,8 @@ export class RidersComponent implements OnInit {
   query = '';
   showForm = false;
   feedback = '';
+  accountRider: ApiRider | null = null;
+  newPassword = '';
   draft: Draft = this.blankDraft();
 
   ngOnInit(): void {
@@ -65,6 +67,18 @@ export class RidersComponent implements OnInit {
     this.draft = { id: rider.id, name: rider.name, phone: rider.phone ?? '', isAvailable: rider.isAvailable };
     this.error.set('');
     this.showForm = true;
+  }
+
+  openAccount(rider: ApiRider): void { this.accountRider = rider; this.newPassword = ''; this.error.set(''); }
+
+  saveAccount(): void {
+    if (!this.accountRider || this.newPassword.length < 12 || this.saving()) return;
+    this.saving.set(true);
+    this.error.set('');
+    this.ridersApi.setPassword(this.accountRider.id, this.newPassword).subscribe({
+      next: () => { this.saving.set(false); this.feedback = `ตั้งรหัสผ่านให้ ${this.accountRider?.name} แล้ว`; this.accountRider = null; this.newPassword = ''; },
+      error: () => { this.saving.set(false); this.error.set('ตั้งรหัสผ่านไม่สำเร็จ'); },
+    });
   }
 
   cancel(): void {

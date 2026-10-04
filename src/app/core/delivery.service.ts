@@ -351,6 +351,18 @@ export class DeliveryService {
     catch { console.warn('[delivery] บันทึก cache ในเครื่องไม่ได้ จะใช้ข้อมูลที่อยู่ในหน่วยความจำ'); }
   }
 
+  clearForLogout(): void {
+    this.customers.set([]);
+    this.orders.set([]);
+    this.riders.set([]);
+    this.plan.set(null);
+    this.confirmedPlan.set(null);
+    this.planHistory.set([]);
+    this.settings.set(null);
+    this.usingBackend.set(false);
+    this.routePlans?.invalidateCache();
+  }
+
   private load<T>(key: string, fallback: T): T {
     try {
       const raw = localStorage.getItem(key);
