@@ -1,5 +1,5 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Component, ElementRef, OnInit, ViewChild, inject } from '@angular/core';
+import { Component, ElementRef, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
@@ -19,7 +19,7 @@ import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
   imports: [CurrencyPipe, DecimalPipe, FormsModule, RouterLink, DeliveryMapComponent, RoutePlanMapComponent],
   templateUrl: './delivery.component.html',
 })
-export class DeliveryComponent implements OnInit {
+export class DeliveryComponent {
   readonly store = inject(DeliveryService);
   private readonly routePlans = inject(RoutePlanApiService, { optional: true });
   readonly Math = Math;
@@ -53,8 +53,13 @@ export class DeliveryComponent implements OnInit {
   backendPlan: RoutePlanModel | null = null;
   private candidateBackend: RoutePlanModel | null = null;
 
-  ngOnInit(): void {
-    this.loadSavedPlans();
+  constructor() {
+    // connect() เป็น async — effect นี้รันครั้งแรกตอนสร้าง component และรันซ้ำ
+    // เมื่อ usingBackend กลายเป็น true จึงครอบคลุมทั้งเปิดหน้าก่อน/หลัง backend พร้อม
+    // (ไม่เช่นนั้นใบงานที่บันทึกไว้จะไม่แสดงจนกว่าจะกดรีเฟรชเอง)
+    effect(() => {
+      if (this.store.usingBackend()) this.loadSavedPlans();
+    });
   }
 
   /** ดึงรายการใบงานที่บันทึกไว้ (backend เท่านั้น) — มี timeout กันโหลดค้าง */
