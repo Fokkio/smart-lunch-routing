@@ -3,6 +3,7 @@
   @if (!store.usingBackend()) {
     <div class="mb-4 rounded-xl border border-amber-300 bg-warning-soft p-3 text-sm text-amber-900" role="status"><strong>โหมดข้อมูลจำลอง</strong> — ต่อ backend ไม่ได้ ตัวเลขและแผนในหน้านี้ไม่ใช่ข้อมูลจริง</div>
   }
+  @if (plansError) { <div class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-900" role="alert">{{ plansError }}</div> }
 
   <section class="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="ภาพรวมการจัดส่ง">
     <article class="neu-panel relative min-h-24 rounded-xl p-4">
@@ -175,9 +176,7 @@
           }
         </ol>
       } @else if (!loadingPlans) {
-        @if (plansError) {
-          <p class="mt-3 text-sm font-semibold text-red-700">{{ plansError }}</p>
-        } @else {
+        @if (!plansError) {
           <p class="mt-3 text-sm text-slate-500">ยังไม่มีใบงานที่บันทึกไว้สำหรับวันนี้</p>
         }
       }

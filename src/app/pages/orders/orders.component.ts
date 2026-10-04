@@ -110,7 +110,7 @@ export class OrdersComponent {
       next: () => { this.feedback = `ลบออเดอร์ ${order.id} แล้ว`; this.reload(); },
       error: err => this.error.set(
         err?.status === 409
-          ? 'ลบไม่ได้ เพราะออเดอร์นี้อยู่ในใบงานที่ยืนยันแล้ว'
+          ? 'ลบไม่ได้ เพราะออเดอร์นี้อยู่ในแผนจัดส่ง (รวมแผนฉบับร่าง) กรุณาลบแผนที่เกี่ยวข้องก่อน'
           : apiErrorMessage(err, 'ลบออเดอร์ไม่สำเร็จ'),
       ),
     });

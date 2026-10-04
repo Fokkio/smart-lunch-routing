@@ -80,7 +80,13 @@ export class DeliveryComponent {
           this.loadingPlans = false;
         }),
       ).subscribe({
-        next: (plans) => { this.savedPlans = plans; },
+        next: (plans) => {
+          this.savedPlans = plans;
+          const selected = plans.find((plan) => plan.status === 'SELECTED');
+          if (selected?.routePlanId != null && this.backendPlanId === null) {
+            this.viewSavedPlan(selected.routePlanId);
+          }
+        },
         error: () => { this.savedPlans = []; this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
       });
       // ตัด request ที่ค้างเกิน 15 วิ แล้วแสดงข้อความให้กดรีเฟรชใหม่
@@ -107,7 +113,7 @@ export class DeliveryComponent {
     if (!this.routePlans) return;
     this.routePlans.get(id).subscribe({
       next: (backend) => { this.selectedRoute = null; this.adoptBackend(backend); },
-      error: () => undefined,
+      error: () => { this.plansError = 'เปิดรายละเอียดใบงานไม่สำเร็จ กรุณาลองใหม่'; },
     });
   }
 
@@ -116,15 +122,15 @@ export class DeliveryComponent {
     if (!this.routePlans) return;
     this.routePlans.select(id).subscribe({
       next: (backend) => { this.adoptBackend(backend); this.loadSavedPlans(); },
-      error: () => undefined,
+      error: () => { this.plansError = 'ยืนยันใบงานไม่สำเร็จ กรุณาลองใหม่'; },
     });
   }
 
-  /** ลบใบงานที่บันทึกไว้ — ออเดอร์ในใบงานจะกลับเป็นสถานะรอจัดส่ง */
+  /** ลบใบงานที่บันทึกไว้ */
   deleteSavedPlan(plan: RoutePlanSummaryModel): void {
     const id = plan.routePlanId;
     if (id == null || !this.routePlans) return;
-    if (!window.confirm(`ลบใบงาน #${id} หรือไม่? ออเดอร์ในใบงานจะกลับไปรอจัดส่ง`)) return;
+    if (!window.confirm(`ลบใบงาน #${id} หรือไม่?${plan.status === 'SELECTED' ? ' ออเดอร์ที่ยังไม่ส่งจะกลับไปรอจัดส่ง' : ''}`)) return;
     this.routePlans.delete(id).subscribe({
       next: () => {
         if (this.backendPlanId === id) {
@@ -133,7 +139,7 @@ export class DeliveryComponent {
         }
         this.loadSavedPlans();
       },
-      error: () => undefined,
+      error: () => { this.plansError = 'ลบใบงานไม่สำเร็จ กรุณาลองใหม่'; },
     });
   }
 
@@ -170,7 +176,15 @@ export class DeliveryComponent {
       this.calculating = true;
       this.routePlans.generate(todayLocal()).subscribe({
         next: (backend) => this.adoptBackend(backend),
-        error: () => { this.fallbackNotice = true; this.calculateLocally(); },
+        error: (error) => {
+          this.calculating = false;
+          if (error?.status === 422) {
+            this.plansError = 'สร้างแผนไม่ได้: จำนวนไรเดอร์ที่พร้อมไม่พอหรือส่งไม่ทันเวลา';
+            return;
+          }
+          this.fallbackNotice = true;
+          this.calculateLocally();
+        },
       });
       return;
     }
@@ -197,6 +211,7 @@ export class DeliveryComponent {
     this.lateOverride = false;
     this.selectedRoute = null;
     this.store.choosePlan(plan);
+    if (backend.status === 'SELECTED') this.store.confirmedPlan.set(plan);
     this.reviewing = false;
     this.calculating = false;
     this.loadSavedPlans();
@@ -214,7 +229,14 @@ export class DeliveryComponent {
             riders: this.store.riders(),
           });
         },
-        error: () => { this.fallbackNotice = true; this.compareLocally(); },
+        error: (error) => {
+          if (error?.status === 422) {
+            this.plansError = 'คำนวณแผนใหม่ไม่ได้: จำนวนไรเดอร์ที่พร้อมไม่พอหรือส่งไม่ทันเวลา';
+            return;
+          }
+          this.fallbackNotice = true;
+          this.compareLocally();
+        },
       });
       return;
     }
@@ -269,18 +291,20 @@ export class DeliveryComponent {
       return;
     }
     const wasLate = !plan.deadlineSafe;
-    // ล็อกแผนฝั่ง backend ด้วย แต่ UI ยืนยันแบบเดิมทันที ไม่รอให้เสียจังหวะ
+    const finish = () => {
+      this.store.confirmPlan();
+      this.reviewing = false;
+      this.lateOverride = wasLate;
+      this.acknowledgeLate = false;
+    };
     if (this.backendPlanId != null && this.routePlans) {
       this.routePlans.select(this.backendPlanId).subscribe({
-        next: () => this.loadSavedPlans(),
-        error: () => undefined,
+        next: (backend) => { this.adoptBackend(backend); finish(); },
+        error: () => { this.plansError = 'ยืนยันใบงานไม่สำเร็จ กรุณาตรวจสอบไรเดอร์และลองใหม่'; },
       });
+      return;
     }
-    this.store.confirmPlan();
-    this.reviewing = false;
-    // จำไว้ว่าแผนนี้ยืนยันทั้งที่เกินเวลา — แสดงโน้ตในประวัติการยืนยัน
-    this.lateOverride = wasLate;
-    this.acknowledgeLate = false;
+    finish();
   }
   longestMinutes(plan: RoutePlan): number { return Math.max(0, ...plan.routes.map(route => route.durationMinutes)); }
   finishTime(plan: RoutePlan): string { const minutes = 11 * 60 + 30 + this.longestMinutes(plan); return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`; }
