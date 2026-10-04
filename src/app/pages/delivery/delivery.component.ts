@@ -2,6 +2,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Component, ElementRef, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { finalize, timeout } from 'rxjs';
 import { todayLocal } from '../../core/backend-api.service';
 import { DeliveryService } from '../../core/delivery.service';
 import { RiderRoute, RoutePlan } from '../../core/models';
@@ -46,6 +47,8 @@ export class DeliveryComponent implements OnInit {
   /** ใบงานที่บันทึกไว้ฝั่ง backend ของวันนี้ */
   savedPlans: RoutePlanSummaryModel[] = [];
   loadingPlans = false;
+  /** ข้อความ error ตอนโหลดใบงานที่บันทึกไว้ (null = ไม่มี error) */
+  plansError: string | null = null;
   /** โมเดล backend ดิบของแผนที่เลือก — เก็บ geometry เส้นถนนไว้ให้แผนที่ (adapter ทิ้ง field นี้) */
   backendPlan: RoutePlanModel | null = null;
   private candidateBackend: RoutePlanModel | null = null;
@@ -54,16 +57,21 @@ export class DeliveryComponent implements OnInit {
     this.loadSavedPlans();
   }
 
-  /** ดึงรายการใบงานที่บันทึกไว้ (backend เท่านั้น) */
+  /** ดึงรายการใบงานที่บันทึกไว้ (backend เท่านั้น) — มี timeout กันโหลดค้าง */
   loadSavedPlans(): void {
     if (!this.store.usingBackend() || !this.routePlans) {
       this.savedPlans = [];
+      this.plansError = null;
       return;
     }
     this.loadingPlans = true;
-    this.routePlans.list(todayLocal()).subscribe({
-      next: (plans) => { this.savedPlans = plans; this.loadingPlans = false; },
-      error: () => { this.savedPlans = []; this.loadingPlans = false; },
+    this.plansError = null;
+    this.routePlans.list(todayLocal()).pipe(
+      timeout(15000),
+      finalize(() => { this.loadingPlans = false; }),
+    ).subscribe({
+      next: (plans) => { this.savedPlans = plans; },
+      error: () => { this.savedPlans = []; this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
     });
   }
 

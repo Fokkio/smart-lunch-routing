@@ -175,7 +175,11 @@
           }
         </ol>
       } @else if (!loadingPlans) {
-        <p class="mt-3 text-sm text-slate-500">ยังไม่มีใบงานที่บันทึกไว้สำหรับวันนี้</p>
+        @if (plansError) {
+          <p class="mt-3 text-sm font-semibold text-red-700">{{ plansError }}</p>
+        } @else {
+          <p class="mt-3 text-sm text-slate-500">ยังไม่มีใบงานที่บันทึกไว้สำหรับวันนี้</p>
+        }
       }
     </section>
   }
