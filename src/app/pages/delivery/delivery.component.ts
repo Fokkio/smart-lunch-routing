@@ -49,14 +49,6 @@ export class DeliveryComponent {
   loadingPlans = false;
   /** ข้อความ error ตอนโหลดใบงานที่บันทึกไว้ (null = ไม่มี error) */
   plansError: string | null = null;
-  /** TODO(debug): log ชั่วคราวสำหรับแก้ปัญหาโหลดค้างบน production — ลบออกเมื่อเสร็จ */
-  debugLines: string[] = [];
-
-  private dbg(message: string): void {
-    const line = `${new Date().toISOString().slice(11, 19)} ${message}`;
-    this.debugLines.push(line);
-    console.log('[saved-plans]', line);
-  }
   /** โมเดล backend ดิบของแผนที่เลือก — เก็บ geometry เส้นถนนไว้ให้แผนที่ (adapter ทิ้ง field นี้) */
   backendPlan: RoutePlanModel | null = null;
   private candidateBackend: RoutePlanModel | null = null;
@@ -66,31 +58,18 @@ export class DeliveryComponent {
     // เมื่อ usingBackend กลายเป็น true จึงครอบคลุมทั้งเปิดหน้าก่อน/หลัง backend พร้อม
     // (ไม่เช่นนั้นใบงานที่บันทึกไว้จะไม่แสดงจนกว่าจะกดรีเฟรชเอง)
     effect(() => {
-      // TODO(debug): ลบออกพร้อม debugLines
-      if (this.store.usingBackend()) {
-        this.dbg('effect fired: backend ready');
-        // TODO(debug): ทดสอบว่า setTimeout ทำงานใน browser นี้หรือไม่
-        setTimeout(() => this.dbg('TIMER TEST: setTimeout(3s) fired OK'), 3000);
-        this.loadSavedPlans();
-      }
+      if (this.store.usingBackend()) this.loadSavedPlans();
     });
   }
 
-  /** ดึงรายการใบงานที่บันทึกไว้ (backend เท่านั้น) */
+  /** ดึงรายการใบงานที่บันทึกไว้ (backend เท่านั้น) — มี timeout กันโหลดค้าง */
   loadSavedPlans(): void {
     if (!this.store.usingBackend() || !this.routePlans) {
       this.savedPlans = [];
       this.plansError = null;
       return;
     }
-    if (this.loadingPlans) {
-      // TODO(debug): ลบออกพร้อม debugLines
-      this.dbg('skip: already loading');
-      return;
-    }
-    // TODO(debug): log ชุดนี้ชั่วคราวสำหรับแก้ปัญหาโหลดค้างบน production — ลบออกเมื่อเสร็จ
-    const startedAt = Date.now();
-    this.dbg('request started, usingBackend=true');
+    if (this.loadingPlans) return; // กันยิงซ้ำตอนกำลังโหลด
     this.loadingPlans = true;
     this.plansError = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -99,23 +78,20 @@ export class DeliveryComponent {
         finalize(() => {
           if (timer) clearTimeout(timer);
           this.loadingPlans = false;
-          this.dbg(`finalized after ${Date.now() - startedAt}ms`);
         }),
       ).subscribe({
-        next: (plans) => { this.dbg(`success: ${plans.length} plans`); this.savedPlans = plans; },
-        error: (err) => { this.dbg(`error after ${Date.now() - startedAt}ms: ${err?.name ?? err}`); this.savedPlans = []; this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
+        next: (plans) => { this.savedPlans = plans; },
+        error: () => { this.savedPlans = []; this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
       });
-      // manual timeout แทน rxjs timeout (ของเดิมไม่ยิงบน production ด้วยสาเหตุที่ยังไม่ทราบ)
+      // ตัด request ที่ค้างเกิน 15 วิ แล้วแสดงข้อความให้กดรีเฟรชใหม่
       timer = setTimeout(() => {
-        this.dbg(`manual timeout fired after ${Date.now() - startedAt}ms, forcing error state`);
         sub.unsubscribe();
         this.loadingPlans = false;
         this.savedPlans = [];
         this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง';
       }, 15000);
-    } catch (err) {
+    } catch {
       if (timer) clearTimeout(timer);
-      this.dbg(`sync throw: ${err}`);
       this.loadingPlans = false;
       this.savedPlans = [];
       this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง';
