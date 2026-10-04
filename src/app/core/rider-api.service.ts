@@ -38,4 +38,9 @@ export class RidersApiService {
   updateRider(id: number, input: RiderApiInput) {
     return this.http.put<ApiRider>(`${this.url}/${id}`, input);
   }
+
+  // ลบไรเดอร์ตาม id
+  deleteRider(id: number) {
+    return this.http.delete<void>(`${this.url}/${id}`);
+  }
 }

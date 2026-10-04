@@ -45,6 +45,9 @@
             <button class="neu-control min-h-11 rounded-xl px-3 text-sm font-semibold" type="button"
               [disabled]="saving()" (click)="edit(rider)">แก้ไข
             </button>
+            <button class="neu-control min-h-11 rounded-xl px-3 text-sm font-semibold text-red-700" type="button"
+              [disabled]="saving()" (click)="remove(rider)">ลบ
+            </button>
           </div>
         </article>
         } @empty {

@@ -73,6 +73,28 @@ export class RidersComponent implements OnInit {
     this.error.set('');
   }
 
+  remove(rider: ApiRider): void {
+    if (this.saving()) return;
+    if (!window.confirm(`ลบไรเดอร์ ${rider.name} หรือไม่?`)) return;
+    this.saving.set(true);
+    this.error.set('');
+    this.ridersApi.deleteRider(rider.id).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.feedback = `ลบไรเดอร์ ${rider.name} แล้ว`;
+        this.reload();
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.error.set(
+          err?.status === 409
+            ? 'ลบไม่ได้ เพราะไรเดอร์คนนี้มีใบงานหรือข้อมูลการจัดส่งที่อ้างอิงอยู่'
+            : apiErrorMessage(err, 'ลบไรเดอร์ไม่สำเร็จ'),
+        );
+      },
+    });
+  }
+
   save(): void {
     if (this.saving()) return;
     const name = this.draft.name.trim();
