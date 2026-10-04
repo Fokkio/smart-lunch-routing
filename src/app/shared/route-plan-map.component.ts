@@ -35,6 +35,10 @@ const SHOP: LatLng = [16.24631, 103.25286];
           </label>
           <p class="mt-2 text-[13px] text-slate-600">เส้นประ = เส้นทางโดยประมาณ ไม่ใช่เส้นถนนจริง</p>
         </div>
+      } @else if (jobs.length === 1 && !jobs[0]?.geometry) {
+        <div class="neu-panel-soft absolute bottom-6 left-3 z-[500] rounded-xl p-3 text-sm text-slate-700">
+          เส้นประ = เส้นทางโดยประมาณ ไม่ใช่เส้นถนนจริง
+        </div>
       }
     </div>
   `,

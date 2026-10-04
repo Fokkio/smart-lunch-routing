@@ -59,6 +59,8 @@ describe('route-plan-view', () => {
   it('labels road vs approximate routing for the fallback state', () => {
     expect(routingSourceLabel(PLAN)).toContain('OSRM');
     expect(routingSourceLabel({ ...PLAN, routingSource: 'HAVERSINE', approximate: true })).toContain('โดยประมาณ');
+    expect(routingSourceLabel({ ...PLAN, jobs: [{ ...ROAD_JOB, geometry: null }] })).toContain('เส้นบนแผนที่เป็นเส้นประมาณ');
+    expect(routingSourceLabel({ ...PLAN, jobs: [ROAD_JOB, { ...ROAD_JOB, geometry: null }] })).toContain('บางเส้น');
   });
 
   it('reports deadline status factually from backend finish time', () => {

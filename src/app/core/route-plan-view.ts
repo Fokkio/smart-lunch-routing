@@ -46,8 +46,14 @@ export function approximateLine(
 }
 
 export function routingSourceLabel(plan: RoutePlanModel): string {
-  if (plan.routingSource === 'ROAD' && !plan.approximate) return 'เส้นทางถนนจริง (OSRM)';
-  return 'เส้นทางโดยประมาณ (สำรอง)';
+  const roadLines = plan.jobs.filter((job) => job.geometry != null).length;
+  if (plan.routingSource === 'ROAD' && !plan.approximate) {
+    if (roadLines > 0 && roadLines === plan.jobs.length) return 'ระยะทางและเส้นถนนจริง (OSRM)';
+    return roadLines ? 'ระยะทาง OSRM · บางเส้นบนแผนที่เป็นเส้นประมาณ'
+      : 'ระยะทาง OSRM · เส้นบนแผนที่เป็นเส้นประมาณ';
+  }
+  return roadLines ? 'ระยะทางโดยประมาณ · เส้นบนแผนที่บางส่วนมาจาก OSRM'
+    : 'ระยะทางและเส้นทางโดยประมาณ (สำรอง)';
 }
 
 export function deadlineLabel(plan: RoutePlanModel, deadline: string): string {
