@@ -24,7 +24,7 @@
               <p class="mt-2 text-sm text-slate-600">{{ saved.riderCount }} ไรเดอร์ · {{ saved.totalBoxes }} กล่อง · {{ saved.totalDistanceKm | number:'1.1-2' }} กม.</p>
               <p class="mt-1 text-sm font-bold" [class.text-emerald-700]="saved.estimatedProfit >= 0" [class.text-red-700]="saved.estimatedProfit < 0">กำไร {{ saved.estimatedProfit | currency:'THB':'symbol-narrow':'1.0-0' }}</p>
               <div class="mt-3 grid grid-cols-2 gap-2">
-                <button class="neu-control col-span-2 min-h-11 rounded-lg px-3 text-sm font-bold" type="button" [disabled]="loadingPlanDetail && backendPlanId !== saved.routePlanId" (click)="viewSavedPlan(saved.routePlanId!)">{{ backendPlanId === saved.routePlanId ? 'ดูอยู่บนแผนที่' : 'ดูเส้นทาง' }}</button>
+                <button class="neu-control col-span-2 min-h-11 rounded-lg px-3 text-sm font-bold" type="button" [disabled]="loadingPlanDetail" (click)="viewSavedPlan(saved.routePlanId!, false, true)">{{ loadingPlanDetail ? 'กำลังเปิดเส้นทาง...' : backendPlanId === saved.routePlanId ? 'ไปที่แผนที่' : 'ดูเส้นทางบนแผนที่' }}</button>
                 @if (saved.status === 'GENERATED') { <button class="neu-primary min-h-11 rounded-lg px-3 text-sm font-bold" type="button" (click)="viewSavedPlan(saved.routePlanId!, true)">ตรวจทาน</button> }
                 <button class="min-h-11 rounded-lg px-2 text-xs font-bold text-red-700 underline" type="button" (click)="deleteSavedPlan(saved)">ลบ</button>
               </div>
@@ -66,7 +66,7 @@
   </section>
 
   <div class="result-grid grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,.75fr)]">
-    <section class="neu-panel min-w-0 overflow-hidden rounded-xl max-xl:order-2" aria-labelledby="operations-map-title">
+    <section #routeMapPanel tabindex="-1" class="neu-panel min-w-0 overflow-hidden rounded-xl max-xl:order-2" aria-labelledby="operations-map-title">
       <header class="flex min-h-[68px] items-center justify-between gap-4 border-b border-line px-4 py-3">
         <div><h2 id="operations-map-title" class="font-bold">ภาพรวมเส้นทางไรเดอร์</h2></div>
         <a class="neu-control inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold" routerLink="/owner/orders"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>เพิ่มออเดอร์</a>
@@ -77,14 +77,14 @@
         } @else {
           <app-delivery-map [customers]="store.customers()" [routes]="store.plan()?.routes || []" [selectedIndex]="selectedRoute" (selectedIndexChange)="selectedRoute = $event" />
         }
-        <div class="pointer-events-none absolute left-3 top-3 z-[500] inline-flex items-center gap-2 rounded-lg border border-line bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-[0_8px_22px_rgba(38,56,88,.1)]">{{ backendPlanId ? 'แผน #' + backendPlanId + ' · ' + (store.confirmedPlan() ? 'ยืนยันแล้ว' : 'ฉบับร่าง') : loadingPlanDetail ? 'กำลังเปิดเส้นทาง...' : store.plan() ? 'แผนฉบับร่างในเครื่อง' : 'แสดงตำแหน่งลูกค้า' }}</div>
+        <div class="pointer-events-none absolute left-3 top-3 z-[500] inline-flex items-center gap-2 rounded-lg border border-line bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-[0_8px_22px_rgba(38,56,88,.1)]" role="status">{{ loadingPlanDetail ? 'กำลังเปิดเส้นทาง...' : backendPlanId ? 'แผน #' + backendPlanId + ' · ' + (store.confirmedPlan() ? 'ยืนยันแล้ว' : 'ฉบับร่าง') : store.plan() ? 'แผนฉบับร่างในเครื่อง' : 'แสดงตำแหน่งลูกค้า' }}</div>
       </div>
       <footer class="flex min-h-14 flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2 text-sm text-slate-600"><span><strong class="text-slate-700">คำอธิบาย:</strong> ป้าย R01-2 = ไรเดอร์คันที่ 1 จุดส่งที่ 2</span><span>ข้อมูลแผนที่ © OpenStreetMap</span></footer>
     </section>
 
     <aside #dispatchPanel tabindex="-1" class="neu-panel flex min-h-[600px] flex-col overflow-hidden rounded-xl max-xl:order-1" aria-labelledby="dispatch-title">
       <div class="border-b border-line p-4">
-        <h2 id="dispatch-title" class="text-lg font-bold">จัดงานก่อนรถออก</h2>
+        <div class="flex flex-wrap items-center justify-between gap-2"><h2 id="dispatch-title" class="text-lg font-bold">จัดงานก่อนรถออก</h2>@if (backendPlanId !== null && store.confirmedPlan()) { <button class="neu-control min-h-11 rounded-lg px-3 text-sm font-bold" type="button" [disabled]="loadingPlanDetail" (click)="viewSavedPlan(backendPlanId)">{{ loadingPlanDetail ? 'กำลังอัปเดต...' : 'รีเฟรชสถานะส่ง' }}</button> }</div>
         <p class="mt-1 text-sm text-slate-600">คำนวณแผน ตรวจทาน แล้วจึงยืนยันใบงานให้ไรเดอร์</p>
         <div class="mt-4 grid gap-2 sm:grid-cols-[1fr_auto] xl:grid-cols-1 2xl:grid-cols-[1fr_auto]">
           <div class="flex min-h-11 items-center justify-between rounded-lg border border-line bg-white px-3 text-sm"><span class="text-slate-500">ไรเดอร์พร้อมงาน</span><strong class="font-mono">{{ store.plan()?.routes?.length || '—' }}</strong></div>
@@ -150,9 +150,10 @@
             <article class="border-b border-line p-3 last:border-0" [class.opacity-40]="selectedRoute !== null && selectedRoute !== i">
               <div class="flex items-center gap-3"><span class="grid size-9 shrink-0 place-items-center rounded-lg border-2 font-mono text-[13px] font-bold text-ink" [style.background]="'color-mix(in srgb, ' + route.rider.color + ' 12%, white)'" [style.borderColor]="route.rider.color">R{{ String(i + 1).padStart(2, '0') }}</span><span class="min-w-0 flex-1"><strong class="block truncate">{{ route.rider.name }}</strong>@if (store.confirmedPlan()) { <small class="block font-mono text-sm text-slate-700">{{ route.rider.jobCode }}</small> } @else { <small class="block text-sm text-slate-600">รหัสใบงานรอยืนยัน</small> }</span>@if (isLate(route)) { <span class="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">เกิน +{{ lateMinutes(route) }} นาที</span> }<strong class="font-mono text-sm">{{ finishTimeForRoute(route.durationMinutes) }}</strong></div>
               <div class="mt-3 grid grid-cols-3 gap-2 text-[13px]"><span><small class="block text-slate-500">จุดส่ง</small><strong class="font-mono">{{ route.stops.length }} จุด</strong></span><span><small class="block text-slate-500">จำนวน</small><strong class="font-mono">{{ route.totalBoxes }} กล่อง</strong></span><span><small class="block text-slate-500">ระยะทาง</small><strong class="font-mono">{{ route.distanceKm | number:'1.1-2' }} กม.</strong></span></div>
+              <div class="mt-3 flex flex-wrap items-center gap-1.5 text-xs"><span class="font-semibold text-slate-600">ออเดอร์ที่รับผิดชอบ:</span>@for (stop of route.stops; track stop.order.id) { <span class="rounded-md px-2 py-1 font-mono font-bold text-ink" [class.bg-emerald-100]="stop.deliveryStatus === 'DELIVERED'" [class.bg-info-soft]="stop.deliveryStatus !== 'DELIVERED'">#{{ stop.order.id }}{{ stop.deliveryStatus === 'DELIVERED' ? ' ✓' : '' }}</span> }</div>
               <details class="mt-3 rounded-lg border border-line bg-white/60" [open]="isLate(route)">
                 <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-[13px] font-semibold">R{{ String(i + 1).padStart(2, '0') }} · {{ route.rider.name }} · {{ route.stops.length }} จุด · {{ route.distanceKm | number:'1.1-2' }} กม. · ถึง {{ finishTimeForRoute(route.durationMinutes) }}<span class="text-slate-500">{{ isLate(route) ? 'สาย ▼' : '▶' }}</span></summary>
-                <ol class="space-y-1.5 border-t border-line px-3 py-2 text-[13px] text-slate-600">@for (stop of route.stops; track stop.order.id) { <li class="flex gap-2"><span class="font-mono font-bold text-ink">{{ stop.sequence }}</span><span class="truncate">{{ stop.customer.name }}</span><span class="ml-auto font-mono">{{ stop.arrivalTime }}</span></li> }</ol>
+                <ol class="space-y-1.5 border-t border-line px-3 py-2 text-[13px] text-slate-600">@for (stop of route.stops; track stop.order.id) { <li class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="font-mono font-bold text-ink">{{ stop.sequence }}</span><span class="font-mono text-ink">#{{ stop.order.id }}</span><span class="min-w-0 flex-1 truncate">{{ stop.customer.name }}</span><span>{{ stop.arrivalTime }} น.</span>@if (stop.deliveryStatus) { <span class="font-semibold" [class.text-emerald-700]="stop.deliveryStatus === 'DELIVERED'">{{ !store.confirmedPlan() ? 'ยังไม่ยืนยัน' : stop.deliveryStatus === 'DELIVERED' ? 'ส่งแล้ว' : stop.deliveryStatus === 'DELIVERING' ? 'กำลังส่ง' : 'รอส่ง' }}</span> }</li> }</ol>
               </details>
             </article>
           }

@@ -30,6 +30,7 @@ export class DeliveryComponent {
   readonly String = String;
   @ViewChild('candidateBox') private candidateBox?: ElementRef<HTMLElement>;
   @ViewChild('dispatchPanel') private dispatchPanel?: ElementRef<HTMLElement>;
+  @ViewChild('routeMapPanel') private routeMapPanel?: ElementRef<HTMLElement>;
   @ViewChild('ackLate') private ackLateBox?: ElementRef<HTMLInputElement>;
   @ViewChild('ackCandidate') private ackCandidateBox?: ElementRef<HTMLInputElement>;
   candidate: RoutePlan | null = null;
@@ -115,7 +116,7 @@ export class DeliveryComponent {
   }
 
   /** เปิดดูใบงานที่บันทึกไว้ */
-  viewSavedPlan(id: number, review = false): void {
+  viewSavedPlan(id: number, review = false, revealMap = false): void {
     if (!this.routePlans) return;
     const requestId = ++this.viewRequestId;
     this.loadingPlanDetail = true;
@@ -126,6 +127,11 @@ export class DeliveryComponent {
         this.loadingPlanDetail = false;
         this.selectedRoute = null;
         this.adoptBackend(backend);
+        if (revealMap) setTimeout(() => {
+          if (requestId !== this.viewRequestId) return;
+          this.routeMapPanel?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          this.routeMapPanel?.nativeElement.focus({ preventScroll: true });
+        }, 0);
         if (review && backend.status === 'GENERATED') {
           this.startReview();
           setTimeout(() => {

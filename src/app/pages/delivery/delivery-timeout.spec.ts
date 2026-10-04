@@ -21,6 +21,7 @@ describe('DeliveryComponent saved plans loading', () => {
 
   function setup(listReturn: any, backendReady: boolean, selectReturn = NEVER, getReturn: any = NEVER) {
     const usingBackend = signal(backendReady);
+    const plan = signal<any>(null);
     listSpy = vi.fn().mockReturnValue(listReturn);
     getSpy = vi.fn().mockReturnValue(getReturn);
     deleteSpy = vi.fn().mockReturnValue(NEVER);
@@ -29,7 +30,7 @@ describe('DeliveryComponent saved plans loading', () => {
       imports: [DeliveryComponent],
       providers: [
         provideRouter([]),
-        { provide: DeliveryService, useValue: { usingBackend, settings: signal(null), customers: signal([]), orders: signal([]), riders: signal([]), plan: signal(null), confirmedPlan: signal(null), planHistory: signal([]), pendingOrders: () => [], pendingBoxes: () => 0, customerFor: () => null, calculateRoutes: () => {}, choosePlan: () => {}, confirmPlan: confirmSpy } },
+        { provide: DeliveryService, useValue: { usingBackend, settings: signal(null), customers: signal([]), orders: signal([]), riders: signal([]), plan, confirmedPlan: signal(null), planHistory: signal([]), pendingOrders: () => [], pendingBoxes: () => 0, customerFor: () => null, calculateRoutes: () => {}, choosePlan: (value: any) => plan.set(value), confirmPlan: confirmSpy } },
         { provide: RoutePlanApiService, useValue: { list: listSpy, get: getSpy, select: () => selectReturn, delete: deleteSpy, generate: () => NEVER, recalculate: () => NEVER } },
       ],
     });
@@ -79,7 +80,8 @@ describe('DeliveryComponent saved plans loading', () => {
     expect(getSpy).toHaveBeenCalledWith(5);
   });
 
-  it('opens a saved draft automatically so the map can use its road geometry', () => {
+  it('opens a saved draft automatically and reveals its map only after a user click', async () => {
+    vi.useFakeTimers();
     const geometry = { type: 'LineString', coordinates: [[103.25286, 16.24631], [103.2531, 16.2469]] };
     setup(of([{ routePlanId: 12, status: 'GENERATED' }]), true, NEVER, of({
       routePlanId: 12, planDate: '2026-10-04', status: 'GENERATED', routingSource: 'ROAD',
@@ -96,6 +98,16 @@ describe('DeliveryComponent saved plans loading', () => {
     expect(getSpy).toHaveBeenCalledWith(12);
     expect(component.backendPlanId).toBe(12);
     expect(component.mapJobs()?.[0]?.geometry).toEqual(geometry);
+    expect(component.store.plan()?.routes[0]?.stops[0]?.deliveryStatus).toBe('WAITING');
+    const panel = fixture.nativeElement.querySelector('[aria-labelledby="operations-map-title"]');
+    const scroll = vi.fn();
+    panel.scrollIntoView = scroll;
+    await vi.advanceTimersByTimeAsync(0);
+    expect(scroll).not.toHaveBeenCalled();
+    component.viewSavedPlan(12, false, true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(scroll).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(panel);
   });
 
   it('does not show a confirmed plan when the backend rejects selection', () => {

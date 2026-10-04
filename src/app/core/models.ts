@@ -31,6 +31,7 @@ export interface RouteStop {
   sequence: number;
   distanceFromPreviousKm: number;
   arrivalTime: string;
+  deliveryStatus?: 'WAITING' | 'DELIVERING' | 'DELIVERED';
 }
 
 export interface RiderRoute {

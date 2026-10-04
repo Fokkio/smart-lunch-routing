@@ -91,6 +91,7 @@ function adaptJob(
       sequence: s.sequence,
       distanceFromPreviousKm: s.distanceFromPreviousKm,
       arrivalTime: s.estimatedArrivalTime,
+      deliveryStatus: s.deliveryStatus,
     };
   });
 

@@ -40,19 +40,6 @@ const SHOP: LatLng = [16.24631, 103.25286];
           เส้นประ = เส้นทางโดยประมาณ ไม่ใช่เส้นถนนจริง
         </div>
       }
-      @if (!compact && hasStops()) {
-        <label class="neu-panel-soft absolute right-3 top-16 z-[500] max-w-[min(270px,calc(100%-24px))] rounded-xl p-2 text-sm font-semibold">
-          เส้นทางออเดอร์
-          <select class="neu-field mt-1 min-h-11 w-full rounded-lg px-2" [ngModel]="selectedOrderId" (ngModelChange)="onOrderChange($event)">
-            <option [ngValue]="null">ทุกออเดอร์</option>
-            @for (job of jobs; track $index) {
-              @for (stop of job.stops; track stop.orderId) {
-                <option [ngValue]="stop.orderId">#{{ stop.orderId }} · {{ stop.customerName }}</option>
-              }
-            }
-          </select>
-        </label>
-      }
     </div>
   `,
   styles: [`.route-plan-map { width: 100%; height: 100%; min-height: 420px; background: #f7f6f3; } .route-plan-map.compact { min-height: 260px; }`],
@@ -64,7 +51,6 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
   @Input() selectedJob: number | null = null;
   @Output() selectedJobChange = new EventEmitter<number | null>();
   @Input() selectedOrderId: number | null = null;
-  @Output() selectedOrderIdChange = new EventEmitter<number | null>();
   /** ชื่อไรเดอร์ตามลำดับใบงาน (จาก parent) — ใช้ป้ายเดียวกับการ์ด */
   @Input() riderNames: string[] = [];
   readonly tilesUnavailable = signal(false);
@@ -102,19 +88,7 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
   }
 
   onFilterChange(value: number | null): void {
-    this.selectedOrderId = null;
-    this.selectedOrderIdChange.emit(null);
     this.selectedJobChange.emit(value);
-    this.render();
-  }
-
-  onOrderChange(value: number | null): void {
-    if (value !== null) {
-      this.selectedJob = null;
-      this.selectedJobChange.emit(null);
-    }
-    this.selectedOrderId = value;
-    this.selectedOrderIdChange.emit(value);
     this.render();
   }
 
@@ -122,7 +96,6 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
     return this.riderNames[index] ?? `ไรเดอร์ ${index + 1}`;
   }
 
-  hasStops(): boolean { return this.jobs.some(job => job.stops.length > 0); }
   hasApproximateLegs(): boolean { return this.jobs.some(job => job.stops.some(stop => !stop.geometry)); }
 
   private effectiveSelected(): number | null {
@@ -154,7 +127,7 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
         if (!legacyRoad) L.polyline(leg.points, {
           color, weight: this.selectedOrderId === stop.orderId ? 7 : 5,
           opacity: 0.9, dashArray: leg.approximate ? '8 8' : undefined,
-        }).bindPopup(`ออเดอร์ #${stop.orderId} · ${leg.approximate ? 'เส้นทางโดยประมาณ' : 'เส้นถนนตามแผน'}`).addTo(this.layer!);
+        }).bindPopup(`ไรเดอร์ ${index + 1} · จุดส่ง ${stop.sequence} (#${stop.orderId}) · ${leg.approximate ? 'เส้นทางโดยประมาณ' : 'เส้นถนนตามแผน'}`).addTo(this.layer!);
         const popup = document.createElement('div');
         popup.style.whiteSpace = 'pre-line';
         popup.textContent = `${stop.sequence}. ${stop.customerName}\nออเดอร์ #${stop.orderId} · ${stop.boxCount} กล่อง\n${stop.address ?? ''}\nถึงโดยประมาณ ${stop.estimatedArrivalTime} น.`;
