@@ -69,14 +69,17 @@ export class DeliveryComponent {
       this.plansError = null;
       return;
     }
+    // TODO(debug): ลบ log ชุดนี้ออกเมื่อแก้ปัญหาโหลดค้างบน production เสร็จ
+    const startedAt = Date.now();
+    console.log('[saved-plans] request started, usingBackend=true');
     this.loadingPlans = true;
     this.plansError = null;
     this.routePlans.list(todayLocal()).pipe(
       timeout(15000),
-      finalize(() => { this.loadingPlans = false; }),
+      finalize(() => { this.loadingPlans = false; console.log(`[saved-plans] finalized after ${Date.now() - startedAt}ms`); }),
     ).subscribe({
-      next: (plans) => { this.savedPlans = plans; },
-      error: () => { this.savedPlans = []; this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
+      next: (plans) => { console.log(`[saved-plans] success: ${plans.length} plans`); this.savedPlans = plans; },
+      error: (err) => { console.warn(`[saved-plans] error after ${Date.now() - startedAt}ms:`, err?.name ?? err); this.savedPlans = []; this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
     });
   }
 
