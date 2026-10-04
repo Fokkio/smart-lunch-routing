@@ -45,8 +45,7 @@ export class CustomersComponent implements OnInit {
   }
 
   // ใช้ทั้งตอนเปิดหน้าและตอนกดค้นหา
-  loadCustomers(): void {
-    this.loadingCustomers.set(true);
+  loadCustomers(): void {    this.loadingCustomers.set(true);
     this.loadCustomersError.set('');
 
     this.customerApi.getCustomers(this.query).subscribe({
@@ -76,6 +75,15 @@ export class CustomersComponent implements OnInit {
   filteredCustomers(): Customer[] {
     // backend ค้นให้แล้ว แสดงรายการที่ตอบกลับได้เลย
     return this.apiCustomers();
+  }
+
+  private searchTimer?: ReturnType<typeof setTimeout>;
+
+  // ค้นหาแบบ live ขณะพิมพ์ (debounce) ให้เหมือนหน้าออเดอร์
+  onQueryChange(): void {
+    clearTimeout(this.searchTimer);
+    if (this.loadingCustomers() || this.savingCustomer() || this.deletingCustomerId() !== null) return;
+    this.searchTimer = setTimeout(() => this.loadCustomers(), 400);
   }
 
   // เลือกตำแหน่งจากลูกค้าที่โหลดมาแล้ว

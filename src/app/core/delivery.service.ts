@@ -313,10 +313,9 @@ export class DeliveryService {
     const totalBoxes = orders.reduce((sum, order) => sum + order.boxes, 0);
     const distanceKm = this.round(totalDistance);
     const durationMinutes = Math.ceil(distanceKm / 30 * 60);
-    // สูตรเดียวกับ backend cost-calculator (riderBaseCost + km × riderCostPerKm) —
-    // สูตรเก่า (15 + 2×km×กล่อง) เลิกใช้แล้วเพราะ backend ไม่คูณตามกล่อง
+    // สูตรเดียวกับ backend cost-calculator: ฐาน + กม. × ต่อกม.ต่อกล่อง × จำนวนกล่อง (ตามสเปก Project.pdf)
     const pricing = this.settings();
-    const deliveryCost = this.round((pricing?.riderBaseCost ?? 15) + distanceKm * (pricing?.riderCostPerKm ?? 4));
+    const deliveryCost = this.round((pricing?.riderBaseCost ?? 15) + distanceKm * (pricing?.riderCostPerKm ?? 2) * totalBoxes);
     const revenue = totalBoxes * (pricing?.boxSalePrice ?? 65);
     const foodCost = totalBoxes * (pricing?.boxFoodCost ?? 40);
     return {

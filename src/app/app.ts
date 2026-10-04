@@ -19,6 +19,7 @@ export class App implements OnInit {
   pageTitle(): string {
     if (this.router.url.includes('/customers')) return 'ข้อมูลลูกค้า';
     if (this.router.url.includes('/orders')) return 'ออเดอร์วันนี้';
+    if (this.router.url.includes('/riders')) return 'จัดการไรเดอร์';
     return 'ศูนย์จัดส่งวันนี้';
   }
 }

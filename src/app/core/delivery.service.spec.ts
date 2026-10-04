@@ -34,8 +34,8 @@ describe('DeliveryService route planning', () => {
     expect(plan.foodCost).toBe(service.pendingBoxes() * 40);
     expect(plan.profit).toBeCloseTo(plan.revenue - plan.foodCost - plan.deliveryCost, 2);
     for (const route of plan.routes) {
-      // สูตรเดียวกับ backend cost-calculator: ฐาน + กม. × ต่อกม. (ไม่คูณตามกล่อง)
-      expect(route.deliveryCost).toBeCloseTo(15 + 4 * route.distanceKm, 2);
+      // สูตรเดียวกับ backend cost-calculator: ฐาน + กม. × ต่อกม.ต่อกล่อง × จำนวนกล่อง
+      expect(route.deliveryCost).toBeCloseTo(15 + 2 * route.distanceKm * route.totalBoxes, 2);
     }
   });
 
@@ -125,7 +125,7 @@ describe('DeliveryService route planning', () => {
     const apiSettings = {
       settingId: 1, shopName: 'ครัวเที่ยงตรง', latitude: 16.24631, longitude: 103.25286,
       deliveryStartTime: '11:30:00', deliveryDeadline: '12:30:00', maxOrdersPerRider: 3,
-      riderSpeedKmh: 30, boxSalePrice: 65, boxFoodCost: 40, riderBaseCost: 15, riderCostPerKm: 4,
+      riderSpeedKmh: 30, boxSalePrice: 65, boxFoodCost: 40, riderBaseCost: 15, riderCostPerKm: 2,
     };
 
     it('replaces demo data with backend data on connect', () => {

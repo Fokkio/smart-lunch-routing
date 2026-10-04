@@ -32,7 +32,7 @@
   </section>
 
   <div class="result-grid grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,.75fr)]">
-    <section class="neu-panel min-w-0 overflow-hidden rounded-xl" aria-labelledby="operations-map-title">
+    <section class="neu-panel min-w-0 overflow-hidden rounded-xl max-xl:order-2" aria-labelledby="operations-map-title">
       <header class="flex min-h-[68px] items-center justify-between gap-4 border-b border-line px-4 py-3">
         <div><h2 id="operations-map-title" class="font-bold">ภาพรวมเส้นทางไรเดอร์</h2></div>
         <a class="neu-control inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold" routerLink="/owner/orders"><svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>เพิ่มออเดอร์</a>
@@ -48,7 +48,7 @@
       <footer class="flex min-h-14 flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2 text-sm text-slate-600"><span><strong class="text-slate-700">คำอธิบาย:</strong> ป้าย R01-2 = ไรเดอร์คันที่ 1 จุดส่งที่ 2</span><span>ข้อมูลแผนที่ © OpenStreetMap</span></footer>
     </section>
 
-    <aside class="neu-panel flex min-h-[600px] flex-col overflow-hidden rounded-xl" aria-labelledby="dispatch-title">
+    <aside class="neu-panel flex min-h-[600px] flex-col overflow-hidden rounded-xl max-xl:order-1" aria-labelledby="dispatch-title">
       <div class="border-b border-line p-4">
         <h2 id="dispatch-title" class="text-lg font-bold">จัดงานก่อนรถออก</h2>
         <p class="mt-1 text-sm text-slate-600">คำนวณแผน ตรวจทาน แล้วจึงยืนยันใบงานให้ไรเดอร์</p>

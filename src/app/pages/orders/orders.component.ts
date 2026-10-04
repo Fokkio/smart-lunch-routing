@@ -106,7 +106,11 @@ export class OrdersComponent {
     if (!window.confirm(`ลบออเดอร์ ${order.id} หรือไม่?`)) return;
     this.ordersApi.delete(order.id).subscribe({
       next: () => { this.feedback = `ลบออเดอร์ ${order.id} แล้ว`; this.reload(); },
-      error: err => this.error.set(apiErrorMessage(err, 'ลบออเดอร์ไม่สำเร็จ')),
+      error: err => this.error.set(
+        err?.status === 409
+          ? 'ลบไม่ได้ เพราะออเดอร์นี้อยู่ในใบงานที่ยืนยันแล้ว'
+          : apiErrorMessage(err, 'ลบออเดอร์ไม่สำเร็จ'),
+      ),
     });
   }
   private blankDraft(): Draft { return { customerId: null, boxes: 1, status: 'PENDING' }; }

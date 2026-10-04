@@ -3,7 +3,7 @@
     <header class="flex items-center gap-3 border-b border-white/70 px-5 py-4"><img class="size-10" src="assets/brand/krua-thiang-trong-mark.svg" width="40" height="40" alt="" role="presentation" /><div><strong class="block">ครัวเที่ยงตรง</strong><small class="text-slate-600">ใบงานจัดส่งจากระบบ</small></div></header>
     @if (stage === 'entry') {
       <section class="entry-panel p-5 sm:p-7"><h1 class="text-2xl font-bold">เปิดใบงานจัดส่ง</h1><p class="mt-1 text-slate-500">กรอกเลขใบงานที่ได้รับจากเจ้าของร้าน</p>
-        <form class="mt-6 space-y-4" (ngSubmit)="openJob()"><label class="block text-sm font-semibold" for="jobCode">เลขใบงาน</label><input class="neu-field min-h-12 w-full rounded-xl px-4 text-base uppercase" id="jobCode" name="jobCode" [(ngModel)]="jobCode" placeholder="เลขใบงานจากแผนที่เลือก" autocomplete="off" autocapitalize="characters" /><button class="neu-primary min-h-12 w-full rounded-xl px-5 font-bold" type="submit">ดูใบงาน</button></form>
+        <form class="mt-6 space-y-4" (ngSubmit)="openJob()"><label class="block text-sm font-semibold" for="jobCode">เลขใบงาน</label><input class="neu-field min-h-12 w-full rounded-xl px-4 text-base uppercase" id="jobCode" name="jobCode" [(ngModel)]="jobCode" placeholder="เช่น P12-R1" autocomplete="off" autocapitalize="characters" /><button class="neu-primary min-h-12 w-full rounded-xl px-5 font-bold" type="submit">ดูใบงาน</button></form>
         @if (errorMessage) { <div class="mt-4 rounded-xl bg-red-50 p-4 text-red-900" role="alert" aria-live="assertive"><strong>เปิดใบงานไม่ได้</strong><p class="text-sm">{{ errorMessage }}</p><button class="mt-2 min-h-11 font-bold underline" type="button" (click)="errorMessage = ''; jobCode = ''">ลองใหม่</button></div> }
 
       </section>
