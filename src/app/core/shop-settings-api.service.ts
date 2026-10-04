@@ -29,4 +29,8 @@ export class ShopSettingsApiService {
   get(): Observable<ShopSettings> {
     return this.http.get<ShopSettings>(this.url);
   }
+
+  update(settings: Partial<ShopSettings>): Observable<ShopSettings> {
+    return this.http.put<ShopSettings>(this.url, settings);
+  }
 }

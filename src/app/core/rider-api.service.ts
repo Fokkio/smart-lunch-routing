@@ -43,4 +43,8 @@ export class RidersApiService {
   deleteRider(id: number) {
     return this.http.delete<void>(`${this.url}/${id}`);
   }
+
+  setPassword(id: number, password: string) {
+    return this.http.put<void>(`${this.url}/${id}/password`, { password });
+  }
 }

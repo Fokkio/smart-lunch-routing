@@ -29,6 +29,7 @@ export class CustomersComponent implements OnInit {
 
   query = '';
   placeQuery = '';
+  showOverviewMap = false;
   showForm = false;
   showCoordinates = false;
   locationSelected = false;
