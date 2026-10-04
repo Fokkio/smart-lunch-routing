@@ -49,6 +49,14 @@ export class DeliveryComponent {
   loadingPlans = false;
   /** ข้อความ error ตอนโหลดใบงานที่บันทึกไว้ (null = ไม่มี error) */
   plansError: string | null = null;
+  /** TODO(debug): log ชั่วคราวสำหรับแก้ปัญหาโหลดค้างบน production — ลบออกเมื่อเสร็จ */
+  debugLines: string[] = [];
+
+  private dbg(message: string): void {
+    const line = `${new Date().toISOString().slice(11, 19)} ${message}`;
+    this.debugLines.push(line);
+    console.log('[saved-plans]', line);
+  }
   /** โมเดล backend ดิบของแผนที่เลือก — เก็บ geometry เส้นถนนไว้ให้แผนที่ (adapter ทิ้ง field นี้) */
   backendPlan: RoutePlanModel | null = null;
   private candidateBackend: RoutePlanModel | null = null;
@@ -58,7 +66,8 @@ export class DeliveryComponent {
     // เมื่อ usingBackend กลายเป็น true จึงครอบคลุมทั้งเปิดหน้าก่อน/หลัง backend พร้อม
     // (ไม่เช่นนั้นใบงานที่บันทึกไว้จะไม่แสดงจนกว่าจะกดรีเฟรชเอง)
     effect(() => {
-      if (this.store.usingBackend()) this.loadSavedPlans();
+      // TODO(debug): ลบออกพร้อม debugLines
+      if (this.store.usingBackend()) { this.dbg('effect fired: backend ready'); this.loadSavedPlans(); }
     });
   }
 
@@ -71,15 +80,15 @@ export class DeliveryComponent {
     }
     // TODO(debug): ลบ log ชุดนี้ออกเมื่อแก้ปัญหาโหลดค้างบน production เสร็จ
     const startedAt = Date.now();
-    console.log('[saved-plans] request started, usingBackend=true');
+    this.dbg('request started, usingBackend=true');
     this.loadingPlans = true;
     this.plansError = null;
     this.routePlans.list(todayLocal()).pipe(
       timeout(15000),
-      finalize(() => { this.loadingPlans = false; console.log(`[saved-plans] finalized after ${Date.now() - startedAt}ms`); }),
+      finalize(() => { this.loadingPlans = false; this.dbg(`finalized after ${Date.now() - startedAt}ms`); }),
     ).subscribe({
-      next: (plans) => { console.log(`[saved-plans] success: ${plans.length} plans`); this.savedPlans = plans; },
-      error: (err) => { console.warn(`[saved-plans] error after ${Date.now() - startedAt}ms:`, err?.name ?? err); this.savedPlans = []; this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
+      next: (plans) => { this.dbg(`success: ${plans.length} plans`); this.savedPlans = plans; },
+      error: (err) => { this.dbg(`error after ${Date.now() - startedAt}ms: ${err?.name ?? err}`); this.savedPlans = []; this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
     });
   }
 
