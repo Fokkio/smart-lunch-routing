@@ -67,7 +67,12 @@ export class DeliveryComponent {
     // (ไม่เช่นนั้นใบงานที่บันทึกไว้จะไม่แสดงจนกว่าจะกดรีเฟรชเอง)
     effect(() => {
       // TODO(debug): ลบออกพร้อม debugLines
-      if (this.store.usingBackend()) { this.dbg('effect fired: backend ready'); this.loadSavedPlans(); }
+      if (this.store.usingBackend()) {
+        this.dbg('effect fired: backend ready');
+        // TODO(debug): ทดสอบว่า setTimeout ทำงานใน browser นี้หรือไม่
+        setTimeout(() => this.dbg('TIMER TEST: setTimeout(3s) fired OK'), 3000);
+        this.loadSavedPlans();
+      }
     });
   }
 
