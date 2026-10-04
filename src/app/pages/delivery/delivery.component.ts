@@ -2,7 +2,7 @@ import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Component, ElementRef, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { finalize, timeout } from 'rxjs';
+import { finalize } from 'rxjs';
 import { todayLocal } from '../../core/backend-api.service';
 import { DeliveryService } from '../../core/delivery.service';
 import { RiderRoute, RoutePlan } from '../../core/models';
@@ -71,25 +71,50 @@ export class DeliveryComponent {
     });
   }
 
-  /** ดึงรายการใบงานที่บันทึกไว้ (backend เท่านั้น) — มี timeout กันโหลดค้าง */
+  /** ดึงรายการใบงานที่บันทึกไว้ (backend เท่านั้น) */
   loadSavedPlans(): void {
     if (!this.store.usingBackend() || !this.routePlans) {
       this.savedPlans = [];
       this.plansError = null;
       return;
     }
-    // TODO(debug): ลบ log ชุดนี้ออกเมื่อแก้ปัญหาโหลดค้างบน production เสร็จ
+    if (this.loadingPlans) {
+      // TODO(debug): ลบออกพร้อม debugLines
+      this.dbg('skip: already loading');
+      return;
+    }
+    // TODO(debug): log ชุดนี้ชั่วคราวสำหรับแก้ปัญหาโหลดค้างบน production — ลบออกเมื่อเสร็จ
     const startedAt = Date.now();
     this.dbg('request started, usingBackend=true');
     this.loadingPlans = true;
     this.plansError = null;
-    this.routePlans.list(todayLocal()).pipe(
-      timeout(15000),
-      finalize(() => { this.loadingPlans = false; this.dbg(`finalized after ${Date.now() - startedAt}ms`); }),
-    ).subscribe({
-      next: (plans) => { this.dbg(`success: ${plans.length} plans`); this.savedPlans = plans; },
-      error: (err) => { this.dbg(`error after ${Date.now() - startedAt}ms: ${err?.name ?? err}`); this.savedPlans = []; this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
-    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const sub = this.routePlans.list(todayLocal()).pipe(
+        finalize(() => {
+          if (timer) clearTimeout(timer);
+          this.loadingPlans = false;
+          this.dbg(`finalized after ${Date.now() - startedAt}ms`);
+        }),
+      ).subscribe({
+        next: (plans) => { this.dbg(`success: ${plans.length} plans`); this.savedPlans = plans; },
+        error: (err) => { this.dbg(`error after ${Date.now() - startedAt}ms: ${err?.name ?? err}`); this.savedPlans = []; this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง'; },
+      });
+      // manual timeout แทน rxjs timeout (ของเดิมไม่ยิงบน production ด้วยสาเหตุที่ยังไม่ทราบ)
+      timer = setTimeout(() => {
+        this.dbg(`manual timeout fired after ${Date.now() - startedAt}ms, forcing error state`);
+        sub.unsubscribe();
+        this.loadingPlans = false;
+        this.savedPlans = [];
+        this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง';
+      }, 15000);
+    } catch (err) {
+      if (timer) clearTimeout(timer);
+      this.dbg(`sync throw: ${err}`);
+      this.loadingPlans = false;
+      this.savedPlans = [];
+      this.plansError = 'โหลดใบงานไม่สำเร็จ ลองกดรีเฟรชอีกครั้ง';
+    }
   }
 
   planStatusLabel(status: RoutePlanStatus): string {
