@@ -1,6 +1,18 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild } from '@angular/core';
 import * as L from 'leaflet';
-import { Customer, RiderRoute, SHOP } from '../core/models';
+import { RiderRoute, SHOP } from '../core/models';
+
+/**
+ * Minimum customer shape the map renders (name + pin). Both the API-backed
+ * `ApiCustomer` (`address: string | null`, numeric id) and the legacy demo
+ * `Customer` satisfy it, so one input serves either source.
+ */
+export interface MapCustomer {
+  name: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+}
 
 @Component({
   selector: 'app-delivery-map',
@@ -9,7 +21,7 @@ import { Customer, RiderRoute, SHOP } from '../core/models';
   styles: [`.delivery-map { width: 100%; height: 100%; min-height: 420px; background: #f7f6f3; }`],
 })
 export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy {
-  @Input() customers: Customer[] = [];
+  @Input() customers: MapCustomer[] = [];
   @Input() routes: RiderRoute[] = [];
   @Input() compact = false;
   @Input() pickable = false;
@@ -62,7 +74,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
       this.customers.forEach((customer) => {
         L.circleMarker([customer.lat, customer.lng], {
           radius: 6, color: '#787774', fillColor: '#ffffff', fillOpacity: 1, weight: 2,
-        }).bindPopup(this.popup(customer.name, customer.address)).addTo(this.layer!);
+        }).bindPopup(this.popup(customer.name, customer.address ?? '')).addTo(this.layer!);
       });
     }
 

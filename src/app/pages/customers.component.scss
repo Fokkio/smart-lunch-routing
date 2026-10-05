@@ -22,6 +22,9 @@
 .row-actions .delete-action { color: var(--red-text); }
 .no-results { padding: 52px 24px; text-align: center; }
 .no-results p { margin: 6px 0 0; color: var(--muted); }
+.list-status { display: flex; gap: 12px; align-items: baseline; margin: 0; padding: 16px 24px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+.list-status.list-error { color: var(--red-text); }
+.row-actions button:disabled { cursor: default; opacity: .55; }
 .panel-heading { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--line); }
 .panel-heading h2 { margin: 0; font-size: 20px; }
 form { display: grid; gap: 16px; padding: 24px; }
