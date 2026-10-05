@@ -6,6 +6,43 @@ import {vi,afterEach} from 'vitest';
 
 describe('Rider assigned jobs', () => {
   afterEach(()=>vi.useRealTimers());
+  it('searches only API-assigned job codes with case/space normalization and a no-match state', () => {
+    TestBed.configureTestingModule({ imports: [RiderComponent], providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(RiderComponent);
+    fixture.detectChanges();
+    const item = (code: string, id: number) => ({planId: 5, shop: {latitude: 16, longitude: 103, deliveryDeadline: '12:30'}, job: {jobId: id, jobCode: code, status: 'WAITING', totalBoxes: 1, distanceKm: 1, stops: []}});
+    http.expectOne(req => req.url === '/api/my-jobs').flush([item('P123-R1', 1), item('P124-R2', 2)]);
+    const rider = fixture.componentInstance;
+    rider.jobQuery = '  p123-r1  ';
+    expect(rider.filteredJobs().map(item => item.job.jobCode)).toEqual(['P123-R1']);
+    rider.jobQuery = 'P999-R9';
+    expect(rider.filteredJobs()).toEqual([]);
+    fixture.changeDetectorRef.markForCheck(); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('ไม่พบรหัสใบงานนี้');
+    rider.jobQuery = '  ';
+    expect(rider.filteredJobs()).toHaveLength(2);
+    fixture.destroy(); http.verify(); // Searching never requests an arbitrary job-code endpoint.
+  });
+
+  it('restores delivered stops from a fresh API load and resumes at the next stop', () => {
+    TestBed.configureTestingModule({ imports: [RiderComponent], providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(RiderComponent);
+    fixture.detectChanges();
+    http.expectOne(req => req.url === '/api/my-jobs').flush([{
+      planId: 5, shop: {latitude: 16, longitude: 103, deliveryDeadline: '12:30'}, job: {
+        jobId: 7, jobCode: 'P5-R1', status: 'DELIVERING', acknowledgedAt: '2026-10-05T00:00:00Z',
+        stops: [{orderId: 10, deliveryStatus: 'DELIVERED', latitude: 16.1, longitude: 103.1}, {orderId: 11, deliveryStatus: 'WAITING', latitude: 16.2, longitude: 103.2}],
+      },
+    }]);
+    const rider = fixture.componentInstance;
+    rider.selectJob(rider.jobs[0]);
+    expect(rider.stage).toBe('delivery');
+    expect(rider.stopIndex).toBe(1);
+    expect(new URL(rider.navigationUrl!).searchParams.get('destination')).toBe('16.2,103.2');
+    fixture.destroy(); http.verify();
+  });
   it('refreshes the visible waiting screen, announces new jobs and stops on destroy',async()=>{
     vi.useFakeTimers();
     Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});

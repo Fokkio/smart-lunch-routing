@@ -30,6 +30,11 @@ export class RiderComponent implements OnInit {
   get unreadJobs():number { return this.jobs.filter(item=>!item.job.acknowledgedAt&&item.job.status!=='COMPLETED').length; }
   readonly shopPoint = signal<[number, number]>([SHOP.lat, SHOP.lng]);
   jobs: Array<{ planId: number; job: DeliveryRouteModel; shop: { latitude: number; longitude: number; deliveryDeadline: string } }> = [];
+  jobQuery = '';
+  filteredJobs() {
+    const query = this.jobQuery.trim().toLowerCase();
+    return this.jobs.filter(item => (item.job.jobCode ?? '').toLowerCase().includes(query));
+  }
   deliveryDeadline = '';
   activeRoute: DeliveryRouteModel | null = null;
   mapJobs: DeliveryRouteModel[] = [];

@@ -89,8 +89,8 @@ export class OrdersComponent {
   customerFor(order: ApiOrder): ApiCustomer | undefined { return this.customers().find((customer) => customer.id === order.customerId); }
   statusLabel(status: ApiOrderStatus): string { return { PENDING: 'รอจัดส่ง', PLANNED: 'จัดงานแล้ว', DELIVERING: 'กำลังส่ง', DELIVERED: 'ส่งสำเร็จ', CANCELLED: 'ยกเลิก' }[status]; }
 
-  startCreate(): void { this.draft = this.blankDraft(); this.customerQuery = ''; this.showForm = true; }
-  edit(order: ApiOrder): void { this.draft = { id: order.id, customerId: order.customerId, boxes: order.boxes, status: order.status }; this.customerQuery = ''; this.showForm = true; }
+  startCreate(): void { this.feedback = ''; this.draft = this.blankDraft(); this.customerQuery = ''; this.showForm = true; }
+  edit(order: ApiOrder): void { this.feedback = ''; this.draft = { id: order.id, customerId: order.customerId, boxes: order.boxes, status: order.status }; this.customerQuery = ''; this.showForm = true; }
   cancel(): void { this.showForm = false; }
   chooseCustomer(customer: ApiCustomer): void { this.draft.customerId = customer.id; this.customerQuery = ''; }
   adjustBoxes(step: number): void { this.draft.boxes = Math.max(1, Math.min(3, this.draft.boxes + step)); }

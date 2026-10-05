@@ -27,5 +27,11 @@ describe('OrdersComponent radius search',()=>{
     expect(fixture.nativeElement.textContent).toContain('2026-09-30');
     page.clearNearby();
     expect(api.list).toHaveBeenLastCalledWith(page.today);
+    page.feedback = 'บันทึกออเดอร์แล้ว';
+    page.startCreate();
+    expect(page.feedback).toBe('');
+    page.feedback = 'บันทึกออเดอร์แล้ว';
+    page.edit({id:7,customerId:3,boxes:1,status:'CANCELLED',orderDate:'2026-09-30',isSimulated:false});
+    expect(page.feedback).toBe('');
   });
 });
