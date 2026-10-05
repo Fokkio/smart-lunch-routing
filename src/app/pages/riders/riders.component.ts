@@ -21,6 +21,7 @@ export class RidersComponent implements OnInit {
   showForm = false;
   feedback = '';
   accountRider: ApiRider | null = null;
+  accountUsername = '';
   newPassword = '';
   draft: Draft = this.blankDraft();
 
@@ -51,7 +52,7 @@ export class RidersComponent implements OnInit {
     const term = this.query.trim().toLowerCase();
     if (!term) return this.riders();
     return this.riders().filter((rider) =>
-      `${rider.name} ${rider.phone ?? ''}`.toLowerCase().includes(term),
+      `${rider.name} ${rider.username ?? ''} ${rider.phone ?? ''}`.toLowerCase().includes(term),
     );
   }
 
@@ -69,15 +70,18 @@ export class RidersComponent implements OnInit {
     this.showForm = true;
   }
 
-  openAccount(rider: ApiRider): void { this.accountRider = rider; this.newPassword = ''; this.error.set(''); }
+  openAccount(rider: ApiRider): void { this.accountRider = rider; this.accountUsername = rider.username ?? ''; this.newPassword = ''; this.error.set(''); }
 
   saveAccount(): void {
-    if (!this.accountRider || this.newPassword.length < 12 || this.saving()) return;
+    const username = this.accountUsername.trim().toLowerCase();
+    if (!this.accountRider || !/^[a-z][a-z0-9._-]{2,39}$/.test(username) ||
+        (this.newPassword.length > 0 && this.newPassword.length < 12) ||
+        (!this.accountRider.hasPassword && !this.newPassword) || this.saving()) return;
     this.saving.set(true);
     this.error.set('');
-    this.ridersApi.setPassword(this.accountRider.id, this.newPassword).subscribe({
-      next: () => { this.saving.set(false); this.feedback = `ตั้งรหัสผ่านให้ ${this.accountRider?.name} แล้ว`; this.accountRider = null; this.newPassword = ''; },
-      error: () => { this.saving.set(false); this.error.set('ตั้งรหัสผ่านไม่สำเร็จ'); },
+    this.ridersApi.setAccount(this.accountRider.id, username, this.newPassword || undefined).subscribe({
+      next: () => { this.saving.set(false); this.feedback = `บันทึกบัญชีของ ${this.accountRider?.name} แล้ว`; this.accountRider = null; this.newPassword = ''; this.reload(); },
+      error: (err) => { this.saving.set(false); this.error.set(err?.status === 409 ? 'ชื่อผู้ใช้นี้ถูกใช้แล้ว' : apiErrorMessage(err, 'บันทึกบัญชีไม่สำเร็จ')); },
     });
   }
 
