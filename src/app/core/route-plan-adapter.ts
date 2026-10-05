@@ -25,7 +25,7 @@ export function adaptBackendPlan(
   lookup: BackendPlanLookup,
   shop: ShopTime = { deadlineTime: '12:30' },
 ): RoutePlan {
-  shop = { deadlineTime: plan.shop?.deliveryDeadline.slice(0, 5) ?? shop.deadlineTime };
+  shop = { deadlineTime: plan.deliveryDeadline ?? plan.shop?.deliveryDeadline.slice(0, 5) ?? shop.deadlineTime };
   const riderById = new Map(lookup.riders.map((r) => [r.id, r]));
 
   const routes: RiderRoute[] = plan.jobs.map((job, index) =>
@@ -33,6 +33,8 @@ export function adaptBackendPlan(
   );
 
   return {
+    startTime: plan.startTime,
+    deliveryDeadline: plan.deliveryDeadline,
     shop: plan.shop,
     estimatedFinishTime: plan.estimatedFinishTime,
     version: plan.routePlanId ?? 1,

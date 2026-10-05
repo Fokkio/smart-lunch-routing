@@ -2,8 +2,27 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { RiderComponent } from './rider.component';
+import {vi,afterEach} from 'vitest';
 
 describe('Rider assigned jobs', () => {
+  afterEach(()=>vi.useRealTimers());
+  it('refreshes the visible waiting screen, announces new jobs and stops on destroy',async()=>{
+    vi.useFakeTimers();
+    Object.defineProperty(document,'visibilityState',{configurable:true,value:'visible'});
+    TestBed.configureTestingModule({imports:[RiderComponent],providers:[provideHttpClient(),provideHttpClientTesting()]});
+    const http=TestBed.inject(HttpTestingController);
+    const fixture=TestBed.createComponent(RiderComponent);
+    fixture.detectChanges();
+    http.expectOne(req=>req.url==='/api/my-jobs').flush([]);
+    await vi.advanceTimersByTimeAsync(20000);
+    http.expectOne(req=>req.url==='/api/my-jobs').flush([{planId:5,shop:{latitude:16,longitude:103,deliveryDeadline:'14:00'},job:{jobId:7,status:'WAITING',acknowledgedAt:null,stops:[]}}]);
+    expect(fixture.componentInstance.newJobsMessage).toContain('มีงานใหม่ 1');
+    expect(fixture.componentInstance.unreadJobs).toBe(1);
+    fixture.destroy();
+    await vi.advanceTimersByTimeAsync(20000);
+    http.expectNone(req=>req.url==='/api/my-jobs');
+    http.verify();
+  });
   it('persists a completed stop before advancing', async () => {
     TestBed.configureTestingModule({
       imports: [RiderComponent],
@@ -31,6 +50,14 @@ describe('Rider assigned jobs', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-route-plan-map')).not.toBeNull();
     rider.begin();
+    expect(rider.stage).toBe('summary');
+    expect(rider.errorMessage).toContain('รับทราบ');
+    rider.acknowledge();
+    expect(rider.activeRoute?.acknowledgedAt).toBeUndefined();
+    http.expectOne('/api/my-jobs/7/acknowledge').flush({acknowledged:true});
+    rider.begin();
+    expect(rider.stage).toBe('summary');
+    http.expectOne('/api/my-jobs/7/start').flush({started:true});
     expect(rider.stage).toBe('delivery');
     fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();

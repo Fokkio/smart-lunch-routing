@@ -18,6 +18,8 @@ export interface Order {
 }
 
 export interface Rider {
+  workStatus?: 'READY'|'BUSY'|'DELIVERING'|'PAUSED'|'UNCONFIGURED';
+  assignedOrdersToday?: number;
   id: string;
   name: string;
   phone: string;
@@ -50,6 +52,8 @@ export interface RiderRoute {
 }
 
 export interface RoutePlan {
+  startTime?: string;
+  deliveryDeadline?: string;
   shop?: import('./shop-settings-api.service').ShopSettings;
   estimatedFinishTime?: string;
   version: number;

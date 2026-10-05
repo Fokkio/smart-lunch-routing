@@ -6,7 +6,7 @@ it('preserves saved delivery inputs and deadline despite stale lookup data', () 
     deliveryStartTime: '12:00:00', deliveryDeadline: '13:00:00', maxOrdersPerRider: 3,
     riderSpeedKmh: 30, boxSalePrice: 65, boxFoodCost: 40, riderBaseCost: 15, riderCostPerKm: 2 };
   const plan: RoutePlanModel = {
-    routePlanId: 1, planDate: '2026-10-05', status: 'SELECTED', shop,
+    routePlanId: 1, planDate: '2026-10-05', status: 'SELECTED', shop,startTime:'12:00',deliveryDeadline:'12:40',
     routingSource: 'ROAD', approximate: false, riderCount: 1, totalDistanceKm: 1,
     estimatedFinishTime: '12:45', totalBoxes: 2, totalRevenue: 130, totalFoodCost: 80,
     totalDeliveryCost: 19, estimatedProfit: 31,
@@ -23,7 +23,9 @@ it('preserves saved delivery inputs and deadline despite stale lookup data', () 
     orders: [{ id: '1', customerId: '1', boxes: 3, status: 'pending', createdAt: '' }],
     riders: [{ id: '8', name: 'Different rider', phone: '', jobCode: '', color: 'blue' }],
   });
-  expect(adapted.deadlineSafe).toBe(true);
+  expect(adapted.deadlineSafe).toBe(false);
+  expect(adapted.startTime).toBe('12:00');
+  expect(adapted.deliveryDeadline).toBe('12:40');
   expect(adapted.shop).toEqual(shop);
   expect(adapted.routes[0].rider.id).toBe('9');
   expect(adapted.routes[0].stops[0].customer.name).toBe('Saved customer');

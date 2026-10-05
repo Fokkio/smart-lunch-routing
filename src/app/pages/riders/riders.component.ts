@@ -47,7 +47,11 @@ export class RidersComponent implements OnInit {
   }
 
   availableCount(): number {
-    return this.riders().filter((rider) => rider.isAvailable && rider.username && rider.hasPassword).length;
+    return this.riders().filter((rider) => rider.workStatus === 'READY').length;
+  }
+
+  workStatusLabel(rider:ApiRider):string {
+    return ({READY:'พร้อมรับงาน',BUSY:'มีงานรอส่ง',DELIVERING:'กำลังส่ง',PAUSED:'พักรับงาน',UNCONFIGURED:'ยังไม่ได้เปิดบัญชี'} as const)[rider.workStatus??'UNCONFIGURED'];
   }
 
   filteredRiders(): ApiRider[] {

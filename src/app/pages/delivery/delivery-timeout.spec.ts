@@ -14,6 +14,7 @@ describe('DeliveryComponent saved plans loading', () => {
   let getSpy: ReturnType<typeof vi.fn>;
   let deleteSpy: ReturnType<typeof vi.fn>;
   let confirmSpy: ReturnType<typeof vi.fn>;
+  let selectSpy: ReturnType<typeof vi.fn>;
 
   afterEach(() => {
     vi.useRealTimers();
@@ -26,12 +27,13 @@ describe('DeliveryComponent saved plans loading', () => {
     getSpy = vi.fn().mockReturnValue(getReturn);
     deleteSpy = vi.fn().mockReturnValue(NEVER);
     confirmSpy = vi.fn();
+    selectSpy=vi.fn().mockReturnValue(selectReturn);
     TestBed.configureTestingModule({
       imports: [DeliveryComponent],
       providers: [
         provideRouter([]),
         { provide: DeliveryService, useValue: { refresh: vi.fn(), dataRevision: signal(0), usingBackend, settings: signal(null), customers: signal([]), dispatchCustomers: () => [], orders: signal([]), riders: signal([]), plan, confirmedPlan: signal(null), planHistory: signal([]), pendingOrders: () => [], pendingBoxes: () => 0, customerFor: () => null, calculateRoutes: () => {}, choosePlan: (value: any) => plan.set(value), confirmPlan: confirmSpy } },
-        { provide: RoutePlanApiService, useValue: { list: listSpy, get: getSpy, select: () => selectReturn, delete: deleteSpy, generate: () => NEVER, recalculate: () => NEVER } },
+        { provide: RoutePlanApiService, useValue: { list: listSpy, get: getSpy, select: selectSpy, delete: deleteSpy, generate: () => NEVER, recalculate: () => NEVER } },
       ],
     });
     fixture = TestBed.createComponent(DeliveryComponent);
@@ -78,6 +80,21 @@ describe('DeliveryComponent saved plans loading', () => {
   it('loads the selected plan detail after the saved-plan list', () => {
     setup(of([{ routePlanId: 5, status: 'SELECTED' }]), true);
     expect(getSpy).toHaveBeenCalledWith(5);
+  });
+  it('rejects duplicate riders and sends the complete assignment with confirmation',()=>{
+    setup(of([]),true);
+    component.backendPlanId=5;
+    component.backendPlan={status:'GENERATED',jobs:[{jobId:7},{jobId:8}]} as never;
+    component.store.plan.set({deadlineSafe:true} as never);
+    component.reviewing=true;
+    component.riderAssignments={7:1,8:1};
+    component.confirm();
+    expect(selectSpy).not.toHaveBeenCalled();
+    component.riderAssignments={7:2,8:1};
+    component.confirm();
+    expect(selectSpy).toHaveBeenCalledWith(5,[{jobId:7,riderId:2},{jobId:8,riderId:1}]);
+    component.confirm();
+    expect(selectSpy).toHaveBeenCalledTimes(1);
   });
 
   it('does not automatically open an invalidated saved draft', () => {

@@ -23,6 +23,8 @@ export interface BackendOrder {
   createdAt?: string;
 }
 export interface BackendRider {
+  workStatus?: Rider['workStatus'];
+  assignedOrdersToday?: number;
   id: number;
   name: string;
   phone: string | null;
@@ -75,6 +77,8 @@ export function mapOrder(raw: BackendOrder): Order {
 
 export function mapRider(raw: BackendRider, index: number): Rider {
   return {
+    workStatus: raw.workStatus,
+    assignedOrdersToday: raw.assignedOrdersToday,
     id: String(raw.id),
     name: raw.name,
     phone: raw.phone ?? '',
