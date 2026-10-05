@@ -1,7 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, timeout } from 'rxjs';
+import { NearbySearchComponent } from '../../shared/nearby-search.component';
 import { apiErrorMessage } from '../../core/api-error';
 import { ApiCustomer } from '../../core/customer-api.models';
 import { CustomersApiService } from '../../core/customer-api.service';
@@ -13,7 +14,7 @@ type Draft = { id?: number; customerId: number | null; boxes: number; status: Ap
 @Component({
   selector: 'app-orders',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, NearbySearchComponent],
   templateUrl: './orders.component.html',
 })
 export class OrdersComponent {
@@ -26,6 +27,12 @@ export class OrdersComponent {
   readonly saving = signal(false);
   readonly error = signal('');
   readonly today = new Date().toLocaleDateString('en-CA');
+  nearbyPoint: {lat:number;lng:number} | null = null;
+  dateFilter = this.today;
+  statusFilter: ApiOrderStatus | '' = '';
+  private loadRequestId = 0;
+  searchNearby(point: {lat:number;lng:number}): void { this.nearbyPoint = point; this.dateFilter = ''; this.simFilter = 'all'; this.query = ''; this.statusFilter = ''; this.reload(); }
+  clearNearby(): void { this.nearbyPoint = null; this.dateFilter = this.today; this.reload(); }
   query = '';
   customerQuery = '';
   simulateCount = 25;
@@ -38,13 +45,18 @@ export class OrdersComponent {
   reload(): void {
     this.loading.set(true);
     this.error.set('');
-    forkJoin({ orders: this.ordersApi.list(this.today), customers: this.customersApi.getCustomers('') }).subscribe({
+    const requestId = ++this.loadRequestId;
+    const point = this.nearbyPoint;
+    const request = point ? this.ordersApi.nearby(point.lat,point.lng,this.dateFilter || undefined,this.statusFilter || undefined) : this.ordersApi.list(this.dateFilter || undefined);
+    forkJoin({ orders: request, customers: this.customersApi.getCustomers('') }).pipe(timeout(15000)).subscribe({
       next: ({ orders, customers }) => {
+        if (requestId !== this.loadRequestId) return;
         this.orders.set(orders);
         this.customers.set(customers);
         this.loading.set(false);
       },
       error: err => {
+        if (requestId !== this.loadRequestId) return;
         this.error.set(apiErrorMessage(err, 'โหลดออเดอร์ไม่สำเร็จ'));
         this.loading.set(false);
       },
@@ -57,6 +69,7 @@ export class OrdersComponent {
   filteredOrders(): ApiOrder[] {
     const term = this.query.trim().toLowerCase();
     return this.orders().filter((order) => {
+      if (this.statusFilter && order.status !== this.statusFilter) return false;
       if (this.simFilter === 'real' && order.isSimulated) return false;
       if (this.simFilter === 'simulated' && !order.isSimulated) return false;
       return `${order.id} ${this.customerFor(order)?.name ?? ''} ${this.customerFor(order)?.phone ?? ''}`.toLowerCase().includes(term);
@@ -84,7 +97,7 @@ export class OrdersComponent {
   save(): void {
     if (this.saving() || this.draft.customerId === null) return;
     this.saving.set(true);
-    const input = { customerId: this.draft.customerId, boxes: this.draft.boxes, status: this.draft.status, orderDate: this.today };
+    const input = { customerId: this.draft.customerId, boxes: this.draft.boxes, status: this.draft.status, orderDate: this.draft.id === undefined ? this.today : this.orders().find(order => order.id === this.draft.id)?.orderDate };
     const request = this.draft.id === undefined ? this.ordersApi.create(input) : this.ordersApi.update(this.draft.id, input);
     request.subscribe({
       next: () => { this.saving.set(false); this.cancel(); this.feedback = 'บันทึกออเดอร์แล้ว'; this.deliveryStore.refresh(); this.reload(); },

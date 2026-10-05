@@ -1,5 +1,5 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Component, ElementRef, ViewChild, computed, effect, inject, untracked } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, ViewChild, computed, effect, inject, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
@@ -20,6 +20,7 @@ import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
   templateUrl: './delivery.component.html',
 })
 export class DeliveryComponent {
+  private readonly cdr = inject(ChangeDetectorRef);
   readonly store = inject(DeliveryService);
   readonly shopPoint = computed<[number, number]>(() => {
     const settings = this.store.plan()?.shop ?? this.store.settings();
@@ -120,7 +121,7 @@ export class DeliveryComponent {
     try {
       this.routePlans.list(todayLocal()).pipe(
         timeout(15000),
-        finalize(() => { this.loadingPlans = false; }),
+        finalize(() => { this.loadingPlans = false; this.cdr.markForCheck(); }),
       ).subscribe({
         next: (plans) => {
           this.savedPlans = plans;
@@ -147,7 +148,7 @@ export class DeliveryComponent {
     const requestId = ++this.viewRequestId;
     this.loadingPlanDetail = true;
     this.plansError = null;
-    this.routePlans.get(id).pipe(timeout(15000)).subscribe({
+    this.routePlans.get(id).pipe(timeout(15000), finalize(() => this.cdr.markForCheck())).subscribe({
       next: (backend) => {
         if (requestId !== this.viewRequestId) return;
         this.loadingPlanDetail = false;
@@ -183,7 +184,7 @@ export class DeliveryComponent {
     const id = plan.routePlanId;
     if (id == null || !this.routePlans) return;
     if (!window.confirm(`ลบใบงาน #${id} หรือไม่?${plan.status === 'SELECTED' ? ' ออเดอร์ที่ยังไม่ส่งจะกลับไปรอจัดส่ง' : ''}`)) return;
-    this.routePlans.delete(id).subscribe({
+    this.routePlans.delete(id).pipe(finalize(() => this.cdr.markForCheck())).subscribe({
       next: () => {
         if (this.backendPlanId === id) {
           this.viewRequestId++;
@@ -224,13 +225,14 @@ export class DeliveryComponent {
     });
   }
   calculate(): void {
-    if (!this.canCalculate()) return;
+    if (!this.canCalculate() || this.calculating) return;
+    this.plansError = null;
     this.selectedRoute = null;
     // โหมด backend: ยิง /route-plans/generate แล้วแปลงเป็น RoutePlan ตัวเดิม
-    // template จึงเหมือนรูปเดิมทุกอย่าง — พัง/ออฟไลน์ค่อยตกกลับไปคำนวณในเครื่อง
+    // API ล้มเหลวต้องแจ้งผู้ใช้ ไม่คำนวณแผนคนละเงื่อนไขในเครื่องแทน
     if (this.store.usingBackend() && this.routePlans) {
       this.calculating = true;
-      this.routePlans.generate(todayLocal(),this.roundWindow()).subscribe({
+      this.routePlans.generate(todayLocal(),this.roundWindow()).pipe(timeout(30000),finalize(() => { this.calculating = false; this.cdr.markForCheck(); })).subscribe({
         next: (backend) => { this.adoptBackend(backend); this.loadSavedPlans(); },
         error: (error) => {
           this.calculating = false;
@@ -238,21 +240,12 @@ export class DeliveryComponent {
             this.plansError = error.status===400?'ตรวจสอบเวลาและออเดอร์ที่เลือกในรอบนี้':error.status===409?'ข้อมูลเปลี่ยนแล้ว กรุณารีเฟรชและคำนวณใหม่':'จำนวนไรเดอร์พร้อมไม่พอหรือส่งไม่ทันเวลา ลองลดออเดอร์ในรอบนี้';
             return;
           }
-          this.fallbackNotice = true;
-          this.calculateLocally();
+          this.plansError = 'คำนวณไม่สำเร็จหรือหมดเวลารอ กรุณารีเฟรชรายการแผนก่อนลองใหม่';
         },
       });
       return;
     }
-    this.calculateLocally();
-  }
-  private calculateLocally(): void {
-    this.backendPlanId = null;
-    this.backendPlan = null;
-    this.acknowledgeLate = false;
-    this.lateOverride = false;
-    this.calculating = true;
-    setTimeout(() => { this.store.calculateRoutes(); this.reviewing = false; this.calculating = false; }, 450);
+    this.plansError = 'ยังเชื่อมต่อระบบจัดส่งไม่ได้ กรุณารีเฟรชและลองใหม่';
   }
   private adoptBackend(backend: RoutePlanModel): void {
     const plan = adaptBackendPlan(backend, {
@@ -276,9 +269,10 @@ export class DeliveryComponent {
   }
   compare(): void {
     if (this.candidate || this.calculating) return;
-    if (this.store.usingBackend() && this.routePlans) {
+    this.plansError = null;
+    if (this.store.usingBackend() && this.routePlans && this.backendPlanId !== null) {
       this.calculating = true;
-      this.routePlans.recalculate(todayLocal(),this.roundWindow()).subscribe({
+      this.routePlans.recalculate(todayLocal(),{...this.roundWindow(),basePlanId:this.backendPlanId}).pipe(timeout(30000),finalize(() => { this.calculating = false; this.cdr.markForCheck(); })).subscribe({
         next: (backend) => {
           this.calculating = false;
           this.acknowledgeCandidate = false;
@@ -294,29 +288,22 @@ export class DeliveryComponent {
         error: (error) => {
           this.calculating = false;
           if ([400,409,422].includes(error?.status)) {
-            this.plansError = error.status===400?'ตรวจสอบเวลาและออเดอร์ที่เลือกในรอบนี้':error.status===409?'ข้อมูลเปลี่ยนแล้ว กรุณารีเฟรชและคำนวณใหม่':'จำนวนไรเดอร์พร้อมไม่พอหรือส่งไม่ทันเวลา ลองลดออเดอร์ในรอบนี้';
+            this.plansError = error.status===400?'ตรวจสอบเวลาและออเดอร์ที่เลือกในรอบนี้':error.status===409?'ข้อมูลเปลี่ยนแล้ว กรุณารีเฟรชและคำนวณใหม่':'การค้นหารอบนี้ไม่พบแผนทางเลือกที่ต่างและผ่านเงื่อนไข ใช้แผนเดิมหรือปรับรอบ';
             return;
           }
-          this.fallbackNotice = true;
-          this.compareLocally();
+          this.plansError = 'ค้นหาแผนทางเลือกไม่สำเร็จหรือหมดเวลารอ กรุณารีเฟรชรายการแผนก่อนลองใหม่';
         },
       });
       return;
     }
-    this.compareLocally();
-  }
-  private compareLocally(): void {
-    this.candidateBackend = null;
-    this.acknowledgeCandidate = false;
-    this.selectedRoute = null;
-    this.candidate = this.store.previewRoutes((this.store.plan()?.version || 1) + 1);
+    this.plansError = 'กรุณาเปิดแผนร่างจากระบบก่อนค้นหาแผนทางเลือก';
   }
   discardCandidate(): void {
     const id = this.candidateBackend?.routePlanId;
     if (id != null && this.routePlans) {
       if (this.discardingCandidate) return;
       this.discardingCandidate = true;
-      this.routePlans.delete(id).subscribe({
+      this.routePlans.delete(id).pipe(finalize(() => this.cdr.markForCheck())).subscribe({
         next: () => { this.clearCandidate(); this.discardingCandidate = false; this.loadSavedPlans(); },
         error: () => {
           this.discardingCandidate = false;
@@ -387,7 +374,7 @@ export class DeliveryComponent {
         this.plansError='เลือกไรเดอร์พร้อมงานให้ครบทุกเส้นทาง โดยไม่เลือกคนซ้ำ';return;
       }
       this.confirmingPlan=true;
-      this.routePlans.select(this.backendPlanId,assignments).pipe(timeout(15000),finalize(()=>this.confirmingPlan=false)).subscribe({
+      this.routePlans.select(this.backendPlanId,assignments).pipe(timeout(15000),finalize(()=>{this.confirmingPlan=false;this.cdr.markForCheck();})).subscribe({
         next: (backend) => { this.adoptBackend(backend); finish(); this.store.refresh(); this.loadSavedPlans(); },
         error: () => { this.plansError = 'ยืนยันใบงานไม่สำเร็จ กรุณาตรวจสอบไรเดอร์และลองใหม่'; },
       });

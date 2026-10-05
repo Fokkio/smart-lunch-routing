@@ -4,13 +4,15 @@ import { Customer } from '../../core/models';
 import { CustomersApiService } from '../../core/customer-api.service';
 import { DeliveryService } from '../../core/delivery.service';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
+import { NearbySearchComponent } from '../../shared/nearby-search.component';
+import { timeout } from 'rxjs';
 
 type Draft = Omit<Customer, 'id'> & { id?: string };
 
 @Component({
   selector: 'app-customers',
   standalone: true,
-  imports: [FormsModule, DeliveryMapComponent],
+  imports: [FormsModule, DeliveryMapComponent, NearbySearchComponent],
   templateUrl: './customers.component.html',
 })
 export class CustomersComponent implements OnInit {
@@ -30,6 +32,11 @@ export class CustomersComponent implements OnInit {
   readonly deletingCustomerId = signal<string | null>(null);
 
   query = '';
+  nearbyPoint: {lat:number;lng:number} | null = null;
+  readonly distances = signal<Record<string,number>>({});
+  private loadRequestId = 0;
+  searchNearby(point: {lat:number;lng:number}): void { this.nearbyPoint = point; this.loadCustomers(); }
+  clearNearby(): void { this.nearbyPoint = null; this.loadCustomers(); }
   placeQuery = '';
   showOverviewMap = false;
   showForm = false;
@@ -51,8 +58,13 @@ export class CustomersComponent implements OnInit {
   loadCustomers(): void {    this.loadingCustomers.set(true);
     this.loadCustomersError.set('');
 
-    this.customerApi.getCustomers(this.query).subscribe({
+    const requestId = ++this.loadRequestId;
+    const point = this.nearbyPoint;
+    const request = point ? this.customerApi.nearby(point.lat,point.lng) : this.customerApi.getCustomers(this.query);
+    request.pipe(timeout(15000)).subscribe({
       next: (customers) => {
+        if (requestId !== this.loadRequestId) return;
+        this.distances.set(Object.fromEntries(customers.filter(customer => customer.distanceKm !== undefined).map(customer => [String(customer.id),customer.distanceKm!])));
         this.apiCustomers.set(
           customers.map((customer) => ({
             id: String(customer.id),
@@ -67,6 +79,7 @@ export class CustomersComponent implements OnInit {
         this.loadingCustomers.set(false);
       },
       error: (error) => {
+        if (requestId !== this.loadRequestId) return;
         console.error('โหลดลูกค้าจาก API ไม่สำเร็จ:', error);
 
         this.loadCustomersError.set('โหลดรายชื่อลูกค้าไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
@@ -77,7 +90,8 @@ export class CustomersComponent implements OnInit {
 
   filteredCustomers(): Customer[] {
     // backend ค้นให้แล้ว แสดงรายการที่ตอบกลับได้เลย
-    return this.apiCustomers();
+    const term = this.query.trim().toLowerCase();
+    return this.nearbyPoint ? this.apiCustomers().filter(customer => `${customer.name} ${customer.phone} ${customer.address}`.toLowerCase().includes(term)) : this.apiCustomers();
   }
 
   private searchTimer?: ReturnType<typeof setTimeout>;
