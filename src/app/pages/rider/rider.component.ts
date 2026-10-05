@@ -1,4 +1,6 @@
-import { ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { fromEvent, timer, timeout } from 'rxjs';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { todayLocal } from '../../core/backend-api.service';
@@ -21,6 +23,11 @@ export class RiderComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly destroyRef=inject(DestroyRef);
+  newJobsMessage='';
+  updatingJob=false;
+  private loadedJobs=false;
+  get unreadJobs():number { return this.jobs.filter(item=>!item.job.acknowledgedAt&&item.job.status!=='COMPLETED').length; }
   readonly shopPoint = signal<[number, number]>([SHOP.lat, SHOP.lng]);
   jobs: Array<{ planId: number; job: DeliveryRouteModel; shop: { latitude: number; longitude: number; deliveryDeadline: string } }> = [];
   deliveryDeadline = '';
@@ -40,15 +47,31 @@ export class RiderComponent implements OnInit {
 
   get currentStop(): RouteStopModel | null { return this.activeRoute?.stops[this.stopIndex] ?? null; }
 
-  ngOnInit(): void { this.loadJobs(); }
+  ngOnInit(): void {
+    this.loadJobs();
+    // ponytail: polling suits this small dispatch app; use server push if measured traffic requires it.
+    timer(20000,20000).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(()=>{
+      if(document.visibilityState==='visible'&&this.stage==='entry')this.loadJobs(true);
+    });
+    fromEvent(document,'visibilitychange').pipe(takeUntilDestroyed(this.destroyRef)).subscribe(()=>{
+      if(document.visibilityState==='visible'&&this.stage==='entry')this.loadJobs(true);
+    });
+  }
 
-  loadJobs(): void {
+  loadJobs(background=false): void {
     if (this.loading) return;
     this.loading = true;
-    this.errorMessage = '';
-    this.api.myJobs(todayLocal()).subscribe({
+    if(!background)this.errorMessage = '';
+    const token=this.auth.token();
+    this.api.myJobs(todayLocal()).pipe(timeout(15000),takeUntilDestroyed(this.destroyRef)).subscribe({
       next: jobs => {
+        if(token!==this.auth.token())return;
         this.loading = false;
+        if(this.stage==='entry')this.errorMessage='';
+        const previous=new Set(this.jobs.map(item=>item.job.jobId));
+        const added=jobs.filter(item=>!previous.has(item.job.jobId)&&item.job.status!=='COMPLETED').length;
+        if(this.loadedJobs&&added)this.newJobsMessage=`มีงานใหม่ ${added} ใบ กรุณาตรวจและรับทราบงาน`;
+        this.loadedJobs=true;
         this.jobs = jobs;
         if (jobs[0]) {
           this.shopPoint.set([jobs[0].shop.latitude, jobs[0].shop.longitude]);
@@ -61,16 +84,38 @@ export class RiderComponent implements OnInit {
   }
 
   selectJob(item: { planId: number; job: DeliveryRouteModel; shop: { latitude: number; longitude: number; deliveryDeadline: string } }): void {
+    this.newJobsMessage='';
+    this.errorMessage='';
+    this.shopPoint.set([item.shop.latitude,item.shop.longitude]);
+    this.deliveryDeadline=item.shop.deliveryDeadline;
     this.activeRoute = item.job;
     this.mapJobs = [item.job];
     this.activePlanId = item.planId;
     this.stopIndex = item.job.stops.findIndex(stop => stop.deliveryStatus !== 'DELIVERED');
     if (this.stopIndex < 0) this.stopIndex = item.job.stops.length;
-    this.stage = this.stopIndex === item.job.stops.length ? 'completed' : 'summary';
+    this.stage = this.stopIndex === item.job.stops.length ? 'completed' : item.job.status==='DELIVERING' ? 'delivery' : 'summary';
     this.confirmingStop = false;
     this.cdr.markForCheck();
   }
-  begin(): void { if (this.currentStop) { this.confirmingStop = false; this.stage = 'delivery'; } }
+  acknowledge():void {
+    const route=this.activeRoute;
+    if(!route||route.jobId===undefined||this.updatingJob||route.acknowledgedAt)return;
+    this.updatingJob=true;this.errorMessage='';
+    this.api.acknowledgeMyJob(route.jobId).pipe(timeout(15000),takeUntilDestroyed(this.destroyRef)).subscribe({
+      next:()=>{this.updatingJob=false;if(this.activeRoute!==route)return;route.acknowledgedAt=new Date().toISOString();this.cdr.markForCheck();},
+      error:()=>{this.updatingJob=false;this.errorMessage='รับทราบงานไม่สำเร็จ กรุณารีเฟรชงานและลองใหม่';this.cdr.markForCheck();},
+    });
+  }
+  begin(): void {
+    const route=this.activeRoute;
+    if(!this.currentStop||!route||route.jobId===undefined||this.updatingJob)return;
+    if(!route.acknowledgedAt){this.errorMessage='กรุณารับทราบงานก่อนเริ่มส่ง';return;}
+    this.updatingJob=true;this.errorMessage='';
+    this.api.startMyJob(route.jobId).pipe(timeout(15000),takeUntilDestroyed(this.destroyRef)).subscribe({
+      next:()=>{this.updatingJob=false;if(this.activeRoute!==route)return;route.status='DELIVERING';this.confirmingStop=false;this.stage='delivery';this.cdr.markForCheck();},
+      error:()=>{this.updatingJob=false;this.errorMessage='เริ่มงานไม่สำเร็จ กรุณารีเฟรชงานและลองใหม่';this.cdr.markForCheck();},
+    });
+  }
   backToSummary(): void { this.confirmingStop = false; this.stage = 'summary'; }
   completeStop(): void {
     const stop = this.currentStop;
@@ -79,14 +124,14 @@ export class RiderComponent implements OnInit {
     const route = this.activeRoute;
     this.savingStop = true;
     this.errorMessage = '';
-    this.api.deliverMyStop(this.activeRoute.jobId, stop.orderId).subscribe({
+    this.api.deliverMyStop(this.activeRoute.jobId, stop.orderId).pipe(timeout(15000),takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.savingStop = false;
         if (this.activeRoute !== route) return;
         stop.deliveryStatus = 'DELIVERED';
         this.confirmingStop = false;
         this.stopIndex++;
-        if (this.stopIndex >= route.stops.length) this.stage = 'completed';
+        if (this.stopIndex >= route.stops.length) {this.stage = 'completed';route.status='COMPLETED';}
         this.cdr.markForCheck();
       },
       error: () => {

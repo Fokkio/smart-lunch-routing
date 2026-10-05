@@ -25,7 +25,7 @@ import { RoutePlanApiService } from '../../core/route-plan-api.service';
         <label class="grid gap-1">ต้นทุนอาหารต่อกล่อง<input class="neu-field min-h-12 rounded-xl px-3" name="boxFoodCost" type="number" min="0" step="0.01" [(ngModel)]="s.boxFoodCost" /></label>
         <label class="grid gap-1">ค่าไรเดอร์พื้นฐาน<input class="neu-field min-h-12 rounded-xl px-3" name="riderBaseCost" type="number" min="0" step="0.01" [(ngModel)]="s.riderBaseCost" /></label>
         <label class="grid gap-1">ค่าไรเดอร์ต่อกิโลเมตร<input class="neu-field min-h-12 rounded-xl px-3" name="riderCostPerKm" type="number" min="0" step="0.01" [(ngModel)]="s.riderCostPerKm" /></label>
-        <label class="grid gap-1 sm:col-span-2">ความเร็วเฉลี่ยไรเดอร์ (กม./ชม.)<input class="neu-field min-h-12 rounded-xl px-3" name="riderSpeedKmh" type="number" min="1" max="120" step="0.1" [(ngModel)]="s.riderSpeedKmh" /></label>
+        <label class="grid gap-1 sm:col-span-2">เวลาส่งของต่อจุด (นาที)<input class="neu-field min-h-12 rounded-xl px-3" name="stopServiceMinutes" type="number" min="0" max="30" step="1" [(ngModel)]="s.stopServiceMinutes" /></label><label class="grid gap-1 sm:col-span-2">ความเร็วเฉลี่ยไรเดอร์ (กม./ชม.)<input class="neu-field min-h-12 rounded-xl px-3" name="riderSpeedKmh" type="number" min="1" max="120" step="0.1" [(ngModel)]="s.riderSpeedKmh" /></label>
       </div></details>
       <button class="neu-primary min-h-12 rounded-xl px-5 font-bold" type="submit" [disabled]="saving">{{ saving ? 'กำลังบันทึก...' : 'บันทึกค่าร้าน' }}</button>
     </form> }

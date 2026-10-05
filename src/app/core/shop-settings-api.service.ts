@@ -5,6 +5,7 @@ import { environment } from '../../environments/environment';
 
 /** Mirror ของ backend ShopSettings (ดู backend src/models/shop-settings.model.ts) */
 export interface ShopSettings {
+  stopServiceMinutes?: number;
   settingId: number;
   shopName: string;
   latitude: number;

@@ -61,12 +61,12 @@ export class RoutePlanApiService {
 
   invalidateCache(): void { this.invalidate(); }
 
-  generate(planDate: string): Observable<RoutePlanModel> {
-    return this.http.post<RoutePlanModel>(`${this.baseUrl}/generate`, { planDate }).pipe(tap(() => this.invalidate()));
+  generate(planDate: string, window: {startTime?:string;deadline?:string;orderIds?:number[]} = {}): Observable<RoutePlanModel> {
+    return this.http.post<RoutePlanModel>(`${this.baseUrl}/generate`, { planDate, ...window }).pipe(tap(() => this.invalidate()));
   }
 
-  recalculate(planDate: string): Observable<RoutePlanModel> {
-    return this.http.post<RoutePlanModel>(`${this.baseUrl}/recalculate`, { planDate }).pipe(tap(() => this.invalidate()));
+  recalculate(planDate: string, window: {startTime?:string;deadline?:string;orderIds?:number[]} = {}): Observable<RoutePlanModel> {
+    return this.http.post<RoutePlanModel>(`${this.baseUrl}/recalculate`, { planDate, ...window }).pipe(tap(() => this.invalidate()));
   }
 
   list(date?: string): Observable<RoutePlanSummaryModel[]> {
@@ -94,8 +94,15 @@ export class RoutePlanApiService {
     return this.http.get<RoutePlanModel>(`${this.baseUrl}/${id}`).pipe(tap(plan => { if (currentResponse()) this.remember(plan); }));
   }
 
-  select(id: number): Observable<RoutePlanModel> {
-    return this.http.post<RoutePlanModel>(`${this.baseUrl}/${id}/select`, {}).pipe(tap(() => this.invalidate()));
+  select(id: number, assignments?:Array<{jobId:number;riderId:number}>): Observable<RoutePlanModel> {
+    return this.http.post<RoutePlanModel>(`${this.baseUrl}/${id}/select`, assignments ? {assignments} : {}).pipe(tap(() => this.invalidate()));
+  }
+
+  acknowledgeMyJob(jobId:number):Observable<{acknowledged:boolean}> {
+    return this.http.post<{acknowledged:boolean}>(`${environment.apiBaseUrl}/my-jobs/${jobId}/acknowledge`,{});
+  }
+  startMyJob(jobId:number):Observable<{started:boolean}> {
+    return this.http.post<{started:boolean}>(`${environment.apiBaseUrl}/my-jobs/${jobId}/start`,{});
   }
 
   myJobs(date: string): Observable<Array<{ planId: number; job: DeliveryRouteModel; shop: { latitude: number; longitude: number; deliveryDeadline: string } }>> {

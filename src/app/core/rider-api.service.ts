@@ -4,6 +4,8 @@ import { environment } from '../../environments/environment';
 
 // รูปแบบข้อมูล rider ที่ backend ส่งกลับมา
 export interface ApiRider {
+  workStatus?: 'READY'|'BUSY'|'DELIVERING'|'PAUSED'|'UNCONFIGURED';
+  assignedOrdersToday?: number;
   id: number;
   name: string;
   username: string | null;
