@@ -1,7 +1,7 @@
 import { HttpClient, HttpInterceptorFn } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Router, type CanActivateFn } from '@angular/router';
-import { catchError, tap, throwError } from 'rxjs';
+import { catchError, filter, tap, throwError, timeout } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export type User = { type: 'OWNER' | 'RIDER'; id: number; name: string };
@@ -70,8 +70,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = auth.token();
   const apiRequest = req.url.startsWith(`${environment.apiBaseUrl}/`);
   return next(apiRequest && token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req).pipe(
+    timeout(apiRequest && /\/route-plans\/(generate|recalculate)$/.test(req.url) ? 30000 : 15000),
+    filter(() => !apiRequest || token === null || token === auth.token()),
     catchError(error => {
-      if (apiRequest && error.status === 401 && !req.url.endsWith('/auth/login') && !req.url.endsWith('/auth/password')) {
+      if (apiRequest && token === auth.token() && error.status === 401 && !req.url.endsWith('/auth/login') && !req.url.endsWith('/auth/password')) {
         auth.clear();
         void router.navigateByUrl('/login');
       }

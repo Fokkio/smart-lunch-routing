@@ -29,7 +29,7 @@ export interface GeoJsonLineString {
 
 export interface DeliveryRouteModel {
   acknowledgedAt?: string | null;
-  status?: 'WAITING'|'DELIVERING'|'COMPLETED';
+  status?: 'WAITING'|'DELIVERING'|'COMPLETED'|'CANCELLED';
   jobId?: number;
   jobCode?: string;
   riderIndex: number;

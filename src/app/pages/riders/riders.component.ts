@@ -1,4 +1,6 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize, timeout } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '../../core/api-error';
 import { ApiRider, RidersApiService } from '../../core/rider-api.service';
@@ -15,6 +17,7 @@ type Draft = { id?: number; name: string; phone: string; isAvailable: boolean };
 export class RidersComponent implements OnInit {
   private readonly ridersApi = inject(RidersApiService);
   private readonly deliveryStore = inject(DeliveryService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly riders = signal<ApiRider[]>([]);
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -34,7 +37,7 @@ export class RidersComponent implements OnInit {
   reload(): void {
     this.loading.set(true);
     this.error.set('');
-    this.ridersApi.getRiders().subscribe({
+    this.ridersApi.getRiders().pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => this.loading.set(false))).subscribe({
       next: (riders) => {
         this.riders.set(riders);
         this.loading.set(false);
@@ -76,7 +79,7 @@ export class RidersComponent implements OnInit {
     this.showForm = true;
   }
 
-  openAccount(rider: ApiRider): void { this.accountRider = rider; this.accountUsername = rider.username ?? ''; this.newPassword = ''; this.error.set(''); }
+  openAccount(rider: ApiRider): void { if (this.saving()) return; this.accountRider = rider; this.accountUsername = rider.username ?? ''; this.newPassword = ''; this.error.set(''); }
 
   saveAccount(): void {
     const username = this.accountUsername.trim().toLowerCase();
@@ -85,7 +88,7 @@ export class RidersComponent implements OnInit {
         (!this.accountRider.hasPassword && !this.newPassword) || this.saving()) return;
     this.saving.set(true);
     this.error.set('');
-    this.ridersApi.setAccount(this.accountRider.id, username, this.newPassword || undefined).subscribe({
+    this.ridersApi.setAccount(this.accountRider.id, username, this.newPassword || undefined).pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => this.saving.set(false))).subscribe({
       next: () => { this.saving.set(false); this.feedback = `บันทึกบัญชีของ ${this.accountRider?.name} แล้ว`; this.accountRider = null; this.newPassword = ''; this.deliveryStore.refresh(); this.reload(); },
       error: (err) => { this.saving.set(false); this.error.set(err?.status === 409 ? 'ชื่อผู้ใช้นี้ถูกใช้แล้ว' : apiErrorMessage(err, 'บันทึกบัญชีไม่สำเร็จ')); },
     });
@@ -102,7 +105,7 @@ export class RidersComponent implements OnInit {
     if (!window.confirm(`ลบไรเดอร์ ${rider.name} หรือไม่?`)) return;
     this.saving.set(true);
     this.error.set('');
-    this.ridersApi.deleteRider(rider.id).subscribe({
+    this.ridersApi.deleteRider(rider.id).pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => this.saving.set(false))).subscribe({
       next: () => {
         this.saving.set(false);
         this.feedback = `ลบไรเดอร์ ${rider.name} แล้ว`;
@@ -134,7 +137,7 @@ export class RidersComponent implements OnInit {
       this.draft.id === undefined
         ? this.ridersApi.createRider(input)
         : this.ridersApi.updateRider(this.draft.id, input);
-    request.subscribe({
+    request.pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => this.saving.set(false))).subscribe({
       next: () => {
         this.saving.set(false);
         this.showForm = false;

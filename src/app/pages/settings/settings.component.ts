@@ -1,4 +1,7 @@
-import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize, timeout } from 'rxjs';
+import { apiErrorMessage } from '../../core/api-error';
 import { FormsModule } from '@angular/forms';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
 import { ShopSettings, ShopSettingsApiService } from '../../core/shop-settings-api.service';
@@ -42,6 +45,7 @@ export class SettingsComponent implements OnInit {
   private readonly store = inject(DeliveryService);
   private readonly plans = inject(RoutePlanApiService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
   draft: ShopSettings | null = null;
   loading = true;
   saving = false;
@@ -54,7 +58,7 @@ export class SettingsComponent implements OnInit {
     this.cdr.markForCheck();
   }
   ngOnInit(): void {
-    this.api.get().subscribe({ next: settings => { this.draft = { ...settings, deliveryStartTime: settings.deliveryStartTime.slice(0, 5), deliveryDeadline: settings.deliveryDeadline.slice(0, 5) }; this.loading = false; this.cdr.markForCheck(); }, error: () => { this.error = 'โหลดค่าร้านไม่สำเร็จ'; this.loading = false; this.cdr.markForCheck(); } });
+    this.api.get().pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => { this.loading = false; this.cdr.markForCheck(); })).subscribe({ next: settings => { this.draft = { ...settings, deliveryStartTime: settings.deliveryStartTime.slice(0, 5), deliveryDeadline: settings.deliveryDeadline.slice(0, 5) }; }, error: error => { this.error = apiErrorMessage(error, 'โหลดค่าร้านไม่สำเร็จ'); } });
   }
   save(): void {
     if (!this.draft || this.saving) return;
@@ -63,6 +67,6 @@ export class SettingsComponent implements OnInit {
     if (!this.draft.shopName.trim() || this.draft.deliveryStartTime >= this.draft.deliveryDeadline) { this.error = 'ตรวจสอบชื่อร้านและเวลาส่ง'; return; }
     this.saving = true;
     const { settingId: _settingId, ...patch } = this.draft;
-    this.api.update(patch).subscribe({ next: settings => { this.draft = { ...settings, deliveryStartTime: settings.deliveryStartTime.slice(0, 5), deliveryDeadline: settings.deliveryDeadline.slice(0, 5) }; this.store.settings.set(settings); this.plans.invalidateCache(); this.saved = true; this.saving = false; this.cdr.markForCheck(); }, error: () => { this.error = 'บันทึกค่าร้านไม่สำเร็จ กรุณาตรวจสอบข้อมูล'; this.saving = false; this.cdr.markForCheck(); } });
+    this.api.update(patch).pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => { this.saving = false; this.cdr.markForCheck(); })).subscribe({ next: settings => { this.draft = { ...settings, deliveryStartTime: settings.deliveryStartTime.slice(0, 5), deliveryDeadline: settings.deliveryDeadline.slice(0, 5) }; this.store.settings.set(settings); this.plans.invalidateCache(); this.saved = true; }, error: error => { this.error = apiErrorMessage(error, 'บันทึกค่าร้านไม่สำเร็จ กรุณาตรวจสอบข้อมูล'); } });
   }
 }

@@ -47,6 +47,8 @@ const SHOP: LatLng = [16.24631, 103.25286];
 export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() jobs: DeliveryRouteModel[] = [];
   @Input() shop: LatLng = SHOP;
+  @Input() shopName = 'ร้าน';
+  @Input() startTime = '';
   @Input() compact = false;
   @Input() selectedJob: number | null = null;
   @Output() selectedJobChange = new EventEmitter<number | null>();
@@ -106,9 +108,11 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
     if (!this.map) return;
     this.layer?.remove();
     this.layer = L.featureGroup().addTo(this.map);
+    const shopPopup = document.createElement('div');
+    shopPopup.textContent = `${this.shopName} · จุดเริ่มต้น${this.startTime ? ` ${this.startTime} น.` : ''}`;
     L.circleMarker(this.shop, {
       radius: 9, color: '#111111', fillColor: '#ffffff', fillOpacity: 1, weight: 3,
-    }).bindPopup('<strong>ครัวเที่ยงตรง</strong><br>จุดเริ่มต้น 11:30 น.').addTo(this.layer);
+    }).bindPopup(shopPopup).addTo(this.layer);
 
     const selected = this.effectiveSelected();
     this.jobs.forEach((job, index) => {

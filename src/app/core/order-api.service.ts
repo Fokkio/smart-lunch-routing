@@ -32,7 +32,7 @@ export class OrderApiService {
   simulate(date: string, count = 25): Observable<{ createdCount: number; orders: ApiOrder[] }> {
     return this.http.post<{ createdCount: number; orders: ApiOrder[] }>(`${this.url}/simulate`, { count, orderDate: date });
   }
-  clearSimulated(): Observable<{ deletedCount: number }> {
-    return this.http.delete<{ deletedCount: number }>(`${this.url}/simulated`);
+  clearSimulated(orderIds: number[]): Observable<{ deletedCount: number }> {
+    return this.http.delete<{ deletedCount: number }>(`${this.url}/simulated`, { body: { orderIds } });
   }
 }

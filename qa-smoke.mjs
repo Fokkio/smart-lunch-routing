@@ -134,7 +134,7 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
     const candidate=await next.json();
     const signature=p=>JSON.stringify(p.jobs.map(j=>JSON.stringify(j.stops.map(s=>s.orderId))).sort());
     assert.notEqual(signature(candidate),signature(original));
-    assert.deepEqual(candidate.jobs.flatMap(j=>j.stops.map(s=>s.orderId)).sort((a,b)=>a-b),data.orders.filter(o=>o.status==='PENDING').map(o=>o.id).sort((a,b)=>a-b));
+    assert.deepEqual(candidate.jobs.flatMap(j=>j.stops.map(s=>s.orderId)).sort((a,b)=>a-b),data.orders.filter(o=>o.status==='PENDING' && o.orderDate===candidate.planDate).map(o=>o.id).sort((a,b)=>a-b));
     await choose.click();
     await page.getByRole('button',{name:'ตรวจทานแผน',exact:true}).click();
     const assignments=page.getByRole('group',{name:'มอบหมายผู้รับเส้นทาง',exact:true}).getByRole('combobox');
