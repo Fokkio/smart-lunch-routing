@@ -116,7 +116,7 @@ export class BackendApiService {
 
   listOrders(): Observable<Order[]> {
     return this.http
-      .get<BackendOrder[]>(`${this.base}/orders`)
+      .get<BackendOrder[]>(`${this.base}/orders`, { params: { date: todayLocal() } })
       .pipe(map((rows) => rows.map(mapOrder)));
   }
 

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { DeliveryService } from './delivery.service';
+import { todayLocal } from './backend-api.service';
 
 describe('DeliveryService route planning', () => {
   let service: DeliveryService;
@@ -77,8 +78,26 @@ describe('DeliveryService route planning', () => {
     expect(service.plan()).toBeNull();
   });
 
+  it('removes API-deleted orders and customers from the dispatch snapshot', () => {
+    const order = service.orders()[0];
+    const customer = service.customers().find(item => item.id === order.customerId)!;
+    service.calculateRoutes();
+
+    service.orderDeleted(order.id);
+    expect(service.orders().some(item => item.id === order.id)).toBe(false);
+    expect(service.plan()).toBeNull();
+    expect(service.confirmedPlan()).toBeNull();
+
+    service.calculateRoutes();
+    service.customerDeleted(customer.id);
+    expect(service.customers().some(item => item.id === customer.id)).toBe(false);
+    expect(service.plan()).toBeNull();
+  });
+
   it('returns an empty plan instead of crashing when there are no orders', () => {
     service.orders.set([]);
+    expect(service.customers().length).toBeGreaterThan(0);
+    expect(service.dispatchCustomers()).toEqual([]);
     const plan = service.previewRoutes(1);
     expect(plan.routes).toEqual([]);
     expect(plan.totalDistanceKm).toBe(0);
@@ -135,7 +154,7 @@ describe('DeliveryService route planning', () => {
       service.connect();
 
       http.expectOne('/api/customers').flush(apiCustomers);
-      http.expectOne('/api/orders').flush(apiOrders);
+      http.expectOne(`/api/orders?date=${todayLocal()}`).flush(apiOrders);
       http.expectOne('/api/riders').flush(apiRiders);
       http.expectOne('/api/settings').flush(apiSettings);
 
@@ -153,7 +172,7 @@ describe('DeliveryService route planning', () => {
       service.connect();
 
       http.expectOne('/api/customers').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
-      http.expectOne('/api/orders').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
+      http.expectOne(`/api/orders?date=${todayLocal()}`).flush({ message: 'down' }, { status: 500, statusText: 'Error' });
       http.expectOne('/api/riders').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
       http.expectOne('/api/settings').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
 
@@ -166,7 +185,7 @@ describe('DeliveryService route planning', () => {
       const before = service.customers();
       service.connect();
       http.expectOne('/api/customers').flush(apiCustomers);
-      http.expectOne('/api/orders').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
+      http.expectOne(`/api/orders?date=${todayLocal()}`).flush({ message: 'down' }, { status: 500, statusText: 'Error' });
       http.expectOne('/api/riders').flush(apiRiders);
       http.expectOne('/api/settings').flush(apiSettings);
       expect(service.usingBackend()).toBe(false);
@@ -176,7 +195,7 @@ describe('DeliveryService route planning', () => {
     it('saves a new customer through the backend when connected', () => {
       service.connect();
       http.expectOne('/api/customers').flush(apiCustomers);
-      http.expectOne('/api/orders').flush(apiOrders);
+      http.expectOne(`/api/orders?date=${todayLocal()}`).flush(apiOrders);
       http.expectOne('/api/riders').flush(apiRiders);
       http.expectOne('/api/settings').flush(apiSettings);
       expect(service.usingBackend()).toBe(true);

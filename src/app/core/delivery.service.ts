@@ -19,6 +19,10 @@ export class DeliveryService {
   readonly confirmedPlan = signal<RoutePlan | null>(null);
   readonly planHistory = signal<RoutePlan[]>([]);
   readonly pendingOrders = computed(() => this.orders().filter((order) => order.status === 'pending'));
+  readonly dispatchCustomers = computed(() => {
+    const customerIds = new Set(this.pendingOrders().map(order => order.customerId));
+    return this.customers().filter(customer => customerIds.has(customer.id));
+  });
   readonly pendingBoxes = computed(() => this.pendingOrders().reduce((sum, order) => sum + order.boxes, 0));
   /** true เมื่อข้อมูลมาจาก backend จริง — false คือโหมดข้อมูลจำลอง (offline/เทส) */
   readonly usingBackend = signal(false);
@@ -109,20 +113,21 @@ export class DeliveryService {
     if (this.orders().some((order) => order.customerId === id)) return false;
     if (this.usingBackend() && this.api) {
       this.api.deleteCustomer(id).subscribe({
-        next: () => {
-          this.customers.update((list) => list.filter((customer) => customer.id !== id));
-          this.persist(CUSTOMER_KEY, this.customers());
-          this.routePlans?.invalidateCache();
-        },
+        next: () => this.customerDeleted(id),
         // 409 = backend บอกว่ามีออเดอร์อ้างอิงอยู่ — คงรายการไว้แล้วให้ toast ฝั่ง UI ตัดสินใจ
         error: (error) => console.error('[delivery] ลบลูกค้าใน backend ไม่สำเร็จ:', error),
       });
       return true;
     }
-    const next = this.customers().filter((customer) => customer.id !== id);
-    this.customers.set(next);
-    this.persist(CUSTOMER_KEY, next);
+    this.customerDeleted(id);
     return true;
+  }
+
+  customerDeleted(id: string): void {
+    this.customers.update((list) => list.filter((customer) => customer.id !== id));
+    this.persist(CUSTOMER_KEY, this.customers());
+    this.routePlans?.invalidateCache();
+    this.clearPlan();
   }
 
   saveOrder(input: Omit<Order, 'id' | 'createdAt'> & { id?: string }): void {
@@ -159,19 +164,23 @@ export class DeliveryService {
   deleteOrder(id: string): void {
     if (this.usingBackend() && this.api) {
       this.api.deleteOrder(id).subscribe({
-        next: () => {
-          this.orders.update((list) => list.filter((order) => order.id !== id));
-          this.persist(ORDER_KEY, this.orders());
-          this.routePlans?.invalidateCache();
-          this.clearPlan();
-        },
+        next: () => this.orderDeleted(id),
         error: (error) => console.error('[delivery] ลบออเดอร์ใน backend ไม่สำเร็จ:', error),
       });
       return;
     }
-    const next = this.orders().filter((order) => order.id !== id);
-    this.orders.set(next);
-    this.persist(ORDER_KEY, next);
+    this.orderDeleted(id);
+  }
+
+  orderDeleted(id: string): void {
+    this.ordersDeleted([id]);
+  }
+
+  ordersDeleted(ids: readonly string[]): void {
+    const removed = new Set(ids);
+    this.orders.update((list) => list.filter((order) => !removed.has(order.id)));
+    this.persist(ORDER_KEY, this.orders());
+    this.routePlans?.invalidateCache();
     this.clearPlan();
   }
 
