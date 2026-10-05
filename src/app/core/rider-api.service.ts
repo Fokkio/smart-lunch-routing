@@ -6,6 +6,8 @@ import { environment } from '../../environments/environment';
 export interface ApiRider {
   id: number;
   name: string;
+  username: string | null;
+  hasPassword: boolean;
   phone: string | null;
   isAvailable: boolean;
 }
@@ -46,5 +48,9 @@ export class RidersApiService {
 
   setPassword(id: number, password: string) {
     return this.http.put<void>(`${this.url}/${id}/password`, { password });
+  }
+
+  setAccount(id: number, username: string, password?: string) {
+    return this.http.put<void>(`${this.url}/${id}/account`, { username, ...(password ? { password } : {}) });
   }
 }
