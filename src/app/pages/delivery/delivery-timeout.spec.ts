@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { NEVER, of, throwError } from 'rxjs';
+import { NEVER, Subject, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DeliveryComponent } from './delivery.component';
 import { DeliveryService } from '../../core/delivery.service';
@@ -15,6 +15,8 @@ describe('DeliveryComponent saved plans loading', () => {
   let deleteSpy: ReturnType<typeof vi.fn>;
   let confirmSpy: ReturnType<typeof vi.fn>;
   let selectSpy: ReturnType<typeof vi.fn>;
+  let generateSpy: ReturnType<typeof vi.fn>;
+  let recalculateSpy: ReturnType<typeof vi.fn>;
 
   afterEach(() => {
     vi.useRealTimers();
@@ -28,12 +30,14 @@ describe('DeliveryComponent saved plans loading', () => {
     deleteSpy = vi.fn().mockReturnValue(NEVER);
     confirmSpy = vi.fn();
     selectSpy=vi.fn().mockReturnValue(selectReturn);
+    generateSpy=vi.fn().mockReturnValue(NEVER);
+    recalculateSpy=vi.fn().mockReturnValue(NEVER);
     TestBed.configureTestingModule({
       imports: [DeliveryComponent],
       providers: [
         provideRouter([]),
         { provide: DeliveryService, useValue: { refresh: vi.fn(), dataRevision: signal(0), usingBackend, settings: signal(null), customers: signal([]), dispatchCustomers: () => [], orders: signal([]), riders: signal([]), plan, confirmedPlan: signal(null), planHistory: signal([]), pendingOrders: () => [], pendingBoxes: () => 0, customerFor: () => null, calculateRoutes: () => {}, choosePlan: (value: any) => plan.set(value), confirmPlan: confirmSpy } },
-        { provide: RoutePlanApiService, useValue: { list: listSpy, get: getSpy, select: selectSpy, delete: deleteSpy, generate: () => NEVER, recalculate: () => NEVER } },
+        { provide: RoutePlanApiService, useValue: { list: listSpy, get: getSpy, select: selectSpy, delete: deleteSpy, generate: generateSpy, recalculate: recalculateSpy } },
       ],
     });
     fixture = TestBed.createComponent(DeliveryComponent);
@@ -51,6 +55,67 @@ describe('DeliveryComponent saved plans loading', () => {
     fixture.detectChanges();
     expect(component.loadingPlans).toBe(false);
     expect(component.plansError).toContain('โหลดใบงานไม่สำเร็จ');
+  });
+
+  it('ends generation after 30s and never creates a local substitute', async () => {
+    vi.useFakeTimers();
+    setup(of([]), true);
+    vi.spyOn(component, 'canCalculate').mockReturnValue(true);
+    component.calculate();
+    component.calculate();
+    expect(generateSpy).toHaveBeenCalledTimes(1);
+    expect(component.calculating).toBe(true);
+    await vi.advanceTimersByTimeAsync(31000);
+    expect(component.calculating).toBe(false);
+    expect(component.store.plan()).toBeNull();
+    expect(component.plansError).toContain('หมดเวลารอ');
+  });
+
+  it('does not fall back locally on API failure or disconnection', () => {
+    const connected = setup(of([]), true);
+    vi.spyOn(component, 'canCalculate').mockReturnValue(true);
+    generateSpy.mockReturnValue(throwError(() => ({ status: 503 })));
+    component.calculate();
+    expect(component.store.plan()).toBeNull();
+    expect(component.plansError).toContain('คำนวณไม่สำเร็จ');
+    connected.set(false);
+    component.calculate();
+    expect(generateSpy).toHaveBeenCalledTimes(1);
+    expect(component.plansError).toContain('เชื่อมต่อ');
+  });
+
+  it('renders an asynchronous alternative in zoneless mode without another user click', async () => {
+    setup(of([]), true);
+    const backend={routePlanId:17,status:'GENERATED',jobs:[],estimatedFinishTime:'11:05',startTime:'11:00',deliveryDeadline:'14:00',totalDistanceKm:1,totalDeliveryCost:15,totalRevenue:65,totalFoodCost:40,estimatedProfit:10};
+    getSpy.mockReturnValue(of(backend));
+    component.viewSavedPlan(17);
+    await fixture.whenStable();
+    const returned=new Subject<any>();
+    recalculateSpy.mockReturnValue(returned);
+    component.compare();
+    await fixture.whenStable();
+    returned.next({...backend,routePlanId:18});returned.complete();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.comparison')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('เลือกแผนใหม่');
+    expect(component.calculating).toBe(false);
+  });
+
+  it('sends the current draft ID and releases the compare button on timeout', async () => {
+    vi.useFakeTimers();
+    setup(of([]), true);
+    component.backendPlanId = 17;
+    component.selectedOrderIds = [3, 4];
+    component.compare();
+    expect(recalculateSpy).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ basePlanId: 17, orderIds: [3, 4] }));
+    await vi.advanceTimersByTimeAsync(31000);
+    expect(component.calculating).toBe(false);
+    expect(component.candidate).toBeNull();
+    expect(component.plansError).toContain('หมดเวลารอ');
+    recalculateSpy.mockReturnValue(throwError(() => ({status:422})));
+    component.compare();
+    expect(component.plansError).toContain('ไม่พบแผนทางเลือก');
+    expect(component.backendPlanId).toBe(17);
   });
 
   it('loads plans when backend becomes ready after init (effect)', async () => {

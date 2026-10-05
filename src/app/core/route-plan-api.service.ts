@@ -65,7 +65,7 @@ export class RoutePlanApiService {
     return this.http.post<RoutePlanModel>(`${this.baseUrl}/generate`, { planDate, ...window }).pipe(tap(() => this.invalidate()));
   }
 
-  recalculate(planDate: string, window: {startTime?:string;deadline?:string;orderIds?:number[]} = {}): Observable<RoutePlanModel> {
+  recalculate(planDate: string, window: {startTime?:string;deadline?:string;orderIds?:number[];basePlanId?:number} = {}): Observable<RoutePlanModel> {
     return this.http.post<RoutePlanModel>(`${this.baseUrl}/recalculate`, { planDate, ...window }).pipe(tap(() => this.invalidate()));
   }
 

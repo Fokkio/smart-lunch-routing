@@ -11,6 +11,7 @@ export interface ApiCustomer {
   lat: number;
   lng: number;
   createdAt?: string;
+  distanceKm?: number;
 }
 
 // ข้อมูลจากฟอร์มสำหรับสร้างลูกค้า
@@ -33,6 +34,9 @@ export class CustomersApiService {
     return this.http.get<ApiCustomer[]>(this.url, {
       params: { search: search.trim() },
     });
+  }
+  nearby(lat: number, lng: number, radiusKm = 1) {
+    return this.http.get<ApiCustomer[]>(`${this.url}/nearby`, {params:{lat,lng,radiusKm}});
   }
   // ส่งข้อมูลลูกค้าใหม่ และรับลูกค้าที่บันทึกสำเร็จกลับมา
   createCustomer(input: CreateCustomerInput) {

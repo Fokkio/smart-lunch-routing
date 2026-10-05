@@ -1,4 +1,6 @@
 <section class="mx-auto max-w-[1480px] p-4 sm:p-6 lg:p-8">
+  <app-nearby-search subject="ลูกค้า" [radiusKm]="1" [busy]="loadingCustomers()" (searched)="searchNearby($event)" (cleared)="clearNearby()" />
+  @if (nearbyPoint) { <p class="mb-4 text-sm font-semibold" role="status">กำลังแสดงลูกค้าในรัศมี 1 กม. จาก {{ nearbyPoint.lat }}, {{ nearbyPoint.lng }}</p> }
   <header class="mb-5 flex flex-wrap justify-end gap-3">
     <button class="neu-control inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-bold" type="button"
       (click)="showOverviewMap = !showOverviewMap">
@@ -62,6 +64,7 @@
           <div class="min-w-0"><strong class="block">{{ customer.name }}</strong><span
               class="block text-sm text-slate-500">{{ customer.phone }}</span>
             <p class="mt-1 truncate text-sm text-slate-600">{{ customer.address || 'ยังไม่มีรายละเอียดที่อยู่' }}</p>
+            @if (distances()[customer.id] !== undefined) { <p class="mt-1 text-sm font-semibold text-emerald-800">ระยะ {{ distances()[customer.id].toFixed(3) }} กม.</p> }
             <span
               class="mt-2 inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">ปักตำแหน่งแล้ว</span>
           </div>
@@ -83,7 +86,7 @@
         } @empty {
         <div class="px-5 py-12 text-center"><img class="mx-auto mb-5 h-auto w-52"
             src="assets/illustrations/empty-delivery.webp" width="640" height="426" alt="" role="presentation"
-            loading="lazy" /><strong class="block text-lg">{{ query ? 'ไม่พบลูกค้าที่ค้นหา' : 'ยังไม่มีข้อมูลลูกค้า'
+            loading="lazy" /><strong class="block text-lg">{{ query || nearbyPoint ? 'ไม่พบลูกค้าตามเงื่อนไขนี้' : 'ยังไม่มีข้อมูลลูกค้า'
             }}</strong>
           <p class="mt-1 text-sm text-slate-600">{{ query ? 'ลองค้นด้วยชื่อหรือเบอร์โทรอื่น' :
             'เพิ่มลูกค้าคนแรกเพื่อเริ่มรับออเดอร์' }}</p>

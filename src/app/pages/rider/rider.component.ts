@@ -47,6 +47,14 @@ export class RiderComponent implements OnInit {
 
   get currentStop(): RouteStopModel | null { return this.activeRoute?.stops[this.stopIndex] ?? null; }
 
+  get navigationUrl(): string | null {
+    const stop = this.currentStop;
+    if (!stop || !Number.isFinite(stop.latitude) || !Number.isFinite(stop.longitude) ||
+        Math.abs(stop.latitude) > 90 || Math.abs(stop.longitude) > 180) return null;
+    const params = new URLSearchParams({ api: '1', destination: `${stop.latitude},${stop.longitude}`, travelmode: 'driving', dir_action: 'navigate' });
+    return `https://www.google.com/maps/dir/?${params}`;
+  }
+
   ngOnInit(): void {
     this.loadJobs();
     // ponytail: polling suits this small dispatch app; use server push if measured traffic requires it.
