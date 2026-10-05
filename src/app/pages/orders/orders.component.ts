@@ -6,6 +6,7 @@ import { apiErrorMessage } from '../../core/api-error';
 import { ApiCustomer } from '../../core/customer-api.models';
 import { CustomersApiService } from '../../core/customer-api.service';
 import { ApiOrder, ApiOrderStatus, OrderApiService } from '../../core/order-api.service';
+import { DeliveryService } from '../../core/delivery.service';
 
 type Draft = { id?: number; customerId: number | null; boxes: number; status: ApiOrderStatus };
 
@@ -18,6 +19,7 @@ type Draft = { id?: number; customerId: number | null; boxes: number; status: Ap
 export class OrdersComponent {
   private readonly ordersApi = inject(OrderApiService);
   private readonly customersApi = inject(CustomersApiService);
+  private readonly deliveryStore = inject(DeliveryService);
   readonly orders = signal<ApiOrder[]>([]);
   readonly customers = signal<ApiCustomer[]>([]);
   readonly loading = signal(false);
@@ -98,7 +100,11 @@ export class OrdersComponent {
   clearSimulated(): void {
     if (!this.simulatedCount() || !window.confirm(`ล้างออเดอร์จำลอง ${this.simulatedCount()} รายการหรือไม่?`)) return;
     this.ordersApi.clearSimulated().subscribe({
-      next: (result) => { this.feedback = `ล้างออเดอร์จำลอง ${result.deletedCount} รายการแล้ว`; this.reload(); },
+      next: (result) => {
+        this.deliveryStore.ordersDeleted(this.orders().filter(order => order.isSimulated).map(order => String(order.id)));
+        this.feedback = `ล้างออเดอร์จำลอง ${result.deletedCount} รายการแล้ว`;
+        this.reload();
+      },
       error: err => this.error.set(err?.status === 409
         ? 'ออเดอร์จำลองยังอยู่ในแผนส่ง กรุณาไปหน้าจัดเส้นทางและลบแผนที่เกี่ยวข้องก่อนล้าง'
         : apiErrorMessage(err, 'ล้างออเดอร์จำลองไม่สำเร็จ')),
@@ -107,7 +113,7 @@ export class OrdersComponent {
   remove(order: ApiOrder): void {
     if (!window.confirm(`ลบออเดอร์ ${order.id} หรือไม่?`)) return;
     this.ordersApi.delete(order.id).subscribe({
-      next: () => { this.feedback = `ลบออเดอร์ ${order.id} แล้ว`; this.reload(); },
+      next: () => { this.deliveryStore.orderDeleted(String(order.id)); this.feedback = `ลบออเดอร์ ${order.id} แล้ว`; this.reload(); },
       error: err => this.error.set(
         err?.status === 409
           ? 'ลบไม่ได้ เพราะออเดอร์นี้อยู่ในแผนจัดส่ง (รวมแผนฉบับร่าง) กรุณาลบแผนที่เกี่ยวข้องก่อน'

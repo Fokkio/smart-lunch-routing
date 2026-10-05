@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Customer } from '../../core/models';
 import { CustomersApiService } from '../../core/customer-api.service';
+import { DeliveryService } from '../../core/delivery.service';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
 
 type Draft = Omit<Customer, 'id'> & { id?: string };
@@ -14,6 +15,7 @@ type Draft = Omit<Customer, 'id'> & { id?: string };
 })
 export class CustomersComponent implements OnInit {
   private readonly customerApi = inject(CustomersApiService);
+  private readonly deliveryStore = inject(DeliveryService);
   // รายชื่อ customers for show (from backend)
   readonly apiCustomers = signal<Customer[]>([]);
 
@@ -244,6 +246,7 @@ export class CustomersComponent implements OnInit {
     this.customerApi.deleteCustomer(customer.id).subscribe({
       next: () => {
         this.deletingCustomerId.set(null);
+        this.deliveryStore.customerDeleted(customer.id);
 
         // backend ลบสำเร็จแล้ว จึงเอารายการออกจากหน้าจอ
         this.apiCustomers.update((customers) =>

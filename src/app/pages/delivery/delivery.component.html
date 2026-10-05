@@ -75,9 +75,9 @@
         @if (mapJobs(); as jobs) {
           <app-route-plan-map [jobs]="jobs" [shop]="shopPoint()" [riderNames]="mapRiderNames()" [selectedJob]="selectedRoute" (selectedJobChange)="selectedRoute = $event" />
         } @else {
-          <app-delivery-map [customers]="store.customers()" [routes]="store.plan()?.routes || []" [selectedIndex]="selectedRoute" (selectedIndexChange)="selectedRoute = $event" />
+          <app-delivery-map [customers]="store.dispatchCustomers()" [routes]="store.plan()?.routes || []" [selectedIndex]="selectedRoute" (selectedIndexChange)="selectedRoute = $event" />
         }
-        <div class="pointer-events-none absolute left-3 top-3 z-[500] inline-flex items-center gap-2 rounded-lg border border-line bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-[0_8px_22px_rgba(38,56,88,.1)]" role="status">{{ loadingPlanDetail ? 'กำลังเปิดเส้นทาง...' : backendPlanId ? 'แผน #' + backendPlanId + ' · ' + (store.confirmedPlan() ? 'ยืนยันแล้ว' : 'ฉบับร่าง') : store.plan() ? 'แผนฉบับร่างในเครื่อง' : 'แสดงตำแหน่งลูกค้า' }}</div>
+        <div class="pointer-events-none absolute left-3 top-3 z-[500] inline-flex items-center gap-2 rounded-lg border border-line bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-[0_8px_22px_rgba(38,56,88,.1)]" role="status">{{ loadingPlanDetail ? 'กำลังเปิดเส้นทาง...' : backendPlanId ? 'แผน #' + backendPlanId + ' · ' + (store.confirmedPlan() ? 'ยืนยันแล้ว' : 'ฉบับร่าง') : store.plan() ? 'แผนฉบับร่างในเครื่อง' : store.dispatchCustomers().length ? 'จุดส่งของออเดอร์วันนี้' : 'ยังไม่มีจุดส่งวันนี้' }}</div>
       </div>
       <footer class="flex min-h-14 flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2 text-sm text-slate-600"><span><strong class="text-slate-700">คำอธิบาย:</strong> ป้าย R01-2 = ไรเดอร์คันที่ 1 จุดส่งที่ 2</span><span>ข้อมูลแผนที่ © OpenStreetMap</span></footer>
     </section>
