@@ -37,6 +37,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   @Input() routes: RiderRoute[] = [];
   @Input() compact = false;
   @Input() pickable = false;
+  @Input() showShop = true;
   @Input() selectedLocation: { lat: number; lng: number } | null = null;
   /** index เส้นทางที่ parent เลือก (แชร์กับการ์ด) — map กับ rider.id ข้างใน */
   @Input() selectedIndex: number | null = null;
@@ -66,7 +67,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   ngOnChanges(_changes: SimpleChanges): void {
     this.syncSelectedIndex();
     if (this.selectedRiderId && !this.routes.some(route => route.rider.id === this.selectedRiderId)) this.selectedRiderId = null;
-    if (this.map) this.render();
+    if (this.map) this.render(!!_changes['selectedLocation'] && !Object.keys(_changes).some(key => key !== 'selectedLocation'));
   }
 
   ngOnDestroy(): void {
@@ -100,14 +101,14 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private static validPoint(point: { lat: number; lng: number } | null | undefined): point is { lat: number; lng: number } {
-    return !!point && Number.isFinite(point.lat) && Number.isFinite(point.lng);
+    return !!point && Number.isFinite(point.lat) && Number.isFinite(point.lng) && Math.abs(point.lat) <= 90 && Math.abs(point.lng) <= 180;
   }
 
-  private render(): void {
+  private render(preserveView = false): void {
     if (!this.map) return;
     this.layer?.remove();
     this.layer = L.featureGroup().addTo(this.map);
-    L.circleMarker([SHOP.lat, SHOP.lng], {
+    if (this.showShop) L.circleMarker([SHOP.lat, SHOP.lng], {
       radius: 9, color: '#111111', fillColor: '#ffffff', fillOpacity: 1, weight: 3,
     }).bindPopup(this.popup(SHOP.name, 'จุดเริ่มต้น 11:30 น.')).addTo(this.layer);
 
@@ -137,15 +138,16 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
       });
     }
 
-    if (this.pickable && this.selectedLocation) {
+    if (this.pickable && DeliveryMapComponent.validPoint(this.selectedLocation)) {
       L.marker([this.selectedLocation.lat, this.selectedLocation.lng], {
         draggable: true,
+        title: 'ลากหมุดเพื่อเลือกตำแหน่ง',
         icon: L.divIcon({ className: 'location-pin', html: '<span></span>', iconSize: [44, 44], iconAnchor: [22, 34] }),
       }).on('dragend', (event) => this.emitLocation(event.target.getLatLng())).addTo(this.layer);
     }
 
     const bounds = this.layer.getBounds();
-    if (bounds.isValid()) this.map.fitBounds(bounds.pad(this.compact ? 0.12 : 0.2), { maxZoom: this.selectedRiderId ? 17 : 15 });
+    if (!preserveView && bounds.isValid()) this.map.fitBounds(bounds.pad(this.compact ? 0.12 : 0.2), { maxZoom: this.selectedRiderId ? 17 : 15 });
   }
 
   private emitLocation(latlng: L.LatLng): void {
