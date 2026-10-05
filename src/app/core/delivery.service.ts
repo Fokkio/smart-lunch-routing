@@ -5,6 +5,7 @@ import { DEMO_CUSTOMERS, DEMO_ORDERS, DEMO_RIDERS } from './demo-data';
 import { Customer, Order, RiderRoute, RoutePlan, RouteStop, SHOP } from './models';
 import { ShopSettings, ShopSettingsApiService } from './shop-settings-api.service';
 import { RoutePlanApiService } from './route-plan-api.service';
+import { AuthService } from './auth.service';
 
 const CUSTOMER_KEY = 'smart-lunch-customers-v1';
 const ORDER_KEY = 'smart-lunch-orders-v1';
@@ -28,9 +29,18 @@ export class DeliveryService {
   readonly usingBackend = signal(false);
   /** ค่าตั้งร้านจาก backend (null = ยังโหลดไม่ได้ ใช้ค่า default เดียวกับ backend seed) */
   readonly settings = signal<ShopSettings | null>(null);
+  readonly dataRevision = signal(0);
   private readonly api = inject(BackendApiService, { optional: true });
   private readonly settingsApi = inject(ShopSettingsApiService, { optional: true });
   private readonly routePlans = inject(RoutePlanApiService, { optional: true });
+  private readonly auth = inject(AuthService, { optional: true });
+  private loadGeneration = 0;
+
+  private currentResponse(): () => boolean {
+    const generation = this.loadGeneration;
+    const token = this.auth?.token();
+    return () => generation === this.loadGeneration && token === this.auth?.token();
+  }
 
   constructor() {
     // แผนที่ค้างใน localStorage อาจอ้างลูกค้าที่ถูกลบไปแล้ว — ตรวจแล้วทิ้งทั้งแผน
@@ -49,8 +59,10 @@ export class DeliveryService {
    * ดึงลูกค้า/ออเดอร์/ไรเดอร์จริงจาก backend ทับข้อมูลจำลอง
    * backend ล่มหรือไม่มี HttpClient (เช่นในเทส) = อยู่โหมดจำลองต่อ หน้าเว็บไม่พัง
    */
-  connect(): void {
-    if (!this.api || this.usingBackend()) return;
+  connect(refresh = false): void {
+    if (!this.api || (this.usingBackend() && !refresh)) return;
+    this.loadGeneration++;
+    const current = this.currentResponse();
     // Refresh all lists together. Partial responses never replace one part of a snapshot.
     const attempt = <T>(source: Observable<T[]>) => source.pipe(
       map(value => ({ ok: true as const, value })),
@@ -61,6 +73,7 @@ export class DeliveryService {
       orders: attempt(this.api.listOrders()),
       riders: attempt(this.api.listRiders()),
     }).subscribe({ next: (data) => {
+      if (!current()) return;
       if (!data.customers.ok || !data.orders.ok || !data.riders.ok) {
         console.warn('[delivery] โหลดข้อมูลจาก backend ไม่ครบ ใช้ข้อมูลในเครื่องที่ยังไม่ยืนยันความปัจจุบัน');
         return;
@@ -76,20 +89,23 @@ export class DeliveryService {
       this.confirmedPlan.set(null);
       try { localStorage.removeItem(PLAN_KEY); } catch { /* browser storage unavailable */ }
       this.usingBackend.set(true);
+      this.dataRevision.update(value => value + 1);
     } });
     // ค่าตั้งร้านแยกเส้นต่างหาก — พังก็แค่ใช้ default ไม่กระทบข้อมูลหลัก
     this.settingsApi?.get().subscribe({
-      next: (settings) => this.settings.set(settings),
+      next: (settings) => { if (current()) this.settings.set(settings); },
       error: (error) => console.warn('[delivery] โหลดค่าตั้งร้านไม่สำเร็จ ใช้ค่า default:', error),
     });
   }
 
   saveCustomer(input: Omit<Customer, 'id'> & { id?: string }): void {
     if (this.usingBackend() && this.api) {
+      const current = this.currentResponse();
       const payload = { name: input.name, phone: input.phone, address: input.address, lat: input.lat, lng: input.lng };
       const request = input.id ? this.api.updateCustomer(input.id, payload) : this.api.createCustomer(payload);
       request.subscribe({
         next: (saved) => {
+          if (!current()) return;
           this.customers.update((list) =>
             input.id ? list.map((item) => (item.id === saved.id ? saved : item)) : [...list, saved],
           );
@@ -112,8 +128,9 @@ export class DeliveryService {
   deleteCustomer(id: string): boolean {
     if (this.orders().some((order) => order.customerId === id)) return false;
     if (this.usingBackend() && this.api) {
+      const current = this.currentResponse();
       this.api.deleteCustomer(id).subscribe({
-        next: () => this.customerDeleted(id),
+        next: () => { if (current()) this.customerDeleted(id); },
         // 409 = backend บอกว่ามีออเดอร์อ้างอิงอยู่ — คงรายการไว้แล้วให้ toast ฝั่ง UI ตัดสินใจ
         error: (error) => console.error('[delivery] ลบลูกค้าใน backend ไม่สำเร็จ:', error),
       });
@@ -130,13 +147,20 @@ export class DeliveryService {
     this.clearPlan();
   }
 
+  refresh(): void {
+    this.routePlans?.invalidateCache();
+    this.connect(true);
+  }
+
   saveOrder(input: Omit<Order, 'id' | 'createdAt'> & { id?: string }): void {
     if (this.usingBackend() && this.api) {
+      const current = this.currentResponse();
       const request = input.id
         ? this.api.updateOrder(input.id, { customerId: input.customerId, boxes: input.boxes, status: input.status })
         : this.api.createOrder({ customerId: input.customerId, boxes: input.boxes });
       request.subscribe({
         next: (saved) => {
+          if (!current()) return;
           this.orders.update((list) =>
             input.id ? list.map((item) => (item.id === saved.id ? saved : item)) : [saved, ...list],
           );
@@ -163,8 +187,9 @@ export class DeliveryService {
 
   deleteOrder(id: string): void {
     if (this.usingBackend() && this.api) {
+      const current = this.currentResponse();
       this.api.deleteOrder(id).subscribe({
-        next: () => this.orderDeleted(id),
+        next: () => { if (current()) this.orderDeleted(id); },
         error: (error) => console.error('[delivery] ลบออเดอร์ใน backend ไม่สำเร็จ:', error),
       });
       return;
@@ -361,6 +386,7 @@ export class DeliveryService {
   }
 
   clearForLogout(): void {
+    this.loadGeneration++;
     this.customers.set([]);
     this.orders.set([]);
     this.riders.set([]);

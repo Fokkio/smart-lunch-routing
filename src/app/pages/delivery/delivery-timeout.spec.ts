@@ -30,7 +30,7 @@ describe('DeliveryComponent saved plans loading', () => {
       imports: [DeliveryComponent],
       providers: [
         provideRouter([]),
-        { provide: DeliveryService, useValue: { usingBackend, settings: signal(null), customers: signal([]), dispatchCustomers: () => [], orders: signal([]), riders: signal([]), plan, confirmedPlan: signal(null), planHistory: signal([]), pendingOrders: () => [], pendingBoxes: () => 0, customerFor: () => null, calculateRoutes: () => {}, choosePlan: (value: any) => plan.set(value), confirmPlan: confirmSpy } },
+        { provide: DeliveryService, useValue: { refresh: vi.fn(), dataRevision: signal(0), usingBackend, settings: signal(null), customers: signal([]), dispatchCustomers: () => [], orders: signal([]), riders: signal([]), plan, confirmedPlan: signal(null), planHistory: signal([]), pendingOrders: () => [], pendingBoxes: () => 0, customerFor: () => null, calculateRoutes: () => {}, choosePlan: (value: any) => plan.set(value), confirmPlan: confirmSpy } },
         { provide: RoutePlanApiService, useValue: { list: listSpy, get: getSpy, select: () => selectReturn, delete: deleteSpy, generate: () => NEVER, recalculate: () => NEVER } },
       ],
     });
@@ -80,6 +80,27 @@ describe('DeliveryComponent saved plans loading', () => {
     expect(getSpy).toHaveBeenCalledWith(5);
   });
 
+  it('does not automatically open an invalidated saved draft', () => {
+    setup(of([{ routePlanId: 5, status: 'REJECTED' }]), true);
+    expect(getSpy).not.toHaveBeenCalled();
+    expect(component.backendPlanId).toBeNull();
+    expect(component.mapJobs()).toBeNull();
+  });
+
+  it('clears the previous backend identity when choosing a local candidate', () => {
+    setup(of([]), true);
+    component.backendPlanId = 5;
+    component.backendPlan = { status: 'GENERATED', jobs: [] } as never;
+    component.candidate = { deadlineSafe: true } as never;
+    component.chooseCandidate();
+    expect(component.backendPlanId).toBeNull();
+    expect(component.backendPlan).toBeNull();
+    component.startReview();
+    component.confirm();
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(component.plansError).toContain('ตัวอย่างเท่านั้น');
+  });
+
   it('opens a saved draft automatically and reveals its map only after a user click', async () => {
     vi.useFakeTimers();
     const geometry = { type: 'LineString', coordinates: [[103.25286, 16.24631], [103.2531, 16.2469]] };
@@ -114,6 +135,7 @@ describe('DeliveryComponent saved plans loading', () => {
     setup(of([]), true, throwError(() => ({ status: 422 })));
     component.store.plan.set({ deadlineSafe: true } as never);
     component.backendPlanId = 5;
+    component.backendPlan = { status: 'GENERATED' } as never;
     component.reviewing = true;
     component.confirm();
     expect(confirmSpy).not.toHaveBeenCalled();

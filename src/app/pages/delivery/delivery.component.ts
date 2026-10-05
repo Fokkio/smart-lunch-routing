@@ -1,5 +1,5 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { Component, ElementRef, ViewChild, computed, effect, inject } from '@angular/core';
+import { Component, ElementRef, ViewChild, computed, effect, inject, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
@@ -22,7 +22,7 @@ import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
 export class DeliveryComponent {
   readonly store = inject(DeliveryService);
   readonly shopPoint = computed<[number, number]>(() => {
-    const settings = this.store.settings();
+    const settings = this.store.plan()?.shop ?? this.store.settings();
     return settings ? [settings.latitude, settings.longitude] : [SHOP.lat, SHOP.lng];
   });
   private readonly routePlans = inject(RoutePlanApiService, { optional: true });
@@ -73,11 +73,21 @@ export class DeliveryComponent {
   }
 
   constructor() {
+    this.store.refresh();
     // connect() เป็น async — effect นี้รันครั้งแรกตอนสร้าง component และรันซ้ำ
     // เมื่อ usingBackend กลายเป็น true จึงครอบคลุมทั้งเปิดหน้าก่อน/หลัง backend พร้อม
     // (ไม่เช่นนั้นใบงานที่บันทึกไว้จะไม่แสดงจนกว่าจะกดรีเฟรชเอง)
     effect(() => {
-      if (this.store.usingBackend()) this.loadSavedPlans();
+      this.store.dataRevision();
+      const ready = this.store.usingBackend();
+      untracked(() => {
+      this.viewRequestId++;
+      this.backendPlanId = null;
+      this.backendPlan = null;
+      this.loadingPlanDetail = false;
+      this.clearCandidate();
+      if (ready) this.loadSavedPlans();
+      });
     });
   }
 
@@ -98,7 +108,7 @@ export class DeliveryComponent {
       ).subscribe({
         next: (plans) => {
           this.savedPlans = plans;
-          const current = plans.find((plan) => plan.status === 'SELECTED') ?? plans[0];
+          const current = plans.find((plan) => plan.status === 'SELECTED') ?? plans.find((plan) => plan.status === 'GENERATED');
           if (current?.routePlanId != null && this.backendPlanId === null && !this.loadingPlanDetail) {
             this.viewSavedPlan(current.routePlanId);
           }
@@ -112,7 +122,7 @@ export class DeliveryComponent {
   }
 
   planStatusLabel(status: RoutePlanStatus): string {
-    return status === 'SELECTED' ? 'ยืนยันแล้ว' : status === 'REJECTED' ? 'ปฏิเสธ' : 'ฉบับร่าง';
+    return status === 'SELECTED' ? 'ยืนยันแล้ว' : status === 'REJECTED' ? 'ต้องคำนวณใหม่' : 'ฉบับร่าง';
   }
 
   /** เปิดดูใบงานที่บันทึกไว้ */
@@ -125,6 +135,10 @@ export class DeliveryComponent {
       next: (backend) => {
         if (requestId !== this.viewRequestId) return;
         this.loadingPlanDetail = false;
+        if (backend.status === 'REJECTED') {
+          this.plansError = 'แผนนี้ใช้จัดส่งไม่ได้แล้ว กรุณาคำนวณแผนใหม่จากข้อมูลล่าสุด';
+          return;
+        }
         this.selectedRoute = null;
         this.adoptBackend(backend);
         if (revealMap) setTimeout(() => {
@@ -163,7 +177,7 @@ export class DeliveryComponent {
           this.store.plan.set(null);
           this.store.confirmedPlan.set(null);
         }
-        this.loadSavedPlans();
+        this.store.refresh();
       },
       error: () => { this.plansError = 'ลบใบงานไม่สำเร็จ กรุณาลองใหม่'; },
     });
@@ -217,6 +231,7 @@ export class DeliveryComponent {
     this.calculateLocally();
   }
   private calculateLocally(): void {
+    this.backendPlanId = null;
     this.backendPlan = null;
     this.acknowledgeLate = false;
     this.lateOverride = false;
@@ -228,7 +243,7 @@ export class DeliveryComponent {
       customers: this.store.customers(),
       orders: this.store.orders(),
       riders: this.store.riders(),
-    });
+    }, { deadlineTime: this.deadlineLabel() });
     this.backendPlanId = backend.routePlanId ?? null;
     this.backendPlan = backend;
     this.candidateBackend = null;
@@ -256,7 +271,7 @@ export class DeliveryComponent {
             customers: this.store.customers(),
             orders: this.store.orders(),
             riders: this.store.riders(),
-          });
+          }, { deadlineTime: this.deadlineLabel() });
           this.loadSavedPlans();
         },
         error: (error) => {
@@ -311,8 +326,8 @@ export class DeliveryComponent {
       this.ackCandidateBox?.nativeElement.focus();
       return;
     }
-    if (this.candidateBackend?.routePlanId != null) this.backendPlanId = this.candidateBackend.routePlanId;
-    if (this.candidateBackend) this.backendPlan = this.candidateBackend;
+    this.backendPlanId = this.candidateBackend?.routePlanId ?? null;
+    this.backendPlan = this.candidateBackend;
     this.lateOverride = !this.candidate.deadlineSafe;
     this.acknowledgeLate = false;
     this.acknowledgeCandidate = false;
@@ -331,6 +346,10 @@ export class DeliveryComponent {
   confirm(): void {
     const plan = this.store.plan();
     if (!this.reviewing || !plan) return;
+    if (this.backendPlanId === null || !this.routePlans || this.backendPlan?.status !== 'GENERATED') {
+      this.plansError = 'แผนในเครื่องใช้ดูตัวอย่างเท่านั้น กรุณาคำนวณและบันทึกแผนผ่านระบบก่อนออกใบงาน';
+      return;
+    }
     // แผนที่ส่งเกินเส้นตายต้องติ๊ก ack ก่อน — ไม่ใช่ปุ่มทึบ แต่พาโฟกัสไปที่ checkbox
     if (!plan.deadlineSafe && !this.acknowledgeLate) {
       this.ackError = true;
@@ -346,27 +365,27 @@ export class DeliveryComponent {
     };
     if (this.backendPlanId != null && this.routePlans) {
       this.routePlans.select(this.backendPlanId).subscribe({
-        next: (backend) => { this.adoptBackend(backend); finish(); this.loadSavedPlans(); },
+        next: (backend) => { this.adoptBackend(backend); finish(); this.store.refresh(); this.loadSavedPlans(); },
         error: () => { this.plansError = 'ยืนยันใบงานไม่สำเร็จ กรุณาตรวจสอบไรเดอร์และลองใหม่'; },
       });
       return;
     }
-    finish();
   }
   longestMinutes(plan: RoutePlan): number { return Math.max(0, ...plan.routes.map(route => route.durationMinutes)); }
   totalStops(plan: RoutePlan): number { return plan.routes.reduce((total, route) => total + route.stops.length, 0); }
   private timeMinutes(value: string): number { const [hours, minutes] = value.slice(0, 5).split(':').map(Number); return hours * 60 + minutes; }
-  private startMinutes(): number { return this.timeMinutes(this.store.settings()?.deliveryStartTime ?? '11:30'); }
-  private deadlineMinutes(): number { return this.timeMinutes(this.store.settings()?.deliveryDeadline ?? '12:30'); }
-  deadlineLabel(): string { return (this.store.settings()?.deliveryDeadline ?? '12:30').slice(0, 5); }
-  finishTime(plan: RoutePlan): string { return this.finishTimeForRoute(this.longestMinutes(plan)); }
+  private startMinutes(): number { return this.timeMinutes(this.store.plan()?.shop?.deliveryStartTime ?? this.store.settings()?.deliveryStartTime ?? '11:30'); }
+  private deadlineMinutes(): number { return this.timeMinutes(this.store.plan()?.shop?.deliveryDeadline ?? this.store.settings()?.deliveryDeadline ?? '12:30'); }
+  deadlineLabel(): string { return (this.store.plan()?.shop?.deliveryDeadline ?? this.store.settings()?.deliveryDeadline ?? '12:30').slice(0, 5); }
+  finishTime(plan: RoutePlan): string { return plan.estimatedFinishTime || this.finishTimeForRoute(this.longestMinutes(plan)); }
   marginMinutes(plan: RoutePlan): number { return this.deadlineMinutes() - this.startMinutes() - this.longestMinutes(plan); }
   finishTimeForRoute(durationMinutes: number): string { const minutes = this.startMinutes() + durationMinutes; return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`; }
+  routeFinishTime(route: RiderRoute): string { return route.estimatedFinishTime || this.finishTimeForRoute(route.durationMinutes); }
   /** คันนี้คาดว่าถึงจุดสุดท้ายเกินเวลาส่งของร้านหรือไม่ */
   isLate(route: RiderRoute): boolean { return this.startMinutes() + route.durationMinutes > this.deadlineMinutes(); }
   /** เกินเส้นตายไปกี่นาที (เรียกเมื่อ isLate เท่านั้น) */
   lateMinutes(route: RiderRoute): number { return Math.max(0, this.startMinutes() + route.durationMinutes - this.deadlineMinutes()); }
-  capacityPercent(plan: RoutePlan): number { return plan.routes.length ? Math.min(100, this.totalStops(plan) / (plan.routes.length * (this.store.settings()?.maxOrdersPerRider ?? 3)) * 100) : 0; }
-  callFee(plan: RoutePlan): number { return plan.routes.length * (this.store.settings()?.riderBaseCost ?? 15); }
+  capacityPercent(plan: RoutePlan): number { return plan.routes.length ? Math.min(100, this.totalStops(plan) / (plan.routes.length * (plan.shop?.maxOrdersPerRider ?? this.store.settings()?.maxOrdersPerRider ?? 3)) * 100) : 0; }
+  callFee(plan: RoutePlan): number { return plan.routes.length * (plan.shop?.riderBaseCost ?? this.store.settings()?.riderBaseCost ?? 15); }
   distanceFee(plan: RoutePlan): number { return Math.round((plan.deliveryCost - this.callFee(plan)) * 100) / 100; }
 }

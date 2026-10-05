@@ -39,7 +39,7 @@
               class="mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold"
               [class.bg-emerald-50]="rider.isAvailable" [class.text-emerald-800]="rider.isAvailable"
               [class.bg-slate-100]="!rider.isAvailable" [class.text-slate-500]="!rider.isAvailable">{{
-              rider.isAvailable ? 'พร้อมรับงาน' : 'ไม่รับงาน' }}</span>
+              !rider.username || !rider.hasPassword ? 'ยังไม่ได้ตั้งบัญชี' : rider.isAvailable ? 'พร้อมรับงาน' : 'ไม่รับงาน' }}</span>
           </div>
           <div class="flex gap-2 sm:justify-end">
             <button class="neu-control min-h-11 rounded-xl px-3 text-sm font-semibold" type="button" [disabled]="saving()" (click)="openAccount(rider)">บัญชี</button>

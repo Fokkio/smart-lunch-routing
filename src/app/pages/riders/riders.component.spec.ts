@@ -2,10 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { RidersComponent } from './riders.component';
+import { DeliveryService } from '../../core/delivery.service';
+import { vi } from 'vitest';
 
 describe('RidersComponent account setup', () => {
   it('sends a username and initial password for a rider without an account', () => {
-    TestBed.configureTestingModule({ imports: [RidersComponent], providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({ imports: [RidersComponent], providers: [provideHttpClient(), provideHttpClientTesting(), { provide: DeliveryService, useValue: { refresh: vi.fn() } }] });
     const fixture = TestBed.createComponent(RidersComponent);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);

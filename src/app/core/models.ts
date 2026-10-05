@@ -35,6 +35,8 @@ export interface RouteStop {
 }
 
 export interface RiderRoute {
+  estimatedStartTime?: string;
+  estimatedFinishTime?: string;
   rider: Rider;
   stops: RouteStop[];
   totalBoxes: number;
@@ -48,6 +50,8 @@ export interface RiderRoute {
 }
 
 export interface RoutePlan {
+  shop?: import('./shop-settings-api.service').ShopSettings;
+  estimatedFinishTime?: string;
   version: number;
   generatedAt: string;
   routes: RiderRoute[];

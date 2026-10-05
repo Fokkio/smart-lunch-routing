@@ -4,6 +4,7 @@ import { Observable, of, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { RoutePlanModel, RoutePlanSummaryModel } from './route-plan.models';
 import { DeliveryRouteModel } from './route-plan.models';
+import { AuthService } from './auth.service';
 
 /**
  * Backend RoutePlan API client. Thin HTTP wrapper — response values are
@@ -16,6 +17,14 @@ import { DeliveryRouteModel } from './route-plan.models';
 @Injectable({ providedIn: 'root' })
 export class RoutePlanApiService {
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService, { optional: true });
+  private cacheGeneration = 0;
+
+  private currentResponse(): () => boolean {
+    const generation = this.cacheGeneration;
+    const token = this.auth?.token();
+    return () => generation === this.cacheGeneration && token === this.auth?.token();
+  }
   private readonly baseUrl = `${environment.apiBaseUrl}/route-plans`;
   private readonly cacheKey = `smart-lunch-route-details-v1:${this.baseUrl}`;
   private readonly cacheAgeMs = 30_000;
@@ -43,6 +52,7 @@ export class RoutePlanApiService {
   }
 
   private invalidate(id?: number): void {
+    this.cacheGeneration++;
     if (id === undefined) { try { localStorage.removeItem(this.cacheKey); } catch { /* HTTP remains available */ } return; }
     const rows = this.readCache();
     delete rows[id];
@@ -60,7 +70,9 @@ export class RoutePlanApiService {
   }
 
   list(date?: string): Observable<RoutePlanSummaryModel[]> {
+    const currentResponse = this.currentResponse();
     return this.http.get<RoutePlanSummaryModel[]>(this.baseUrl, { params: date ? { date } : {} }).pipe(tap(plans => {
+      if (!currentResponse()) return;
       const current = new Map(plans.map(plan => [plan.routePlanId, plan]));
       const rows = this.readCache();
       for (const [id, entry] of Object.entries(rows)) {
@@ -73,12 +85,13 @@ export class RoutePlanApiService {
   }
 
   get(id: number, fresh = false): Observable<RoutePlanModel> {
+    const currentResponse = this.currentResponse();
     const cached = this.readCache()[id];
     if (!fresh && cached?.plan?.routePlanId === id && cached.plan.status === 'GENERATED'
         && Array.isArray(cached.plan.jobs)
         && Number.isFinite(cached.savedAt) && Date.now() - cached.savedAt >= 0
         && Date.now() - cached.savedAt < this.cacheAgeMs) return of(cached.plan);
-    return this.http.get<RoutePlanModel>(`${this.baseUrl}/${id}`).pipe(tap(plan => this.remember(plan)));
+    return this.http.get<RoutePlanModel>(`${this.baseUrl}/${id}`).pipe(tap(plan => { if (currentResponse()) this.remember(plan); }));
   }
 
   select(id: number): Observable<RoutePlanModel> {
