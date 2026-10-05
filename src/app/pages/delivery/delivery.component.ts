@@ -248,6 +248,8 @@ export class DeliveryComponent {
     this.plansError = 'ยังเชื่อมต่อระบบจัดส่งไม่ได้ กรุณารีเฟรชและลองใหม่';
   }
   private adoptBackend(backend: RoutePlanModel): void {
+    this.roundStart = (backend.startTime ?? backend.shop?.deliveryStartTime ?? '').slice(0, 5);
+    this.roundDeadline = (backend.deliveryDeadline ?? backend.shop?.deliveryDeadline ?? '').slice(0, 5);
     const plan = adaptBackendPlan(backend, {
       customers: this.store.customers(),
       orders: this.store.orders(),

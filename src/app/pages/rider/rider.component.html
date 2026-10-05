@@ -2,7 +2,7 @@
   <div class="neu-panel mx-auto max-w-xl overflow-hidden rounded-2xl">
     <header class="flex items-center gap-3 border-b border-white/70 px-5 py-4"><img class="size-10" src="assets/brand/krua-thiang-trong-mark.svg" width="40" height="40" alt="" role="presentation" /><div class="flex-1"><strong class="block">ครัวเที่ยงตรง</strong><small class="text-slate-600">{{ auth.user()?.name }} · งานจัดส่งของฉัน</small></div><button class="text-sm font-bold text-slate-600 underline" type="button" (click)="logout()">ออกจากระบบ</button></header>
     @if (stage === 'entry') {
-      <section class="entry-panel p-5 sm:p-7"><h1 class="text-2xl font-bold">งานของฉันวันนี้</h1><p class="mt-1 text-slate-600">งานที่ร้านยืนยันและมอบหมายให้บัญชีของคุณ</p>
+      <section class="entry-panel p-5 sm:p-7"><h1 class="text-2xl font-bold">งานของฉันวันนี้</h1><p class="mt-1 text-slate-600">งานที่ร้านยืนยันและมอบหมายให้บัญชีของคุณ รวมงานค้างจากวันก่อน</p>
         <label class="mt-4 grid gap-1 text-sm font-semibold" for="rider-job-query">ค้นหารหัสใบงานของฉัน
           <input id="rider-job-query" class="neu-field min-h-12 min-w-0 rounded-xl px-3" type="search" name="jobQuery" [(ngModel)]="jobQuery" placeholder="เช่น P123-R1" />
         </label>

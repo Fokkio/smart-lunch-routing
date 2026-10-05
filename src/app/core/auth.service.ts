@@ -71,7 +71,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const apiRequest = req.url.startsWith(`${environment.apiBaseUrl}/`);
   return next(apiRequest && token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req).pipe(
     catchError(error => {
-      if (apiRequest && error.status === 401 && !req.url.endsWith('/auth/login') && !req.url.endsWith('/auth/password')) {
+      if (apiRequest && token === auth.token() && error.status === 401 && !req.url.endsWith('/auth/login') && !req.url.endsWith('/auth/password')) {
         auth.clear();
         void router.navigateByUrl('/login');
       }

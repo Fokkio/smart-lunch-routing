@@ -90,9 +90,12 @@ describe('DeliveryComponent saved plans loading', () => {
     getSpy.mockReturnValue(of(backend));
     component.viewSavedPlan(17);
     await fixture.whenStable();
+    expect(component.roundStart).toBe('11:00');
+    expect(component.roundDeadline).toBe('14:00');
     const returned=new Subject<any>();
     recalculateSpy.mockReturnValue(returned);
     component.compare();
+    expect(recalculateSpy).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ basePlanId: 17, startTime: '11:00', deadline: '14:00' }));
     await fixture.whenStable();
     returned.next({...backend,routePlanId:18});returned.complete();
     await fixture.whenStable();
