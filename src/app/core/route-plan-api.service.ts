@@ -105,8 +105,8 @@ export class RoutePlanApiService {
     return this.http.post<{started:boolean}>(`${environment.apiBaseUrl}/my-jobs/${jobId}/start`,{});
   }
 
-  myJobs(date: string): Observable<Array<{ planId: number; job: DeliveryRouteModel; shop: { latitude: number; longitude: number; deliveryDeadline: string } }>> {
-    return this.http.get<Array<{ planId: number; job: DeliveryRouteModel; shop: { latitude: number; longitude: number; deliveryDeadline: string } }>>(`${environment.apiBaseUrl}/my-jobs`, { params: { date } });
+  myJobs(date: string): Observable<Array<{ planId: number; job: DeliveryRouteModel; shop: { latitude: number; longitude: number; deliveryDeadline: string; shopName?: string; deliveryStartTime?: string } }>> {
+    return this.http.get<Array<{ planId: number; job: DeliveryRouteModel; shop: { latitude: number; longitude: number; deliveryDeadline: string; shopName?: string; deliveryStartTime?: string } }>>(`${environment.apiBaseUrl}/my-jobs`, { params: { date } });
   }
 
   deliverMyStop(jobId: number, orderId: number): Observable<{ delivered: boolean }> {

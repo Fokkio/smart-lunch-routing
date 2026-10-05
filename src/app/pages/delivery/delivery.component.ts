@@ -1,8 +1,10 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, ViewChild, computed, effect, inject, untracked } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, ElementRef, ViewChild, computed, effect, inject, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AuthService } from '../../core/auth.service';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { finalize, timeout } from 'rxjs';
+import { filter, finalize, timeout, type Observable } from 'rxjs';
 import { todayLocal } from '../../core/backend-api.service';
 import { DeliveryService } from '../../core/delivery.service';
 import { RiderRoute, RoutePlan, SHOP } from '../../core/models';
@@ -21,9 +23,12 @@ import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
 })
 export class DeliveryComponent {
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService, { optional: true });
+  private currentSession() { const token = this.auth?.token(); return <T>(source: Observable<T>) => source.pipe(filter(() => token === this.auth?.token())); }
   readonly store = inject(DeliveryService);
   readonly shopPoint = computed<[number, number]>(() => {
-    const settings = this.store.plan()?.shop ?? this.store.settings();
+    const settings = this.candidateBackend?.shop ?? this.store.plan()?.shop ?? this.store.settings();
     return settings ? [settings.latitude, settings.longitude] : [SHOP.lat, SHOP.lng];
   });
   private readonly routePlans = inject(RoutePlanApiService, { optional: true });
@@ -121,6 +126,7 @@ export class DeliveryComponent {
     try {
       this.routePlans.list(todayLocal()).pipe(
         timeout(15000),
+        this.currentSession(), takeUntilDestroyed(this.destroyRef),
         finalize(() => { this.loadingPlans = false; this.cdr.markForCheck(); }),
       ).subscribe({
         next: (plans) => {
@@ -148,7 +154,7 @@ export class DeliveryComponent {
     const requestId = ++this.viewRequestId;
     this.loadingPlanDetail = true;
     this.plansError = null;
-    this.routePlans.get(id).pipe(timeout(15000), finalize(() => this.cdr.markForCheck())).subscribe({
+    this.routePlans.get(id).pipe(timeout(15000), this.currentSession(), takeUntilDestroyed(this.destroyRef), finalize(() => this.cdr.markForCheck())).subscribe({
       next: (backend) => {
         if (requestId !== this.viewRequestId) return;
         this.loadingPlanDetail = false;
@@ -184,7 +190,7 @@ export class DeliveryComponent {
     const id = plan.routePlanId;
     if (id == null || !this.routePlans) return;
     if (!window.confirm(`ลบใบงาน #${id} หรือไม่?${plan.status === 'SELECTED' ? ' ออเดอร์ที่ยังไม่ส่งจะกลับไปรอจัดส่ง' : ''}`)) return;
-    this.routePlans.delete(id).pipe(finalize(() => this.cdr.markForCheck())).subscribe({
+    this.routePlans.delete(id).pipe(timeout(15000), this.currentSession(), takeUntilDestroyed(this.destroyRef), finalize(() => this.cdr.markForCheck())).subscribe({
       next: () => {
         if (this.backendPlanId === id) {
           this.viewRequestId++;
@@ -232,7 +238,7 @@ export class DeliveryComponent {
     // API ล้มเหลวต้องแจ้งผู้ใช้ ไม่คำนวณแผนคนละเงื่อนไขในเครื่องแทน
     if (this.store.usingBackend() && this.routePlans) {
       this.calculating = true;
-      this.routePlans.generate(todayLocal(),this.roundWindow()).pipe(timeout(30000),finalize(() => { this.calculating = false; this.cdr.markForCheck(); })).subscribe({
+      this.routePlans.generate(todayLocal(),this.roundWindow()).pipe(timeout(30000),this.currentSession(),takeUntilDestroyed(this.destroyRef),finalize(() => { this.calculating = false; this.cdr.markForCheck(); })).subscribe({
         next: (backend) => { this.adoptBackend(backend); this.loadSavedPlans(); },
         error: (error) => {
           this.calculating = false;
@@ -274,7 +280,7 @@ export class DeliveryComponent {
     this.plansError = null;
     if (this.store.usingBackend() && this.routePlans && this.backendPlanId !== null) {
       this.calculating = true;
-      this.routePlans.recalculate(todayLocal(),{...this.roundWindow(),basePlanId:this.backendPlanId}).pipe(timeout(30000),finalize(() => { this.calculating = false; this.cdr.markForCheck(); })).subscribe({
+      this.routePlans.recalculate(todayLocal(),{...this.roundWindow(),basePlanId:this.backendPlanId}).pipe(timeout(30000),this.currentSession(),takeUntilDestroyed(this.destroyRef),finalize(() => { this.calculating = false; this.cdr.markForCheck(); })).subscribe({
         next: (backend) => {
           this.calculating = false;
           this.acknowledgeCandidate = false;
@@ -305,7 +311,7 @@ export class DeliveryComponent {
     if (id != null && this.routePlans) {
       if (this.discardingCandidate) return;
       this.discardingCandidate = true;
-      this.routePlans.delete(id).pipe(finalize(() => this.cdr.markForCheck())).subscribe({
+      this.routePlans.delete(id).pipe(timeout(15000),this.currentSession(),takeUntilDestroyed(this.destroyRef),finalize(() => this.cdr.markForCheck())).subscribe({
         next: () => { this.clearCandidate(); this.discardingCandidate = false; this.loadSavedPlans(); },
         error: () => {
           this.discardingCandidate = false;
@@ -376,7 +382,7 @@ export class DeliveryComponent {
         this.plansError='เลือกไรเดอร์พร้อมงานให้ครบทุกเส้นทาง โดยไม่เลือกคนซ้ำ';return;
       }
       this.confirmingPlan=true;
-      this.routePlans.select(this.backendPlanId,assignments).pipe(timeout(15000),finalize(()=>{this.confirmingPlan=false;this.cdr.markForCheck();})).subscribe({
+      this.routePlans.select(this.backendPlanId,assignments).pipe(timeout(15000),this.currentSession(),takeUntilDestroyed(this.destroyRef),finalize(()=>{this.confirmingPlan=false;this.cdr.markForCheck();})).subscribe({
         next: (backend) => { this.adoptBackend(backend); finish(); this.store.refresh(); this.loadSavedPlans(); },
         error: () => { this.plansError = 'ยืนยันใบงานไม่สำเร็จ กรุณาตรวจสอบไรเดอร์และลองใหม่'; },
       });
@@ -397,7 +403,10 @@ export class DeliveryComponent {
   isLate(route: RiderRoute): boolean { return this.startMinutes() + route.durationMinutes > this.deadlineMinutes(); }
   /** เกินเส้นตายไปกี่นาที (เรียกเมื่อ isLate เท่านั้น) */
   lateMinutes(route: RiderRoute): number { return Math.max(0, this.startMinutes() + route.durationMinutes - this.deadlineMinutes()); }
-  capacityPercent(plan: RoutePlan): number { return plan.routes.length ? Math.min(100, this.totalStops(plan) / (plan.routes.length * (plan.shop?.maxOrdersPerRider ?? this.store.settings()?.maxOrdersPerRider ?? 3)) * 100) : 0; }
+  capacity(plan: RoutePlan): number { return plan.routes.length * (plan.shop?.maxOrdersPerRider ?? this.store.settings()?.maxOrdersPerRider ?? 3); }
+  capacityPercent(plan: RoutePlan): number { return this.capacity(plan) ? Math.min(100, this.totalStops(plan) / this.capacity(plan) * 100) : 0; }
+  mapShop() { return this.candidateBackend?.shop ?? this.store.plan()?.shop ?? this.store.settings(); }
+  mapStart(): string { return (this.candidateBackend?.startTime ?? this.backendPlan?.startTime ?? this.mapShop()?.deliveryStartTime ?? '').slice(0, 5); }
   callFee(plan: RoutePlan): number { return plan.routes.length * (plan.shop?.riderBaseCost ?? this.store.settings()?.riderBaseCost ?? 15); }
   distanceFee(plan: RoutePlan): number { return Math.round((plan.deliveryCost - this.callFee(plan)) * 100) / 100; }
 }

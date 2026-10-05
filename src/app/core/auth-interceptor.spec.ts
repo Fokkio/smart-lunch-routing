@@ -25,3 +25,20 @@ it.each(['old-token', 'new-token', null])('only clears the session that sent a f
   expect(token).toBe(currentToken === 'old-token' ? null : currentToken);
   http.verify();
 });
+
+it.each(['new-token', null])('drops a successful response from an old session: %s', currentToken => {
+  let token: string | null = 'old-token';
+  const next = vi.fn();
+  TestBed.configureTestingModule({ providers: [
+    provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(),
+    { provide: AuthService, useValue: { token: () => token } },
+    { provide: Router, useValue: {} },
+  ] });
+  TestBed.inject(HttpClient).get('/api/orders').subscribe(next);
+  const http = TestBed.inject(HttpTestingController);
+  const pending = http.expectOne('/api/orders');
+  token = currentToken;
+  pending.flush([{ id: 1 }]);
+  expect(next).not.toHaveBeenCalled();
+  http.verify();
+});

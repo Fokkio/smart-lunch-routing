@@ -38,6 +38,8 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   @Input() compact = false;
   @Input() pickable = false;
   @Input() showShop = true;
+  @Input() shop: { lat: number; lng: number; name: string } = SHOP;
+  @Input() startTime = '';
   @Input() selectedLocation: { lat: number; lng: number } | null = null;
   /** index เส้นทางที่ parent เลือก (แชร์กับการ์ด) — map กับ rider.id ข้างใน */
   @Input() selectedIndex: number | null = null;
@@ -50,7 +52,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   private layer?: L.FeatureGroup;
 
   ngAfterViewInit(): void {
-    this.map = L.map(this.mapElement.nativeElement, { zoomControl: false }).setView([SHOP.lat, SHOP.lng], 14);
+    this.map = L.map(this.mapElement.nativeElement, { zoomControl: false }).setView([this.shop.lat, this.shop.lng], 14);
     // ปุ่มซูมอยู่ขวาล่าง — ซ้ายบนมีป้ายสถานะแผนทับอยู่ (ดู delivery.component.html)
     L.control.zoom({ position: 'bottomright', zoomInTitle: 'ซูมเข้า', zoomOutTitle: 'ซูมออก' }).addTo(this.map);
     this.tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -108,9 +110,9 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!this.map) return;
     this.layer?.remove();
     this.layer = L.featureGroup().addTo(this.map);
-    if (this.showShop) L.circleMarker([SHOP.lat, SHOP.lng], {
+    if (this.showShop) L.circleMarker([this.shop.lat, this.shop.lng], {
       radius: 9, color: '#111111', fillColor: '#ffffff', fillOpacity: 1, weight: 3,
-    }).bindPopup(this.popup(SHOP.name, 'จุดเริ่มต้น 11:30 น.')).addTo(this.layer);
+    }).bindPopup(this.popup(this.shop.name, this.startTime ? `จุดเริ่มต้น ${this.startTime} น.` : 'จุดเริ่มต้น')).addTo(this.layer);
 
     if (this.routes.length) {
       this.routes.forEach((route, routeIndex) => {
@@ -118,7 +120,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
         if (!route?.rider || !Array.isArray(route.stops)) return;
         if (!this.isVisible(route)) return;
         const routeLabel = `R${String(routeIndex + 1).padStart(2, '0')}`;
-        const points: L.LatLngExpression[] = [[SHOP.lat, SHOP.lng]];
+        const points: L.LatLngExpression[] = [[this.shop.lat, this.shop.lng]];
         route.stops.forEach((stop) => {
           if (!DeliveryMapComponent.validPoint(stop?.customer)) return;
           points.push([stop.customer.lat, stop.customer.lng]);
@@ -127,7 +129,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
             icon: L.divIcon({ className: 'route-sequence-pin', html: `<span style="--route-color:${route.rider.color}">${routeLabel}-${stop.sequence}</span>`, iconSize: [58, 44], iconAnchor: [29, 22] }),
           }).bindPopup(this.popup(`${routeLabel}-${stop.sequence} ${stop.customer.name}`, `${stop.order.boxes} กล่อง · ถึง ${stop.arrivalTime} น.`)).addTo(this.layer!);
         });
-        L.polyline(points, { color: route.rider.color, weight: 5, opacity: 0.82 }).addTo(this.layer!);
+        L.polyline(points, { color: route.rider.color, weight: 5, opacity: 0.82, dashArray: '8 8' }).addTo(this.layer!);
       });
     } else {
       this.customers.forEach((customer) => {

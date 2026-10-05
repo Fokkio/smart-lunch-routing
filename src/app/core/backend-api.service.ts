@@ -49,9 +49,7 @@ export function toBackendStatus(status: OrderStatus): BackendOrderStatus {
 }
 
 export function todayLocal(date = new Date()): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 }
 
 export function mapCustomer(raw: BackendCustomer): Customer {

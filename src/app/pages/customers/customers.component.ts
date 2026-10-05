@@ -1,11 +1,13 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { apiErrorMessage } from '../../core/api-error';
 import { FormsModule } from '@angular/forms';
-import { Customer } from '../../core/models';
+import { Customer, SHOP } from '../../core/models';
 import { CustomersApiService } from '../../core/customer-api.service';
 import { DeliveryService } from '../../core/delivery.service';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
 import { NearbySearchComponent } from '../../shared/nearby-search.component';
-import { timeout } from 'rxjs';
+import { finalize, timeout } from 'rxjs';
 
 type Draft = Omit<Customer, 'id'> & { id?: string };
 
@@ -17,7 +19,8 @@ type Draft = Omit<Customer, 'id'> & { id?: string };
 })
 export class CustomersComponent implements OnInit {
   private readonly customerApi = inject(CustomersApiService);
-  private readonly deliveryStore = inject(DeliveryService);
+  readonly deliveryStore = inject(DeliveryService);
+  private readonly destroyRef = inject(DestroyRef);
   // รายชื่อ customers for show (from backend)
   readonly apiCustomers = signal<Customer[]>([]);
 
@@ -48,10 +51,12 @@ export class CustomersComponent implements OnInit {
   error = '';
   feedback = '';
   draft: Draft = this.blankDraft();
+  mapShop() { const settings = this.deliveryStore.settings?.(); return settings ? { lat: settings.latitude, lng: settings.longitude, name: settings.shopName } : SHOP; }
   private feedbackTimer?: ReturnType<typeof setTimeout>;
 
   ngOnInit(): void {
     this.loadCustomers();
+    this.destroyRef.onDestroy(() => clearTimeout(this.feedbackTimer));
   }
 
   // ใช้ทั้งตอนเปิดหน้าและตอนกดค้นหา
@@ -61,7 +66,7 @@ export class CustomersComponent implements OnInit {
     const requestId = ++this.loadRequestId;
     const point = this.nearbyPoint;
     const request = point ? this.customerApi.nearby(point.lat,point.lng) : this.customerApi.getCustomers(this.query);
-    request.pipe(timeout(15000)).subscribe({
+    request.pipe(timeout(15000), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (customers) => {
         if (requestId !== this.loadRequestId) return;
         this.distances.set(Object.fromEntries(customers.filter(customer => customer.distanceKm !== undefined).map(customer => [String(customer.id),customer.distanceKm!])));
@@ -218,7 +223,7 @@ export class CustomersComponent implements OnInit {
       ? this.customerApi.updateCustomer(editingId, input)
       : this.customerApi.createCustomer(input);
 
-    request.subscribe({
+    request.pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => this.savingCustomer.set(false))).subscribe({
       next: () => {
         this.savingCustomer.set(false);
         this.cancel();
@@ -232,12 +237,13 @@ export class CustomersComponent implements OnInit {
         console.error('บันทึกลูกค้าไม่สำเร็จ:', error);
         this.savingCustomer.set(false);
 
+        if (error?.name === 'TimeoutError') { this.error = apiErrorMessage(error, 'หมดเวลารอระบบ'); return; }
         // คงฟอร์มและข้อมูลที่กรอกไว้ ให้แก้หรือลองใหม่ได้
         // แสดงเหตุผลตามสถานะที่ backend ตอบกลับ
         if (error.status === 400) {
           this.error = 'ข้อมูลไม่ถูกต้อง กรุณาตรวจชื่อ เบอร์โทร และพิกัด';
         } else if (error.status === 409) {
-          this.error = 'เบอร์โทรนี้มีลูกค้าใช้งานแล้ว กรุณาใช้เบอร์อื่น';
+          this.error = apiErrorMessage(error, 'ข้อมูลขัดแย้ง กรุณารีเฟรชรายการ');
         } else if (error.status === 404) {
           this.error = 'ไม่พบลูกค้ารายนี้แล้ว กรุณารีเฟรชรายการ';
         } else if (error.status === 0) {
@@ -258,7 +264,7 @@ export class CustomersComponent implements OnInit {
 
     this.deletingCustomerId.set(customer.id);
 
-    this.customerApi.deleteCustomer(customer.id).subscribe({
+    this.customerApi.deleteCustomer(customer.id).pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => this.deletingCustomerId.set(null))).subscribe({
       next: () => {
         this.deletingCustomerId.set(null);
         this.deliveryStore.customerDeleted(customer.id);
@@ -275,6 +281,7 @@ export class CustomersComponent implements OnInit {
       },
       error: (error) => {
         this.deletingCustomerId.set(null);
+        if (error?.name === 'TimeoutError') { this.notify(apiErrorMessage(error, 'หมดเวลารอระบบ')); return; }
 
         if (error.status === 409) {
           this.notify('ลบไม่ได้ เพราะลูกค้ารายนี้มีออเดอร์อ้างอิงอยู่');

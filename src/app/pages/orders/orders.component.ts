@@ -1,7 +1,9 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { forkJoin, timeout } from 'rxjs';
+import { finalize, forkJoin, timeout } from 'rxjs';
+import { todayLocal } from '../../core/backend-api.service';
 import { NearbySearchComponent } from '../../shared/nearby-search.component';
 import { apiErrorMessage } from '../../core/api-error';
 import { ApiCustomer } from '../../core/customer-api.models';
@@ -20,13 +22,14 @@ type Draft = { id?: number; customerId: number | null; boxes: number; status: Ap
 export class OrdersComponent {
   private readonly ordersApi = inject(OrderApiService);
   private readonly customersApi = inject(CustomersApiService);
-  private readonly deliveryStore = inject(DeliveryService);
+  readonly deliveryStore = inject(DeliveryService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly orders = signal<ApiOrder[]>([]);
   readonly customers = signal<ApiCustomer[]>([]);
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
-  readonly today = new Date().toLocaleDateString('en-CA');
+  readonly today = todayLocal();
   nearbyPoint: {lat:number;lng:number} | null = null;
   dateFilter = this.today;
   statusFilter: ApiOrderStatus | '' = '';
@@ -48,7 +51,7 @@ export class OrdersComponent {
     const requestId = ++this.loadRequestId;
     const point = this.nearbyPoint;
     const request = point ? this.ordersApi.nearby(point.lat,point.lng,this.dateFilter || undefined,this.statusFilter || undefined) : this.ordersApi.list(this.dateFilter || undefined);
-    forkJoin({ orders: request, customers: this.customersApi.getCustomers('') }).pipe(timeout(15000)).subscribe({
+    forkJoin({ orders: request, customers: this.customersApi.getCustomers('') }).pipe(timeout(15000), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ orders, customers }) => {
         if (requestId !== this.loadRequestId) return;
         this.orders.set(orders);
@@ -77,7 +80,7 @@ export class OrdersComponent {
   }
 
   simulatedCount(): number {
-    return this.orders().filter((order) => order.isSimulated).length;
+    return this.filteredOrders().filter((order) => order.isSimulated).length;
   }
 
   matchingCustomers(): ApiCustomer[] {
@@ -89,32 +92,36 @@ export class OrdersComponent {
   customerFor(order: ApiOrder): ApiCustomer | undefined { return this.customers().find((customer) => customer.id === order.customerId); }
   statusLabel(status: ApiOrderStatus): string { return { PENDING: 'รอจัดส่ง', PLANNED: 'จัดงานแล้ว', DELIVERING: 'กำลังส่ง', DELIVERED: 'ส่งสำเร็จ', CANCELLED: 'ยกเลิก' }[status]; }
 
-  startCreate(): void { this.feedback = ''; this.draft = this.blankDraft(); this.customerQuery = ''; this.showForm = true; }
-  edit(order: ApiOrder): void { this.feedback = ''; this.draft = { id: order.id, customerId: order.customerId, boxes: order.boxes, status: order.status }; this.customerQuery = ''; this.showForm = true; }
-  cancel(): void { this.showForm = false; }
-  chooseCustomer(customer: ApiCustomer): void { this.draft.customerId = customer.id; this.customerQuery = ''; }
-  adjustBoxes(step: number): void { this.draft.boxes = Math.max(1, Math.min(3, this.draft.boxes + step)); }
+  startCreate(): void { if (this.saving()) return; this.feedback = ''; this.draft = this.blankDraft(); this.customerQuery = ''; this.showForm = true; }
+  edit(order: ApiOrder): void { if (this.saving() || !['PENDING', 'CANCELLED'].includes(order.status)) return; this.feedback = ''; this.draft = { id: order.id, customerId: order.customerId, boxes: order.boxes, status: order.status }; this.customerQuery = ''; this.showForm = true; }
+  cancel(): void { if (!this.saving()) this.showForm = false; }
+  chooseCustomer(customer: ApiCustomer): void { if (this.saving()) return; this.draft.customerId = customer.id; this.customerQuery = ''; }
+  adjustBoxes(step: number): void { if (this.saving()) return; this.draft.boxes = Math.max(1, Math.min(3, this.draft.boxes + step)); }
   save(): void {
     if (this.saving() || this.draft.customerId === null) return;
     this.saving.set(true);
     const input = { customerId: this.draft.customerId, boxes: this.draft.boxes, status: this.draft.status, orderDate: this.draft.id === undefined ? this.today : this.orders().find(order => order.id === this.draft.id)?.orderDate };
     const request = this.draft.id === undefined ? this.ordersApi.create(input) : this.ordersApi.update(this.draft.id, input);
-    request.subscribe({
+    request.pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => this.saving.set(false))).subscribe({
       next: () => { this.saving.set(false); this.cancel(); this.feedback = 'บันทึกออเดอร์แล้ว'; this.deliveryStore.refresh(); this.reload(); },
       error: err => { this.saving.set(false); this.error.set(apiErrorMessage(err, 'บันทึกออเดอร์ไม่สำเร็จ')); },
     });
   }
   simulate(): void {
-    this.ordersApi.simulate(this.today, this.simulateCount).subscribe({
+    if (this.saving()) return;
+    this.saving.set(true);
+    this.ordersApi.simulate(this.today, this.simulateCount).pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => this.saving.set(false))).subscribe({
       next: () => { this.feedback = 'สร้างออเดอร์จำลองแล้ว'; this.deliveryStore.refresh(); this.reload(); },
       error: err => this.error.set(apiErrorMessage(err, 'สร้างออเดอร์จำลองไม่สำเร็จ')),
     });
   }
   clearSimulated(): void {
-    if (!this.simulatedCount() || !window.confirm(`ล้างออเดอร์จำลอง ${this.simulatedCount()} รายการหรือไม่?`)) return;
-    this.ordersApi.clearSimulated().subscribe({
+    const ids = this.filteredOrders().filter(order => order.isSimulated).map(order => order.id);
+    if (this.saving() || !ids.length || !window.confirm(`ล้างออเดอร์จำลอง ${ids.length} รายการที่แสดงหรือไม่?`)) return;
+    this.saving.set(true);
+    this.ordersApi.clearSimulated(ids).pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => this.saving.set(false))).subscribe({
       next: (result) => {
-        this.deliveryStore.ordersDeleted(this.orders().filter(order => order.isSimulated).map(order => String(order.id)));
+        this.deliveryStore.ordersDeleted(ids.map(String));
         this.feedback = `ล้างออเดอร์จำลอง ${result.deletedCount} รายการแล้ว`;
         this.reload();
       },
@@ -124,8 +131,9 @@ export class OrdersComponent {
     });
   }
   remove(order: ApiOrder): void {
-    if (!window.confirm(`ลบออเดอร์ ${order.id} หรือไม่?`)) return;
-    this.ordersApi.delete(order.id).subscribe({
+    if (this.saving() || !window.confirm(`ลบออเดอร์ ${order.id} หรือไม่?`)) return;
+    this.saving.set(true);
+    this.ordersApi.delete(order.id).pipe(timeout(15000), takeUntilDestroyed(this.destroyRef), finalize(() => this.saving.set(false))).subscribe({
       next: () => { this.deliveryStore.orderDeleted(String(order.id)); this.feedback = `ลบออเดอร์ ${order.id} แล้ว`; this.reload(); },
       error: err => this.error.set(
         err?.status === 409
