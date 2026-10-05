@@ -1,7 +1,10 @@
 <section class="mx-auto max-w-[1560px] p-3 sm:p-5 lg:p-6">
   <h2 class="sr-only">ภาพรวมการจัดส่งวันนี้</h2>
   @if (!store.usingBackend()) {
-    <div class="mb-4 rounded-xl border border-amber-300 bg-warning-soft p-3 text-sm text-amber-900" role="status"><strong>โหมดข้อมูลจำลอง</strong> — ต่อ backend ไม่ได้ ตัวเลขและแผนในหน้านี้ไม่ใช่ข้อมูลจริง</div>
+    <div class="mb-4 rounded-xl border border-amber-300 bg-warning-soft p-3 text-sm text-amber-900" role="status">
+      <p>{{ store.connectionError() || 'กำลังเชื่อมต่อข้อมูลจัดส่ง ยังไม่มีข้อมูลยืนยันจากระบบ' }}</p>
+      <button class="neu-control mt-2 min-h-11 rounded-lg px-4 font-bold" type="button" (click)="store.refresh()" [disabled]="store.connecting()">{{ store.connecting() ? 'กำลังโหลด...' : 'ลองเชื่อมต่ออีกครั้ง' }}</button>
+    </div>
   }
   @if (plansError) { <div class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-900" role="alert">{{ plansError }}</div> }
 

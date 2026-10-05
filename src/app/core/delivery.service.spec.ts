@@ -166,19 +166,22 @@ describe('DeliveryService route planning', () => {
       expect(service.settings()).toEqual(apiSettings);
       expect(service.plan()).toBeNull();
       expect(localStorage.getItem('smart-lunch-plan-v1')).toBeNull();
+      expect(localStorage.getItem('smart-lunch-orders-v1')).toBeNull();
     });
 
-    it('keeps demo data when the backend is unreachable', () => {
-      const demoCount = service.customers().length;
+    it('clears stale data instead of using demo orders when the backend is unreachable', () => {
       service.connect();
 
-      http.expectOne('/api/customers').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
-      http.expectOne(`/api/orders?date=${todayLocal()}`).flush({ message: 'down' }, { status: 500, statusText: 'Error' });
-      http.expectOne('/api/riders').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
+      http.expectOne('/api/customers').flush(apiCustomers);
+      http.expectOne('/api/riders').flush(apiRiders);
       http.expectOne('/api/settings').flush({ message: 'down' }, { status: 500, statusText: 'Error' });
+      http.expectOne(`/api/orders?date=${todayLocal()}`).flush({ message: 'down' }, { status: 500, statusText: 'Error' });
 
       expect(service.usingBackend()).toBe(false);
-      expect(service.customers()).toHaveLength(demoCount);
+      expect(service.customers()).toEqual([]);
+      expect(service.orders()).toEqual([]);
+      expect(service.connectionError()).toContain('ไม่สำเร็จ');
+      expect(service.connecting()).toBe(false);
       expect(service.settings()).toBeNull();
     });
 
@@ -216,14 +219,65 @@ describe('DeliveryService route planning', () => {
     });
 
     it('does not mix a partial backend response with old local data', () => {
-      const before = service.customers();
       service.connect();
       http.expectOne('/api/customers').flush(apiCustomers);
-      http.expectOne(`/api/orders?date=${todayLocal()}`).flush({ message: 'down' }, { status: 500, statusText: 'Error' });
       http.expectOne('/api/riders').flush(apiRiders);
       http.expectOne('/api/settings').flush(apiSettings);
+      http.expectOne(`/api/orders?date=${todayLocal()}`).flush({ message: 'down' }, { status: 500, statusText: 'Error' });
       expect(service.usingBackend()).toBe(false);
-      expect(service.customers()).toEqual(before);
+      expect(service.customers()).toEqual([]);
+      expect(service.orders()).toEqual([]);
+    });
+
+    it('never restores legacy order/plan storage or starts with demo orders', () => {
+      localStorage.setItem('smart-lunch-orders-v1', JSON.stringify(apiOrders));
+      localStorage.setItem('smart-lunch-plan-v1', JSON.stringify({ version: 99, routes: [] }));
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+      service = TestBed.inject(DeliveryService);
+      http = TestBed.inject(HttpTestingController);
+      expect(service.orders()).toEqual([]);
+      expect(service.customers()).toEqual([]);
+      expect(service.riders()).toEqual([]);
+      expect(service.plan()).toBeNull();
+      expect(localStorage.getItem('smart-lunch-orders-v1')).toBeNull();
+      expect(localStorage.getItem('smart-lunch-plan-v1')).toBeNull();
+    });
+
+    it('times out an unresponsive snapshot without exposing demo orders', async () => {
+      vi.useFakeTimers();
+      try {
+        service.connect();
+        http.match(req => ['/api/customers', '/api/orders', '/api/riders'].includes(req.url));
+        http.expectOne('/api/settings').flush(apiSettings);
+        await vi.advanceTimersByTimeAsync(15000);
+        expect(service.connecting()).toBe(false);
+        expect(service.usingBackend()).toBe(false);
+        expect(service.orders()).toEqual([]);
+        expect(service.connectionError()).toContain('ไม่สำเร็จ');
+      } finally { vi.useRealTimers(); }
+    });
+
+    it('clears an old confirmed snapshot on refresh failure and recovers on retry', () => {
+      const load = () => {
+        http.expectOne('/api/customers').flush(apiCustomers);
+        http.expectOne('/api/riders').flush(apiRiders);
+        http.expectOne('/api/settings').flush(apiSettings);
+      };
+      service.connect(); load(); http.expectOne(`/api/orders?date=${todayLocal()}`).flush(apiOrders);
+      service.plan.set({ version: 99 } as never);
+      service.refresh(); load();
+      http.expectOne(`/api/orders?date=${todayLocal()}`).flush({}, { status: 500, statusText: 'Error' });
+      expect(service.orders()).toEqual([]);
+      expect(service.plan()).toBeNull();
+      expect(service.usingBackend()).toBe(false);
+      service.refresh(); load(); http.expectOne(`/api/orders?date=${todayLocal()}`).flush(apiOrders);
+      expect(service.usingBackend()).toBe(true);
+      expect(service.connectionError()).toBe('');
+      expect(service.orders().map(order => order.id)).toEqual(['11']);
+      expect(localStorage.getItem('smart-lunch-orders-v1')).toBeNull();
+      service.choosePlan({ version: 2, routes: [] } as never);
+      expect(localStorage.getItem('smart-lunch-plan-v1')).toBeNull();
     });
 
     it('saves a new customer through the backend when connected', () => {

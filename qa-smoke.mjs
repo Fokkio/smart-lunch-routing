@@ -18,7 +18,12 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
   const errors = [];
   page.on('pageerror', e=>errors.push(e.message));
   const visible = l=>l.waitFor({state:'visible',timeout:25000});
-  const response = (path,method='GET')=>page.waitForResponse(r=>new URL(r.url()).pathname===`/api${path}` && r.request().method()===method,{timeout:45000});
+  const response = (path,method='GET')=>{
+    const pending=page.waitForResponse(r=>new URL(r.url()).pathname===`/api${path}` && r.request().method()===method,{timeout:45000});
+    // A failed click can close the page before this waiter is awaited; keep the original error and allow QA cleanup.
+    pending.catch(()=>{});
+    return pending;
+  };
   const layout = async label=>assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth),false,`overflow ${label} @${width}`);
   const capture = name=>page.screenshot({path:join(outputDir,`${name}-${width}.png`),fullPage:true});
   const login = async (role,username)=>{
@@ -75,7 +80,41 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
       await visible(page.getByText(/\d+\.\d{3} กม\./).first());
       await layout(path); await capture(path);
     }
+    // CRUD a separate QA order through the real form/API; never mutate existing orders.
+    await page.goto('/owner/orders');
+    await page.getByRole('button',{name:'เพิ่มออเดอร์',exact:true}).click();
+    const form=page.locator('aside form');
+    await form.getByRole('textbox',{name:/เลือกลูกค้า/}).fill(data.customers[4].name);
+    await form.getByRole('button',{name:new RegExp(data.customers[4].name)}).click();
+    const createdResponse=response('/orders','POST');
+    await form.getByRole('button',{name:'เพิ่มออเดอร์',exact:true}).click();
+    const created=await createdResponse; assert.equal(created.status(),201);
+    const temporary=await created.json();
+    const orderRow=()=>page.getByRole('row').filter({hasText:String(temporary.id)});
+    await visible(orderRow());
+    await orderRow().getByRole('button',{name:'แก้ไข',exact:true}).click();
+    await form.getByRole('button',{name:'เพิ่มจำนวนกล่อง',exact:true}).click();
+    const updatedResponse=response(`/orders/${temporary.id}`,'PUT');
+    await form.getByRole('button',{name:'บันทึก',exact:true}).click();
+    const updated=await updatedResponse; assert.equal(updated.status(),200);
+    assert.equal((await updated.json()).boxes,2);
+    await page.reload();
+    await visible(orderRow().getByText('2 กล่อง',{exact:true}));
+    const deletedResponse=response(`/orders/${temporary.id}`,'DELETE');
+    page.once('dialog',dialog=>dialog.accept());
+    await orderRow().getByRole('button',{name:'ลบ',exact:true}).click();
+    assert.equal((await deletedResponse).status(),204);
+    await orderRow().waitFor({state:'hidden'});
+    assert.equal(await page.evaluate(()=>localStorage.getItem('smart-lunch-orders-v1')),null);
+
+    // An API failure must clear dispatch data, show an error, and recover on retry.
+    await page.route('**/api/orders?*',route=>route.fulfill({status:503,contentType:'application/json',body:'{"message":"QA unavailable"}'}));
     await page.goto('/owner/delivery');
+    await visible(page.getByText('โหลดข้อมูลจัดส่งไม่สำเร็จ กรุณาลองเชื่อมต่ออีกครั้ง',{exact:true}));
+    assert.equal(await page.evaluate(()=>localStorage.getItem('smart-lunch-orders-v1')),null);
+    await page.unroute('**/api/orders?*');
+    await page.getByRole('button',{name:'ลองเชื่อมต่ออีกครั้ง',exact:true}).click();
+    await page.getByText('โหลดข้อมูลจัดส่งไม่สำเร็จ กรุณาลองเชื่อมต่ออีกครั้ง',{exact:true}).waitFor({state:'hidden'});
     await page.getByText('เลือกออเดอร์ในรอบนี้',{exact:false}).click();
     for(const c of data.customers.slice(0,4)) await page.getByRole('checkbox',{name:new RegExp(c.name)}).check();
     await page.getByLabel('เริ่มส่ง',{exact:true}).fill('11:00');
@@ -115,6 +154,16 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
       await page.evaluate(()=>{localStorage.clear();sessionStorage.clear();});
       await context.clearCookies();
       await login('RIDER',rider.username);
+      const search=page.getByRole('searchbox',{name:'ค้นหารหัสใบงานของฉัน',exact:true});
+      await search.fill('NO-SUCH-JOB');
+      await visible(page.getByText('ไม่พบรหัสใบงานนี้ในงานของคุณวันนี้',{exact:true}));
+      const otherJob=candidate.jobs.find(other=>other.jobId!==job.jobId);
+      if(otherJob) {
+        await search.fill(otherJob.jobCode);
+        await visible(page.getByText('ไม่พบรหัสใบงานนี้ในงานของคุณวันนี้',{exact:true}));
+        assert.equal(await page.getByRole('button',{name:new RegExp(`ใบงาน ${otherJob.jobCode}`)}).count(),0);
+      }
+      await search.fill(`  ${job.jobCode.toLowerCase()}  `);
       await page.getByRole('button',{name:new RegExp(`ใบงาน ${job.jobCode}`)}).click();
       await page.getByRole('button',{name:'รับทราบงานนี้',exact:true}).click();
       await visible(page.getByText('รับทราบงานแล้ว',{exact:true}));
@@ -132,13 +181,19 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
         const delivered=response(`/my-jobs/${job.jobId}/stops/${stop.orderId}/deliver`,'POST');
         await page.getByRole('button',{name:'ยืนยันส่งแล้ว',exact:true}).click();
         assert.equal((await delivered).status(),200);
+        if(stop.sequence<job.stops.length) {
+          await page.reload();
+          await page.getByRole('searchbox',{name:'ค้นหารหัสใบงานของฉัน',exact:true}).fill(job.jobCode);
+          await page.getByRole('button',{name:new RegExp(`ใบงาน ${job.jobCode}`)}).click();
+          await visible(page.getByRole('heading',{name:`จุดที่ ${stop.sequence+1} จาก ${job.stops.length}`,exact:true}));
+        }
       }
       await visible(page.getByRole('heading',{name:'ส่งครบแล้ว',exact:true}));
       await layout('completed');
     }
     assert.deepEqual(errors,[],'uncaught browser errors');
-    console.log(`PASS browser ${width}px: radius, distinct alternative, dispatch, rider, navigation, delivery, layout`);
+    console.log(`PASS browser ${width}px: CRUD, no order cache, API failure/retry, job search, reload delivery, radius, alternative, dispatch, navigation, layout`);
     return candidate.routePlanId;
-  } catch(error) { await capture('failure'); throw error; }
+  } catch(error) { console.error(error.message); await capture('failure'); throw error; }
   finally { await browser.close(); }
 }

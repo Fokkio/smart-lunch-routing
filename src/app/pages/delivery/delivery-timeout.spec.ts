@@ -36,7 +36,7 @@ describe('DeliveryComponent saved plans loading', () => {
       imports: [DeliveryComponent],
       providers: [
         provideRouter([]),
-        { provide: DeliveryService, useValue: { refresh: vi.fn(), dataRevision: signal(0), usingBackend, settings: signal(null), customers: signal([]), dispatchCustomers: () => [], orders: signal([]), riders: signal([]), plan, confirmedPlan: signal(null), planHistory: signal([]), pendingOrders: () => [], pendingBoxes: () => 0, customerFor: () => null, calculateRoutes: () => {}, choosePlan: (value: any) => plan.set(value), confirmPlan: confirmSpy } },
+        { provide: DeliveryService, useValue: { refresh: vi.fn(), connecting: signal(false), connectionError: signal(''), dataRevision: signal(0), usingBackend, settings: signal(null), customers: signal([]), dispatchCustomers: () => [], orders: signal([]), riders: signal([]), plan, confirmedPlan: signal(null), planHistory: signal([]), pendingOrders: () => [], pendingBoxes: () => 0, customerFor: () => null, calculateRoutes: () => {}, choosePlan: (value: any) => plan.set(value), confirmPlan: confirmSpy } },
         { provide: RoutePlanApiService, useValue: { list: listSpy, get: getSpy, select: selectSpy, delete: deleteSpy, generate: generateSpy, recalculate: recalculateSpy } },
       ],
     });
