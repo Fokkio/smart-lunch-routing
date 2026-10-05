@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { DeliveryService } from './delivery.service';
 import { todayLocal } from './backend-api.service';
+import { AuthService } from './auth.service';
 
 describe('DeliveryService route planning', () => {
   let service: DeliveryService;
@@ -179,6 +180,39 @@ describe('DeliveryService route planning', () => {
       expect(service.usingBackend()).toBe(false);
       expect(service.customers()).toHaveLength(demoCount);
       expect(service.settings()).toBeNull();
+    });
+
+    it('ignores in-flight data after logout and leaves storage cleared', () => {
+      service.connect();
+      TestBed.inject(AuthService).clear();
+      service.clearForLogout();
+      http.expectOne('/api/customers').flush(apiCustomers);
+      http.expectOne(`/api/orders?date=${todayLocal()}`).flush(apiOrders);
+      http.expectOne('/api/riders').flush(apiRiders);
+      http.expectOne('/api/settings').flush(apiSettings);
+      expect(service.customers()).toEqual([]);
+      expect(service.orders()).toEqual([]);
+      expect(service.settings()).toBeNull();
+      expect(service.usingBackend()).toBe(false);
+      expect(localStorage.getItem('smart-lunch-customers-v1')).toBeNull();
+    });
+
+    it('refreshes connected data and clears the old route after a mutation', () => {
+      service.connect();
+      http.expectOne('/api/customers').flush(apiCustomers);
+      http.expectOne(`/api/orders?date=${todayLocal()}`).flush(apiOrders);
+      http.expectOne('/api/riders').flush(apiRiders);
+      http.expectOne('/api/settings').flush(apiSettings);
+      const revision = service.dataRevision();
+      service.plan.set({ version: 99 } as never);
+      service.refresh();
+      http.expectOne('/api/customers').flush(apiCustomers);
+      http.expectOne(`/api/orders?date=${todayLocal()}`).flush([]);
+      http.expectOne('/api/riders').flush(apiRiders);
+      http.expectOne('/api/settings').flush(apiSettings);
+      expect(service.pendingOrders()).toEqual([]);
+      expect(service.plan()).toBeNull();
+      expect(service.dataRevision()).toBe(revision + 1);
     });
 
     it('does not mix a partial backend response with old local data', () => {

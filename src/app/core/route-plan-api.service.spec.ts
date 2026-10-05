@@ -77,4 +77,13 @@ describe('RoutePlanApiService', () => {
     request.flush({ message: 'No pending orders for 2026-09-20' }, { status: 422, statusText: 'Unprocessable Entity' });
     expect(status).toBe(422);
   });
+
+  it('does not restore a cleared cache when an old detail request finishes', () => {
+    api.get(2).subscribe();
+    api.invalidateCache();
+    httpMock.expectOne('/api/route-plans/2').flush(PLAN);
+    expect(localStorage.length).toBe(0);
+    api.get(2).subscribe();
+    httpMock.expectOne('/api/route-plans/2').flush(PLAN);
+  });
 });

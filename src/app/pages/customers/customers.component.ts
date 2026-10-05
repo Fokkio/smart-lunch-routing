@@ -209,6 +209,7 @@ export class CustomersComponent implements OnInit {
         this.savingCustomer.set(false);
         this.cancel();
         this.notify(editingId ? 'บันทึกการแก้ไขลูกค้าแล้ว' : 'เพิ่มลูกค้าใหม่แล้ว');
+        this.deliveryStore.refresh();
 
         // โหลดจาก backend ใหม่ เพื่อให้รายการตรงกับคำค้นและลำดับล่าสุด
         this.loadCustomers();

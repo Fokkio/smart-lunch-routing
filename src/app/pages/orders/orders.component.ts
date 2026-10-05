@@ -87,13 +87,13 @@ export class OrdersComponent {
     const input = { customerId: this.draft.customerId, boxes: this.draft.boxes, status: this.draft.status, orderDate: this.today };
     const request = this.draft.id === undefined ? this.ordersApi.create(input) : this.ordersApi.update(this.draft.id, input);
     request.subscribe({
-      next: () => { this.saving.set(false); this.cancel(); this.feedback = 'บันทึกออเดอร์แล้ว'; this.reload(); },
+      next: () => { this.saving.set(false); this.cancel(); this.feedback = 'บันทึกออเดอร์แล้ว'; this.deliveryStore.refresh(); this.reload(); },
       error: err => { this.saving.set(false); this.error.set(apiErrorMessage(err, 'บันทึกออเดอร์ไม่สำเร็จ')); },
     });
   }
   simulate(): void {
     this.ordersApi.simulate(this.today, this.simulateCount).subscribe({
-      next: () => { this.feedback = 'สร้างออเดอร์จำลองแล้ว'; this.reload(); },
+      next: () => { this.feedback = 'สร้างออเดอร์จำลองแล้ว'; this.deliveryStore.refresh(); this.reload(); },
       error: err => this.error.set(apiErrorMessage(err, 'สร้างออเดอร์จำลองไม่สำเร็จ')),
     });
   }

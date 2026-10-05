@@ -25,15 +25,16 @@ export function adaptBackendPlan(
   lookup: BackendPlanLookup,
   shop: ShopTime = { deadlineTime: '12:30' },
 ): RoutePlan {
-  const customerById = new Map(lookup.customers.map((c) => [c.id, c]));
-  const orderById = new Map(lookup.orders.map((o) => [o.id, o]));
+  shop = { deadlineTime: plan.shop?.deliveryDeadline.slice(0, 5) ?? shop.deadlineTime };
   const riderById = new Map(lookup.riders.map((r) => [r.id, r]));
 
   const routes: RiderRoute[] = plan.jobs.map((job, index) =>
-    adaptJob(plan, job, index, { customerById, orderById, riderById }, lookup.riders, shop),
+    adaptJob(plan, job, index, riderById, shop),
   );
 
   return {
+    shop: plan.shop,
+    estimatedFinishTime: plan.estimatedFinishTime,
     version: plan.routePlanId ?? 1,
     generatedAt: new Date().toISOString(),
     routes,
@@ -51,17 +52,12 @@ function adaptJob(
   plan: RoutePlanModel,
   job: DeliveryRouteModel,
   index: number,
-  maps: {
-    customerById: Map<string, Customer>;
-    orderById: Map<string, Order>;
-    riderById: Map<string, Rider>;
-  },
-  riders: Rider[],
+  riderById: Map<string, Rider>,
   shop: ShopTime,
 ): RiderRoute {
   const rider: Rider =
-    (job.riderId !== null && maps.riderById.get(String(job.riderId))) ||
-    riders[index % Math.max(riders.length, 1)] || {
+    (job.riderId !== null && riderById.get(String(job.riderId))) ||
+    {
       id: job.riderId !== null ? String(job.riderId) : `backend-r${index + 1}`,
       name: FALLBACK_RIDER_NAMES(index),
       phone: '',
@@ -70,7 +66,7 @@ function adaptJob(
     };
 
   const stops: RouteStop[] = job.stops.map((s) => {
-    const customer: Customer = maps.customerById.get(String(s.customerId)) ?? {
+    const customer: Customer = {
       id: String(s.customerId),
       name: s.customerName,
       phone: s.phone,
@@ -78,11 +74,11 @@ function adaptJob(
       lat: s.latitude,
       lng: s.longitude,
     };
-    const order: Order = maps.orderById.get(String(s.orderId)) ?? {
+    const order: Order = {
       id: String(s.orderId),
       customerId: String(s.customerId),
       boxes: s.boxCount,
-      status: 'assigned',
+      status: s.deliveryStatus === 'DELIVERED' ? 'delivered' : 'assigned',
       createdAt: new Date().toISOString(),
     };
     return {
@@ -101,6 +97,8 @@ function adaptJob(
   const deliveryCost = job.deliveryCost;
 
   return {
+    estimatedStartTime: job.estimatedStartTime,
+    estimatedFinishTime: job.estimatedFinishTime,
     rider: {
       ...rider,
       jobCode: job.jobCode ?? rider.jobCode,

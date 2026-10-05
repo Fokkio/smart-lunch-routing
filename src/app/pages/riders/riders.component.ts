@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '../../core/api-error';
 import { ApiRider, RidersApiService } from '../../core/rider-api.service';
+import { DeliveryService } from '../../core/delivery.service';
 
 type Draft = { id?: number; name: string; phone: string; isAvailable: boolean };
 
@@ -13,6 +14,7 @@ type Draft = { id?: number; name: string; phone: string; isAvailable: boolean };
 })
 export class RidersComponent implements OnInit {
   private readonly ridersApi = inject(RidersApiService);
+  private readonly deliveryStore = inject(DeliveryService);
   readonly riders = signal<ApiRider[]>([]);
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -45,7 +47,7 @@ export class RidersComponent implements OnInit {
   }
 
   availableCount(): number {
-    return this.riders().filter((rider) => rider.isAvailable).length;
+    return this.riders().filter((rider) => rider.isAvailable && rider.username && rider.hasPassword).length;
   }
 
   filteredRiders(): ApiRider[] {
@@ -80,7 +82,7 @@ export class RidersComponent implements OnInit {
     this.saving.set(true);
     this.error.set('');
     this.ridersApi.setAccount(this.accountRider.id, username, this.newPassword || undefined).subscribe({
-      next: () => { this.saving.set(false); this.feedback = `บันทึกบัญชีของ ${this.accountRider?.name} แล้ว`; this.accountRider = null; this.newPassword = ''; this.reload(); },
+      next: () => { this.saving.set(false); this.feedback = `บันทึกบัญชีของ ${this.accountRider?.name} แล้ว`; this.accountRider = null; this.newPassword = ''; this.deliveryStore.refresh(); this.reload(); },
       error: (err) => { this.saving.set(false); this.error.set(err?.status === 409 ? 'ชื่อผู้ใช้นี้ถูกใช้แล้ว' : apiErrorMessage(err, 'บันทึกบัญชีไม่สำเร็จ')); },
     });
   }
@@ -100,6 +102,7 @@ export class RidersComponent implements OnInit {
       next: () => {
         this.saving.set(false);
         this.feedback = `ลบไรเดอร์ ${rider.name} แล้ว`;
+        this.deliveryStore.refresh();
         this.reload();
       },
       error: (err) => {
@@ -132,6 +135,7 @@ export class RidersComponent implements OnInit {
         this.saving.set(false);
         this.showForm = false;
         this.feedback = 'บันทึกไรเดอร์แล้ว';
+        this.deliveryStore.refresh();
         this.reload();
       },
       error: (err) => {
