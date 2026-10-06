@@ -1,6 +1,6 @@
 <section class="mx-auto max-w-[1480px] p-4 sm:p-6 lg:p-8">
-  <app-nearby-search subject="ออเดอร์" [radiusKm]="2" [busy]="loading()" (searched)="searchNearby($event)" (cleared)="clearNearby()" />
-  @if (nearbyPoint) { <p class="mb-3 text-sm font-semibold" role="status">กำลังแสดงออเดอร์ในรัศมี 2 กม. จาก {{ nearbyPoint.lat }}, {{ nearbyPoint.lng }}</p> }
+  <app-nearby-search subject="ออเดอร์" [radiusKm]="2" [busy]="loading()" (searched)="searchNearby()" (cleared)="clearNearby()" />
+  @if (nearbyPoint) { <p class="mb-3 text-sm font-semibold" role="status">กำลังแสดงออเดอร์ในรัศมี 2 กม. จากที่ตั้งร้านที่บันทึกไว้</p> }
   <div class="mb-5 flex flex-wrap items-end gap-3">
     <label class="grid gap-1 text-sm">วันที่ออเดอร์ (ว่าง = ทุกวัน)<input class="neu-field min-h-11 rounded-xl px-3" type="date" name="orderDateFilter" [(ngModel)]="dateFilter" (ngModelChange)="reload()" /></label>
     <button class="neu-control min-h-11 rounded-xl px-4" type="button" (click)="dateFilter = ''; reload()">ทุกวัน</button>

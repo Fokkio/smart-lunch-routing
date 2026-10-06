@@ -30,12 +30,12 @@ export class OrdersComponent {
   readonly saving = signal(false);
   readonly error = signal('');
   readonly today = todayLocal();
-  nearbyPoint: {lat:number;lng:number} | null = null;
+  nearbyPoint = false;
   dateFilter = this.today;
   statusFilter: ApiOrderStatus | '' = '';
   private loadRequestId = 0;
-  searchNearby(point: {lat:number;lng:number}): void { this.nearbyPoint = point; this.dateFilter = ''; this.simFilter = 'all'; this.query = ''; this.statusFilter = ''; this.reload(); }
-  clearNearby(): void { this.nearbyPoint = null; this.dateFilter = this.today; this.reload(); }
+  searchNearby(): void { this.nearbyPoint = true; this.dateFilter = ''; this.simFilter = 'all'; this.query = ''; this.statusFilter = ''; this.reload(); }
+  clearNearby(): void { this.nearbyPoint = false; this.dateFilter = this.today; this.reload(); }
   query = '';
   customerQuery = '';
   simulateCount = 25;
@@ -50,7 +50,7 @@ export class OrdersComponent {
     this.error.set('');
     const requestId = ++this.loadRequestId;
     const point = this.nearbyPoint;
-    const request = point ? this.ordersApi.nearby(point.lat,point.lng,this.dateFilter || undefined,this.statusFilter || undefined) : this.ordersApi.list(this.dateFilter || undefined);
+    const request = point ? this.ordersApi.nearby(this.dateFilter || undefined,this.statusFilter || undefined) : this.ordersApi.list(this.dateFilter || undefined);
     forkJoin({ orders: request, customers: this.customersApi.getCustomers('') }).pipe(timeout(15000), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ orders, customers }) => {
         if (requestId !== this.loadRequestId) return;

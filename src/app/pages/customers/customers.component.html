@@ -1,6 +1,6 @@
 <section class="mx-auto max-w-[1480px] p-4 sm:p-6 lg:p-8">
-  <app-nearby-search subject="ลูกค้า" [radiusKm]="1" [busy]="loadingCustomers()" (searched)="searchNearby($event)" (cleared)="clearNearby()" />
-  @if (nearbyPoint) { <p class="mb-4 text-sm font-semibold" role="status">กำลังแสดงลูกค้าในรัศมี 1 กม. จาก {{ nearbyPoint.lat }}, {{ nearbyPoint.lng }}</p> }
+  <app-nearby-search subject="ลูกค้า" [radiusKm]="1" [busy]="loadingCustomers()" (searched)="searchNearby()" (cleared)="clearNearby()" />
+  @if (nearbyPoint) { <p class="mb-4 text-sm font-semibold" role="status">กำลังแสดงลูกค้าในรัศมี 1 กม. จากที่ตั้งร้านที่บันทึกไว้</p> }
   <header class="mb-5 flex flex-wrap justify-end gap-3">
     <button class="neu-control inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-bold" type="button"
       (click)="showOverviewMap = !showOverviewMap">

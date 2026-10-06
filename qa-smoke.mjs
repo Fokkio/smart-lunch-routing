@@ -61,10 +61,8 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
     }
     for (const [path,radius] of [['customers',1],['orders',2]]) {
       await page.goto(`/owner/${path}`);
-      await page.getByLabel('ละติจูดค้นหา',{exact:true}).fill(String(data.center.lat));
-      await page.getByLabel('ลองจิจูดค้นหา',{exact:true}).fill(String(data.center.lng));
       const result=response(`/${path}/nearby`);
-      await page.getByRole('button',{name:'ค้นหาในรัศมี',exact:true}).click();
+      await page.getByRole('button',{name:'ค้นหาจากที่ตั้งร้าน',exact:true}).click();
       const res=await result;
       assert.equal(res.status(),200);
       const rows=await res.json();

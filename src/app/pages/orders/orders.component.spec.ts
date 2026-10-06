@@ -16,8 +16,8 @@ describe('OrdersComponent radius search',()=>{
     fixture.detectChanges();
     const page=fixture.componentInstance;
     page.query='old';page.simFilter='real';page.statusFilter='PENDING';
-    page.searchNearby({lat:16,lng:103});
-    expect(api.nearby).toHaveBeenCalledWith(16,103,undefined,undefined);
+    page.searchNearby();
+    expect(api.nearby).toHaveBeenCalledWith(undefined,undefined);
     expect(page.dateFilter).toBe('');
     expect(page.filteredOrders().map(o=>o.id)).toEqual([7]);
     late.next([{id:8}]);late.complete();

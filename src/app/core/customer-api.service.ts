@@ -35,8 +35,8 @@ export class CustomersApiService {
       params: { search: search.trim() },
     });
   }
-  nearby(lat: number, lng: number, radiusKm = 1) {
-    return this.http.get<ApiCustomer[]>(`${this.url}/nearby`, {params:{lat,lng,radiusKm}});
+  nearby() {
+    return this.http.get<ApiCustomer[]>(`${this.url}/nearby`, {params:{radiusKm:1}});
   }
   // ส่งข้อมูลลูกค้าใหม่ และรับลูกค้าที่บันทึกสำเร็จกลับมา
   createCustomer(input: CreateCustomerInput) {
