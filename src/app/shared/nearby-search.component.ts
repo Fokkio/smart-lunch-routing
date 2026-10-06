@@ -2,19 +2,19 @@ import { Component, input, output } from '@angular/core';
 
 @Component({
   selector: 'app-nearby-search', standalone: true,
-  template: `<section class="neu-panel mb-5 rounded-2xl p-4">
-    <h2 class="font-bold">ค้นหา{{ subject() }}ในรัศมี {{ radiusKm() }} กม. จากร้าน</h2>
-    <p class="mt-2 text-sm text-slate-600">ใช้ที่ตั้งร้านที่บันทึกไว้ ระยะเส้นตรง ไม่ใช่ระยะขับรถ</p>
-    <div class="mt-3 flex flex-wrap gap-2">
-      <button class="neu-primary min-h-11 rounded-xl px-4 font-bold" type="button" [disabled]="busy()" (click)="search()">ค้นหาจากที่ตั้งร้าน</button>
-      <button class="neu-control min-h-11 rounded-xl px-4 font-bold" type="button" [disabled]="busy()" (click)="cleared.emit()">ล้างการค้นหารัศมี</button>
-    </div>
-  </section>`,
+  template: `<label class="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-semibold"
+    [class.border-blue-500]="active()" [class.bg-blue-50]="active()" [class.text-blue-800]="active()"
+    [class.border-slate-200]="!active()" title="ระยะเส้นตรงจากที่ตั้งร้านที่บันทึกไว้">
+    <input class="size-4 accent-blue-600" type="checkbox" [checked]="active()" [disabled]="busy()"
+      (change)="$any($event.target).checked ? search() : cleared.emit()" />
+    {{ subject() }}ในรัศมี {{ radiusKm() }} กม. จากร้าน
+  </label>`,
 })
 export class NearbySearchComponent {
   readonly radiusKm = input.required<number>();
   readonly subject = input.required<string>();
   readonly busy = input(false);
+  readonly active = input(false);
   readonly searched = output<void>();
   readonly cleared = output<void>();
   search():void {if(!this.busy())this.searched.emit();}

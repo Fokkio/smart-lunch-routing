@@ -34,7 +34,7 @@ export class OrdersComponent {
   dateFilter = this.today;
   statusFilter: ApiOrderStatus | '' = '';
   private loadRequestId = 0;
-  searchNearby(): void { this.nearbyPoint = true; this.dateFilter = ''; this.simFilter = 'all'; this.query = ''; this.statusFilter = ''; this.reload(); }
+  searchNearby(): void { this.nearbyPoint = true; this.dateFilter = ''; this.simFilter = 'all'; this.statusFilter = ''; this.reload(); }
   clearNearby(): void { this.nearbyPoint = false; this.dateFilter = this.today; this.reload(); }
   query = '';
   customerQuery = '';

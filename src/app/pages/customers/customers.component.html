@@ -1,6 +1,4 @@
 <section class="mx-auto max-w-[1480px] p-4 sm:p-6 lg:p-8">
-  <app-nearby-search subject="ลูกค้า" [radiusKm]="1" [busy]="loadingCustomers()" (searched)="searchNearby()" (cleared)="clearNearby()" />
-  @if (nearbyPoint) { <p class="mb-4 text-sm font-semibold" role="status">กำลังแสดงลูกค้าในรัศมี 1 กม. จากที่ตั้งร้านที่บันทึกไว้</p> }
   <header class="mb-5 flex flex-wrap justify-end gap-3">
     <button class="neu-control inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-bold" type="button"
       (click)="showOverviewMap = !showOverviewMap">
@@ -24,10 +22,10 @@
 
   <div [class]="showForm ? 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]' : 'grid gap-5'">
     <article class="neu-panel overflow-hidden rounded-2xl">
-      <div class="flex flex-col gap-3 border-b border-white/70 p-5 sm:flex-row sm:items-end sm:justify-between">
+      <div class="flex flex-wrap items-end gap-3 border-b border-white/70 p-5">
 
         <!-- พิมพ์แล้วค้นหาทันที หรือกด Enter / ปุ่มค้นหา -->
-        <form class="flex w-full max-w-lg items-end gap-2"
+        <form class="flex min-w-0 w-full max-w-lg items-end gap-2"
           (ngSubmit)="!loadingCustomers() && !savingCustomer() && deletingCustomerId() === null && loadCustomers()">
           <label class="block min-w-0 flex-1 text-sm font-semibold text-slate-700" for="customer-list-search">
             <span class="mb-1.5 block">ค้นหาลูกค้า</span>
@@ -42,7 +40,8 @@
             ค้นหา
           </button>
         </form>
-        <span class="text-sm text-slate-500">{{ filteredCustomers().length }} รายการ</span>
+        <app-nearby-search subject="ลูกค้า" [radiusKm]="1" [active]="nearbyPoint" [busy]="loadingCustomers() || savingCustomer() || deletingCustomerId() !== null" (searched)="searchNearby()" (cleared)="clearNearby()" />
+        <span class="ml-auto text-sm text-slate-500" role="status">{{ filteredCustomers().length }} รายการ</span>
       </div>
 
       <!-- Show customer (body) -->

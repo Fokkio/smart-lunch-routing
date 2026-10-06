@@ -38,7 +38,7 @@ export class CustomersComponent implements OnInit {
   nearbyPoint = false;
   readonly distances = signal<Record<string,number>>({});
   private loadRequestId = 0;
-  searchNearby(): void { this.nearbyPoint = true; this.query=''; this.loadCustomers(); }
+  searchNearby(): void { this.nearbyPoint = true; this.loadCustomers(); }
   clearNearby(): void { this.nearbyPoint = false; this.loadCustomers(); }
   placeQuery = '';
   showOverviewMap = false;

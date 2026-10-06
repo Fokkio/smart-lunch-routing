@@ -12,6 +12,6 @@ describe('shop radius search',()=>{
     search.search();expect(emit).toHaveBeenCalledWith();
     fixture.componentRef.setInput('busy',true);
     search.search();expect(emit).toHaveBeenCalledTimes(1);
-    fixture.detectChanges();expect(fixture.nativeElement.querySelector('input')).toBeNull();
+    fixture.detectChanges();expect(fixture.nativeElement.querySelector('input[type="checkbox"]').disabled).toBe(true);
   });
 });
