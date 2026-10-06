@@ -30,4 +30,13 @@ describe('nearby HTTP queries', () => {
     expect(request.request.params.get('status')).toBe('CANCELLED');
     request.flush([]);
   });
+  it('sends custom customer and order radii without client coordinates',()=>{
+    const http=TestBed.inject(HttpTestingController);
+    TestBed.inject(CustomersApiService).nearby(0.5).subscribe();
+    const customers=http.expectOne(r=>r.url==='/api/customers/nearby');
+    expect(customers.request.params.get('radiusKm')).toBe('0.5');customers.flush([]);
+    TestBed.inject(OrderApiService).nearby(undefined,undefined,100).subscribe();
+    const orders=http.expectOne(r=>r.url==='/api/orders/nearby');
+    expect(orders.request.params.get('radiusKm')).toBe('100');orders.flush([]);
+  });
 });

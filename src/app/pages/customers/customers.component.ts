@@ -36,9 +36,10 @@ export class CustomersComponent implements OnInit {
 
   query = '';
   nearbyPoint = false;
+  nearbyRadius = 1;
   readonly distances = signal<Record<string,number>>({});
   private loadRequestId = 0;
-  searchNearby(): void { this.nearbyPoint = true; this.loadCustomers(); }
+  searchNearby(radius=this.nearbyRadius): void { this.nearbyRadius=radius; this.nearbyPoint = true; this.loadCustomers(); }
   clearNearby(): void { this.nearbyPoint = false; this.loadCustomers(); }
   placeQuery = '';
   showOverviewMap = false;
@@ -65,7 +66,7 @@ export class CustomersComponent implements OnInit {
 
     const requestId = ++this.loadRequestId;
     const point = this.nearbyPoint;
-    const request = point ? this.customerApi.nearby() : this.customerApi.getCustomers(this.query);
+    const request = point ? this.customerApi.nearby(this.nearbyRadius) : this.customerApi.getCustomers(this.query);
     request.pipe(timeout(15000), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (customers) => {
         if (requestId !== this.loadRequestId) return;

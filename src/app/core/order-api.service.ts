@@ -23,8 +23,8 @@ export class OrderApiService {
   list(date?: string): Observable<ApiOrder[]> {
     return this.http.get<ApiOrder[]>(this.url, { params: date ? { date } : {} });
   }
-  nearby(date?: string, status?: ApiOrderStatus): Observable<ApiOrder[]> {
-    return this.http.get<ApiOrder[]>(`${this.url}/nearby`, {params:{radiusKm:2,...(date ? {date} : {}),...(status ? {status} : {})}});
+  nearby(date?: string, status?: ApiOrderStatus, radiusKm=2): Observable<ApiOrder[]> {
+    return this.http.get<ApiOrder[]>(`${this.url}/nearby`, {params:{radiusKm,...(date ? {date} : {}),...(status ? {status} : {})}});
   }
   create(input: ApiOrderInput): Observable<ApiOrder> { return this.http.post<ApiOrder>(this.url, input); }
   update(id: number, input: ApiOrderInput): Observable<ApiOrder> { return this.http.put<ApiOrder>(`${this.url}/${id}`, input); }

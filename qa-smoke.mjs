@@ -62,7 +62,7 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
     for (const [path,radius] of [['customers',1],['orders',2]]) {
       await page.goto(`/owner/${path}`);
       const result=response(`/${path}/nearby`);
-      await page.getByRole('checkbox',{name:`${path==='customers'?'ลูกค้า':'ออเดอร์'}ในรัศมี ${radius} กม. จากร้าน`,exact:true}).check();
+      await page.getByRole('checkbox',{name:`${path==='customers'?'ลูกค้า':'ออเดอร์'}ใกล้ร้าน`,exact:true}).check();
       const res=await result;
       assert.equal(res.status(),200);
       const rows=await res.json();

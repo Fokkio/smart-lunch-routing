@@ -40,7 +40,7 @@
             ค้นหา
           </button>
         </form>
-        <app-nearby-search subject="ลูกค้า" [radiusKm]="1" [active]="nearbyPoint" [busy]="loadingCustomers() || savingCustomer() || deletingCustomerId() !== null" (searched)="searchNearby()" (cleared)="clearNearby()" />
+        <app-nearby-search subject="ลูกค้า" [radiusKm]="nearbyRadius" [active]="nearbyPoint" [busy]="loadingCustomers() || savingCustomer() || deletingCustomerId() !== null" (searched)="searchNearby($event)" (cleared)="clearNearby()" />
         <span class="ml-auto text-sm text-slate-500" role="status">{{ filteredCustomers().length }} รายการ</span>
       </div>
 
