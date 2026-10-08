@@ -29,7 +29,7 @@ export interface GeoJsonLineString {
 
 export interface DeliveryRouteModel {
   acknowledgedAt?: string | null;
-  status?: 'WAITING'|'DELIVERING'|'COMPLETED'|'CANCELLED';
+  status?: 'WAITING' | 'DELIVERING' | 'COMPLETED' | 'CANCELLED';
   jobId?: number;
   jobCode?: string;
   riderIndex: number;
@@ -71,3 +71,16 @@ export interface RoutePlanModel {
 
 /** List/summary contract: same metrics, no `jobs` (see detail endpoint). */
 export type RoutePlanSummaryModel = Omit<RoutePlanModel, 'jobs'>;
+
+/** Response for the signed-in rider's jobs. */
+export interface RiderJobModel {
+  planId: number;
+  job: DeliveryRouteModel;
+  shop: {
+    latitude: number;
+    longitude: number;
+    deliveryDeadline: string;
+    shopName?: string;
+    deliveryStartTime?: string;
+  };
+}

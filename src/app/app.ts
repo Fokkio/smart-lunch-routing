@@ -23,7 +23,10 @@ export class App {
     });
   }
 
-  logout(): void { this.auth.logout(); void this.router.navigateByUrl('/login'); }
+  logout(): void {
+    this.auth.logout();
+    void this.router.navigateByUrl('/login');
+  }
 
   pageTitle(): string {
     if (this.router.url.includes('/customers')) return 'ข้อมูลลูกค้า';

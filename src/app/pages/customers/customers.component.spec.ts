@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 import { vi } from 'vitest';
-import { ApiCustomer, CustomersApiService } from '../../core/customer-api.service';
+import { CustomersApiService } from '../../core/customer-api.service';
+import type { ApiCustomer } from '../../core/customer-api.models';
 import { CustomersComponent } from './customers.component';
 
 describe('CustomersComponent', () => {
@@ -114,7 +115,7 @@ describe('CustomersComponent', () => {
 
   // ===================================================== //
   // เริ่มจากคลิกปุ่มใน HTML แล้วตรวจสิ่งที่ผู้ใช้เห็น ทั้งสถานะ “กำลังลบ” และการเก็บรายการไว้เมื่อเกิด error โดยยังใช้ API จำลอง
-  it('keeps the customer visible when deletion returns 409', async () => {
+  it('keeps the customer on deletion conflict and automatically clears feedback', async () => {
     const listResponse = new Subject<ApiCustomer[]>();
     const deleteResponse = new Subject<void>();
 
@@ -173,6 +174,10 @@ describe('CustomersComponent', () => {
       expect(page.textContent).toContain('ลูกค้าที่มีออเดอร์');
       expect(page.textContent).toContain('ลบไม่ได้ เพราะลูกค้ารายนี้มีออเดอร์อ้างอิงอยู่');
       expect(deleteButton!.disabled).toBe(false);
+      vi.advanceTimersByTime(3500);
+      expect(fixture.componentInstance.feedback()).toBe('');
+      fixture.detectChanges();
+      expect(page.textContent).not.toContain('ลบไม่ได้ เพราะลูกค้ารายนี้มีออเดอร์อ้างอิงอยู่');
     } finally {
       confirm.mockRestore();
       vi.clearAllTimers();

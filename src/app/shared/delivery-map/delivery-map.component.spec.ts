@@ -1,5 +1,4 @@
 import { DeliveryMapComponent } from './delivery-map.component';
-import { DEMO_RIDERS } from '../../core/demo-data';
 import { RiderRoute } from '../../core/models';
 
 describe('DeliveryMapComponent tile fallback', () => {
@@ -14,8 +13,8 @@ describe('DeliveryMapComponent tile fallback', () => {
 
   it('shows one selected rider and resets the filter when that rider disappears', () => {
     const component = new DeliveryMapComponent();
-    const first = { rider: DEMO_RIDERS[0] } as RiderRoute;
-    const second = { rider: DEMO_RIDERS[1] } as RiderRoute;
+    const first = { rider: { id: '1' } } as RiderRoute;
+    const second = { rider: { id: '2' } } as RiderRoute;
     component.routes = [first, second];
 
     component.selectRoute({ target: { value: second.rider.id } } as unknown as Event);
