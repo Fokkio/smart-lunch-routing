@@ -6,6 +6,12 @@ import { environment } from '../../environments/environment';
 
 export type User = { type: 'OWNER' | 'RIDER'; id: number; name: string };
 type Session = { token: string; user: User };
+export type OwnerAccount = { username: string };
+export type OwnerAccountUpdate = {
+  currentPassword: string;
+  username?: string;
+  newPassword?: string;
+};
 const SESSION_KEY = 'smart-lunch-session-v1';
 const privateKeys = ['smart-lunch-customers-v1', 'smart-lunch-orders-v1', 'smart-lunch-plan-v1'];
 
@@ -53,6 +59,14 @@ export class AuthService {
 
   changePassword(currentPassword: string, newPassword: string) {
     return this.http.put<void>(`${this.url}/password`, { currentPassword, newPassword });
+  }
+
+  ownerAccount() {
+    return this.http.get<OwnerAccount>(`${this.url}/owner-account`);
+  }
+
+  updateOwnerAccount(input: OwnerAccountUpdate) {
+    return this.http.put<void>(`${this.url}/owner-account`, input);
   }
 
   logout(): void {
@@ -105,10 +119,16 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         token === auth.token() &&
         error.status === 401 &&
         !req.url.endsWith('/auth/login') &&
-        !req.url.endsWith('/auth/password')
+        !req.url.endsWith('/auth/password') &&
+        !(
+          req.method === 'PUT' &&
+          req.url.endsWith('/auth/owner-account') &&
+          error.error?.message === 'Current password is incorrect'
+        )
       ) {
+        const loginPath = auth.user()?.type === 'RIDER' ? '/login/rider' : '/login/owner';
         auth.clear();
-        void router.navigateByUrl('/login');
+        void router.navigateByUrl(loginPath);
       }
       return throwError(() => error);
     }),
@@ -119,6 +139,8 @@ export function roleGuard(role: User['type']): CanActivateFn {
   return () => {
     const auth = inject(AuthService);
     const router = inject(Router);
-    return auth.user()?.type === role ? true : router.createUrlTree(['/login']);
+    return auth.user()?.type === role
+      ? true
+      : router.createUrlTree([role === 'OWNER' ? '/login/owner' : '/login/rider']);
   };
 }

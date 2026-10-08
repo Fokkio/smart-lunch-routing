@@ -27,8 +27,7 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
   const layout = async label=>assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth),false,`overflow ${label} @${width}`);
   const capture = name=>page.screenshot({path:join(outputDir,`${name}-${width}.png`),fullPage:true});
   const login = async (role,username)=>{
-    await page.goto('/login');
-    await page.getByLabel('ประเภทบัญชี').selectOption(role);
+    await page.goto(role === 'OWNER' ? '/login/owner' : '/login/rider');
     await page.getByLabel('ชื่อผู้ใช้',{exact:true}).fill(username);
     await page.getByLabel('รหัสผ่าน',{exact:true}).fill(data.password);
     const loggedIn=response('/auth/login','POST');

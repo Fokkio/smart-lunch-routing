@@ -3,8 +3,20 @@ import { roleGuard } from './core/auth.service';
 
 export const routes: Routes = [
   {
+    path: 'login/owner',
+    title: 'เข้าสู่ระบบเจ้าของร้าน | ครัวเที่ยงตรง',
+    data: { role: 'OWNER' },
+    loadComponent: () => import('./pages/login/login.component').then((m) => m.LoginComponent),
+  },
+  {
+    path: 'login/rider',
+    title: 'เข้าสู่ระบบไรเดอร์ | ครัวเที่ยงตรง',
+    data: { role: 'RIDER' },
+    loadComponent: () => import('./pages/login/login.component').then((m) => m.LoginComponent),
+  },
+  {
     path: 'login',
-    title: 'เข้าสู่ระบบ | ครัวเที่ยงตรง',
+    title: 'เลือกบัญชี | ครัวเที่ยงตรง',
     loadComponent: () => import('./pages/login/login.component').then((m) => m.LoginComponent),
   },
   {

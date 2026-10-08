@@ -1,25 +1,32 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
-  it('submits owner credentials and shows a failed login', async () => {
+  it.each(['OWNER', 'RIDER'])('uses the %s page role and shows a failed login', async (role) => {
     sessionStorage.clear();
     TestBed.configureTestingModule({
       imports: [LoginComponent],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { data: { role }, queryParamMap: convertToParamMap({}) } },
+        },
+      ],
     });
     const fixture = TestBed.createComponent(LoginComponent);
     fixture.detectChanges();
     const login = fixture.componentInstance;
-    login.role = 'OWNER';
     login.username = 'sample-owner';
     login.password = 'long test password';
     login.login();
     const request = TestBed.inject(HttpTestingController).expectOne('/api/auth/login');
     expect(request.request.body).toEqual({
-      role: 'OWNER',
+      role,
       username: 'sample-owner',
       password: 'long test password',
     });
