@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
   selector: 'app-nearby-search',
   standalone: true,
   imports: [FormsModule],
-  template: `<div class="flex flex-wrap items-center gap-2">
+  template: `<div class="nearby-search">
     <label
       class="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-semibold"
       [class.border-blue-500]="active()"

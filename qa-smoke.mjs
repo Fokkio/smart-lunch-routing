@@ -124,6 +124,7 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
     const choose=page.getByRole('button',{name:'เลือกแผนใหม่',exact:true});
     if(await choose.isVisible()) await choose.click();
     await visible(page.getByRole('button',{name:'ตรวจทานแผน',exact:true}));
+    await layout('draft'); await capture('dispatch-draft');
     const compared=response('/route-plans/recalculate','POST');
     await page.getByRole('button',{name:'คำนวณแผนใหม่',exact:true}).click();
     const next=await compared;
@@ -132,10 +133,12 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
     const signature=p=>JSON.stringify(p.jobs.map(j=>JSON.stringify(j.stops.map(s=>s.orderId))).sort());
     assert.notEqual(signature(candidate),signature(original));
     assert.deepEqual(candidate.jobs.flatMap(j=>j.stops.map(s=>s.orderId)).sort((a,b)=>a-b),data.orders.filter(o=>o.status==='PENDING' && o.orderDate===candidate.planDate).map(o=>o.id).sort((a,b)=>a-b));
+    await layout('comparison'); await capture('dispatch-comparison');
     await choose.click();
     await page.getByRole('button',{name:'ตรวจทานแผน',exact:true}).click();
     const assignments=page.getByRole('group',{name:'มอบหมายผู้รับเส้นทาง',exact:true}).getByRole('combobox');
     await visible(assignments.first());
+    await layout('review'); await capture('dispatch-review');
     assert.equal(await assignments.count(),candidate.jobs.length);
     for(let i=0;i<candidate.jobs.length;i++) {
       const select=assignments.nth(i);
@@ -151,6 +154,7 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
       await page.evaluate(()=>{localStorage.clear();sessionStorage.clear();});
       await context.clearCookies();
       await login('RIDER',rider.username);
+      await layout('rider entry'); await capture(`rider-entry-${i}`);
       const search=page.getByRole('searchbox',{name:'ค้นหารหัสใบงานของฉัน',exact:true});
       await search.fill('NO-SUCH-JOB');
       await visible(page.getByText('ไม่พบรหัสใบงานนี้ในงานของคุณวันนี้',{exact:true}));
@@ -162,6 +166,7 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
       }
       await search.fill(`  ${job.jobCode.toLowerCase()}  `);
       await page.getByRole('button',{name:new RegExp(`ใบงาน ${job.jobCode}`)}).click();
+      await layout('rider summary'); await capture(`rider-summary-${i}`);
       await page.getByRole('button',{name:'รับทราบงานนี้',exact:true}).click();
       await visible(page.getByText('รับทราบงานแล้ว',{exact:true}));
       await page.getByRole('button',{name:'เริ่มส่งจุดแรก',exact:true}).click();
@@ -187,6 +192,7 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
       }
       await visible(page.getByRole('heading',{name:'ส่งครบแล้ว',exact:true}));
       await layout('completed');
+      await capture(`rider-completed-${i}`);
     }
     assert.deepEqual(errors,[],'uncaught browser errors');
     console.log(`PASS browser ${width}px: CRUD, no order cache, API failure/retry, job search, reload delivery, radius, alternative, dispatch, navigation, layout`);

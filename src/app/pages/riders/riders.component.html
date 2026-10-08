@@ -1,5 +1,9 @@
-<section class="mx-auto max-w-[1480px] p-4 sm:p-6 lg:p-8">
-  <header class="mb-5 flex justify-end">
+<section class="workspace-page">
+  <header class="page-header">
+    <div>
+      <h2 class="page-heading">ทีมไรเดอร์</h2>
+      <p class="page-description">จัดการข้อมูล บัญชี และความพร้อมรับงานของทีมส่งอาหาร</p>
+    </div>
     <button
       class="neu-primary inline-flex min-h-11 items-center gap-2 rounded-xl px-5 font-bold"
       type="button"
@@ -20,9 +24,7 @@
 
   <div [class]="showForm ? 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]' : 'grid gap-5'">
     <article class="neu-panel overflow-hidden rounded-2xl">
-      <div
-        class="flex flex-col gap-3 border-b border-white/70 p-5 sm:flex-row sm:items-end sm:justify-between"
-      >
+      <div class="section-toolbar flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <label
           class="block w-full max-w-lg text-sm font-semibold text-slate-700"
           for="rider-list-search"
@@ -54,14 +56,8 @@
           </p>
         } @else {
           @for (rider of filteredRiders(); track rider.id) {
-            <article
-              class="grid gap-3 p-5 transition-colors duration-200 hover:bg-white/25 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:items-center"
-            >
-              <span
-                class="neu-panel-soft grid size-11 place-items-center rounded-full font-bold text-emerald-800"
-                aria-hidden="true"
-                >{{ rider.name.slice(0, 1) }}</span
-              >
+            <article class="record-card">
+              <span class="record-avatar" aria-hidden="true">{{ rider.name.slice(0, 1) }}</span>
               <div class="min-w-0">
                 <strong class="block">{{ rider.name }}</strong
                 ><span class="block text-sm text-slate-500"
@@ -77,7 +73,7 @@
                   >{{ workStatusLabel(rider) }}</span
                 >
               </div>
-              <div class="flex gap-2 sm:justify-end">
+              <div class="record-actions">
                 <button
                   class="neu-control min-h-11 rounded-xl px-3 text-sm font-semibold"
                   type="button"
@@ -190,7 +186,7 @@
               {{ error() }}
             </p>
           }
-          <div class="flex justify-end gap-3 border-t border-white/70 pt-4">
+          <div class="flex justify-end gap-3 border-t border-line pt-4">
             <button
               class="neu-control min-h-11 rounded-xl px-4 font-bold"
               type="button"

@@ -1,6 +1,6 @@
-<section class="min-h-dvh bg-neu px-4 py-6 sm:py-10">
-  <div class="neu-panel mx-auto max-w-xl overflow-hidden rounded-2xl">
-    <header class="flex items-center gap-3 border-b border-white/70 px-5 py-4">
+<section class="rider-workspace min-h-dvh bg-neu px-3 py-4 sm:px-4 sm:py-8">
+  <div class="neu-panel mx-auto max-w-2xl overflow-hidden rounded-2xl">
+    <header class="rider-topbar flex flex-wrap items-center gap-3 px-4 py-4 sm:px-6">
       <img
         class="size-10"
         src="assets/brand/krua-thiang-trong-mark.svg"
@@ -9,17 +9,25 @@
         alt=""
         role="presentation"
       />
-      <div class="flex-1">
+      <div class="min-w-0 flex-1">
         <strong class="block">ครัวเที่ยงตรง</strong
         ><small class="text-slate-600">{{ auth.user()?.name }} · งานจัดส่งของฉัน</small>
       </div>
-      <button class="text-sm font-bold text-slate-600 underline" type="button" (click)="logout()">
+      <button
+        class="neu-control min-h-11 rounded-full px-3 text-xs font-semibold"
+        type="button"
+        (click)="logout()"
+      >
         ออกจากระบบ
       </button>
     </header>
     @if (stage === 'entry') {
       <section class="entry-panel p-5 sm:p-7">
-        <h1 class="text-2xl font-bold">งานของฉันวันนี้</h1>
+        <span
+          class="mb-2 inline-flex rounded-full bg-info-soft px-3 py-1 text-xs font-semibold text-primary"
+          >พื้นที่ไรเดอร์</span
+        >
+        <h1 class="text-2xl font-bold sm:text-3xl">งานของฉันวันนี้</h1>
         <p class="mt-1 text-slate-600">
           งานที่ร้านยืนยันและมอบหมายให้บัญชีของคุณ รวมงานค้างจากวันก่อน
         </p>
@@ -73,7 +81,7 @@
         <div class="mt-5 grid gap-3">
           @for (item of filteredJobs(); track item.job.jobId) {
             <button
-              class="neu-panel-soft min-h-16 rounded-xl p-4 text-left"
+              class="rider-job-card min-h-16 rounded-xl p-4 text-left"
               type="button"
               (click)="selectJob(item)"
             >
@@ -181,7 +189,7 @@
           </p>
           <div class="mt-5">
             <h2 class="font-bold">ลำดับจุดส่ง</h2>
-            <ol class="neu-inset mt-3 divide-y divide-white/70 rounded-2xl">
+            <ol class="neu-inset mt-3 divide-y divide-line rounded-2xl">
               @for (stop of route.stops; track stop.orderId; let i = $index) {
                 <li class="flex items-center gap-3 p-3" [class.bg-emerald-50]="i === stopIndex">
                   <span
@@ -255,7 +263,7 @@
               [style.width.%]="(stopIndex / route.stops.length) * 100"
             ></span>
           </div>
-          <article class="neu-panel-soft mt-6 rounded-2xl p-5">
+          <article class="rider-recipient mt-6 rounded-2xl p-5">
             <span class="text-sm text-slate-600">ส่งให้ลูกค้า</span>
             <h2 class="mt-1 text-2xl font-bold">{{ stop.customerName }}</h2>
             <div class="neu-inset mt-4 inline-flex rounded-xl px-4 py-2 text-emerald-950">
@@ -357,7 +365,7 @@
       } @else if (stage === 'completed') {
         <section class="completed-panel p-7 text-center">
           <span
-            class="neu-panel-soft mx-auto grid size-16 place-items-center rounded-full text-3xl font-bold text-emerald-800"
+            class="rider-complete-icon mx-auto grid size-20 place-items-center rounded-full text-4xl font-bold"
             aria-hidden="true"
             >✓</span
           >
