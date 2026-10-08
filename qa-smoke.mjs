@@ -50,8 +50,8 @@ export async function runSmoke({ baseURL, width, data, outputDir }) {
         else if (path==='delivery') await visible(page.getByRole('button',{name:'รีเฟรชรายการ',exact:true}));
         else if (path==='riders') await page.getByText('กำลังโหลด',{exact:false}).waitFor({state:'hidden'});
         else await page.waitForFunction(()=>{
-          const form=document.querySelector('app-nearby-search fieldset');
-          return form instanceof HTMLFieldSetElement && !form.disabled;
+          const checkbox=document.querySelector('app-nearby-search input[type="checkbox"]');
+          return checkbox instanceof HTMLInputElement && !checkbox.disabled;
         });
         await layout(path); await capture(`page-${path}`);
       }

@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { ApiCustomer, CustomersApiService } from './customer-api.service';
+import { CustomersApiService } from './customer-api.service';
+import type { ApiCustomer } from './customer-api.models';
 import { HttpErrorResponse } from '@angular/common/http';
 
 // describe

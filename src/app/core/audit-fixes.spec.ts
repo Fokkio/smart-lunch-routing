@@ -7,7 +7,7 @@ import { CustomersComponent } from '../pages/customers/customers.component';
 import { OrdersComponent } from '../pages/orders/orders.component';
 import { RidersComponent } from '../pages/riders/riders.component';
 import { DeliveryService } from './delivery.service';
-import { BackendApiService, todayLocal } from './backend-api.service';
+import { todayLocal } from './dates';
 import { AuthService } from './auth.service';
 import { RoutePlanApiService } from './route-plan-api.service';
 import { ShopSettingsApiService } from './shop-settings-api.service';
@@ -30,14 +30,9 @@ describe('audit fix regressions', () => {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: { token: () => token } },
-        {
-          provide: BackendApiService,
-          useValue: {
-            listCustomers: () => of([]),
-            listOrders: () => of([]),
-            listRiders: () => of([]),
-          },
-        },
+        { provide: CustomersApiService, useValue: { getCustomers: () => of([]) } },
+        { provide: OrderApiService, useValue: { list: () => of([]) } },
+        { provide: RidersApiService, useValue: { getRiders: () => of([]) } },
         { provide: ShopSettingsApiService, useValue: { get: () => NEVER } },
         {
           provide: RoutePlanApiService,

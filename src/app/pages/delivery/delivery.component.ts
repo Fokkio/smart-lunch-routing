@@ -9,13 +9,14 @@ import {
   effect,
   inject,
   untracked,
+  signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/auth.service';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { filter, finalize, timeout, type Observable } from 'rxjs';
-import { todayLocal } from '../../core/backend-api.service';
+import { todayLocal } from '../../core/dates';
 import { DeliveryService } from '../../core/delivery.service';
 import { RiderRoute, RoutePlan, SHOP } from '../../core/models';
 import { adaptBackendPlan } from '../../core/route-plan-adapter';
@@ -54,7 +55,7 @@ export class DeliveryComponent {
   readonly store = inject(DeliveryService);
   readonly shopPoint = computed<[number, number]>(() => {
     const settings =
-      this.candidateBackend?.shop ?? this.store.plan()?.shop ?? this.store.settings();
+      this.candidateBackend()?.shop ?? this.store.plan()?.shop ?? this.store.settings();
     return settings ? [settings.latitude, settings.longitude] : [SHOP.lat, SHOP.lng];
   });
   private readonly routePlans = inject(RoutePlanApiService, { optional: true });
@@ -65,7 +66,12 @@ export class DeliveryComponent {
   @ViewChild('routeMapPanel') private routeMapPanel?: ElementRef<HTMLElement>;
   @ViewChild('ackLate') private ackLateBox?: ElementRef<HTMLInputElement>;
   @ViewChild('ackCandidate') private ackCandidateBox?: ElementRef<HTMLInputElement>;
-  candidate: RoutePlan | null = null;
+  readonly candidate = computed(() => {
+    const backend = this.candidateBackend();
+    return backend
+      ? adaptBackendPlan(backend, this.store.riders(), { deadlineTime: this.deadlineLabel() })
+      : null;
+  });
   calculating = false;
   confirmingPlan = false;
   roundStart = '';
@@ -76,25 +82,17 @@ export class DeliveryComponent {
       ? [...new Set([...this.selectedOrderIds, id])]
       : this.selectedOrderIds.filter((value) => value !== id);
   }
-  riderAssignments: Record<number, number> = {};
   readyRiders() {
     return this.store.riders().filter((rider) => rider.workStatus === 'READY');
   }
   assignRider(jobId: number, riderId: number): void {
     const rider = this.store.riders().find((r) => Number(r.id) === riderId);
     if (!this.backendPlan || this.backendPlan.status !== 'GENERATED' || !rider) return;
-    this.riderAssignments[jobId] = riderId;
     this.backendPlan = {
       ...this.backendPlan,
       jobs: this.backendPlan.jobs.map((job) => (job.jobId === jobId ? { ...job, riderId } : job)),
     };
-    this.store.choosePlan(
-      adaptBackendPlan(this.backendPlan, {
-        customers: this.store.customers(),
-        orders: this.store.orders(),
-        riders: this.store.riders(),
-      }),
-    );
+    this.store.choosePlan(adaptBackendPlan(this.backendPlan, this.store.riders()));
   }
   private roundWindow() {
     return {
@@ -115,10 +113,10 @@ export class DeliveryComponent {
   ackError = false;
   /** true เมื่อแผนที่ยืนยันล่าสุดเป็นการ override แผนส่งเกินเวลา */
   lateOverride = false;
-  /** true เมื่อตกกลับไปคำนวณในเครื่องเพราะ backend ล่ม — ตัวเลขเป็นเส้นตรงจนกว่าจะ generate สำเร็จ */
-  fallbackNotice = false;
-  /** id แผนฝั่ง backend (null = ยังไม่เคยคำนวณ/ใช้โหมดคำนวณในเครื่อง) */
-  backendPlanId: number | null = null;
+  /** id ของแผน backend ที่กำลังเปิดอยู่ */
+  get backendPlanId(): number | null {
+    return this.backendPlan?.routePlanId ?? null;
+  }
   /** ใบงานที่บันทึกไว้ฝั่ง backend ของวันนี้ */
   savedPlans: RoutePlanSummaryModel[] = [];
   loadingPlans = false;
@@ -128,7 +126,7 @@ export class DeliveryComponent {
   plansError: string | null = null;
   /** โมเดล backend ดิบของแผนที่เลือก — เก็บ geometry เส้นถนนไว้ให้แผนที่ (adapter ทิ้ง field นี้) */
   backendPlan: RoutePlanModel | null = null;
-  private candidateBackend: RoutePlanModel | null = null;
+  private readonly candidateBackend = signal<RoutePlanModel | null>(null);
   private viewRequestId = 0;
 
   get visibleSavedPlans(): RoutePlanSummaryModel[] {
@@ -151,7 +149,6 @@ export class DeliveryComponent {
       const ready = this.store.usingBackend();
       untracked(() => {
         this.viewRequestId++;
-        this.backendPlanId = null;
         this.backendPlan = null;
         this.loadingPlanDetail = false;
         this.selectedOrderIds = [];
@@ -290,7 +287,6 @@ export class DeliveryComponent {
           if (this.backendPlanId === id) {
             this.viewRequestId++;
             this.loadingPlanDetail = false;
-            this.backendPlanId = null;
             this.backendPlan = null;
             this.store.plan.set(null);
             this.store.confirmedPlan.set(null);
@@ -305,18 +301,18 @@ export class DeliveryComponent {
 
   /** jobs สำหรับแผนที่ถนนจริง (null = วาดเส้นตรงแบบเดิม) */
   mapJobs(): DeliveryRouteModel[] | null {
-    return this.candidateBackend?.jobs ?? this.backendPlan?.jobs ?? null;
+    return this.candidateBackend()?.jobs ?? this.backendPlan?.jobs ?? null;
   }
 
   /** ชื่อไรเดอร์ตามลำดับใบงาน — ส่งให้แผนที่ถนนใช้ป้ายเดียวกับการ์ด (R01 · name) */
   mapRiderNames(): string[] {
-    const plan = this.candidate ?? this.store.plan();
+    const plan = this.candidate() ?? this.store.plan();
     return plan ? plan.routes.map((route) => route.rider.name) : [];
   }
 
   /** ป้ายที่มาของเส้นทาง (null = โหมดคำนวณในเครื่อง) */
   routingNote(): string | null {
-    const plan = this.candidateBackend ?? this.backendPlan;
+    const plan = this.candidateBackend() ?? this.backendPlan;
     return plan ? routingSourceLabel(plan) : null;
   }
 
@@ -390,25 +386,11 @@ export class DeliveryComponent {
       0,
       5,
     );
-    const plan = adaptBackendPlan(
-      backend,
-      {
-        customers: this.store.customers(),
-        orders: this.store.orders(),
-        riders: this.store.riders(),
-      },
-      { deadlineTime: this.deadlineLabel() },
-    );
-    this.backendPlanId = backend.routePlanId ?? null;
+    const plan = adaptBackendPlan(backend, this.store.riders(), {
+      deadlineTime: this.deadlineLabel(),
+    });
     this.backendPlan = backend;
-    this.riderAssignments = Object.fromEntries(
-      backend.jobs
-        .filter((job) => job.jobId !== undefined && job.riderId !== null)
-        .map((job) => [job.jobId!, job.riderId!]),
-    );
-    this.candidateBackend = null;
-    this.candidate = null;
-    this.fallbackNotice = false;
+    this.candidateBackend.set(null);
     this.acknowledgeLate = false;
     this.lateOverride = false;
     this.selectedRoute = null;
@@ -418,7 +400,7 @@ export class DeliveryComponent {
     this.calculating = false;
   }
   compare(): void {
-    if (this.candidate || this.calculating) return;
+    if (this.candidate() || this.calculating) return;
     this.plansError = null;
     if (this.store.usingBackend() && this.routePlans && this.backendPlanId !== null) {
       this.calculating = true;
@@ -437,17 +419,8 @@ export class DeliveryComponent {
           next: (backend) => {
             this.calculating = false;
             this.acknowledgeCandidate = false;
-            this.candidateBackend = backend;
+            this.candidateBackend.set(backend);
             this.selectedRoute = null;
-            this.candidate = adaptBackendPlan(
-              backend,
-              {
-                customers: this.store.customers(),
-                orders: this.store.orders(),
-                riders: this.store.riders(),
-              },
-              { deadlineTime: this.deadlineLabel() },
-            );
             this.loadSavedPlans();
           },
           error: (error) => {
@@ -470,7 +443,7 @@ export class DeliveryComponent {
     this.plansError = 'กรุณาเปิดแผนร่างจากระบบก่อนค้นหาแผนทางเลือก';
   }
   discardCandidate(): void {
-    const id = this.candidateBackend?.routePlanId;
+    const id = this.candidateBackend()?.routePlanId;
     if (id != null && this.routePlans) {
       if (this.discardingCandidate) return;
       this.discardingCandidate = true;
@@ -498,8 +471,7 @@ export class DeliveryComponent {
     this.clearCandidate();
   }
   private clearCandidate(): void {
-    this.candidate = null;
-    this.candidateBackend = null;
+    this.candidateBackend.set(null);
     this.acknowledgeCandidate = false;
   }
   focusCandidate(): void {
@@ -507,28 +479,17 @@ export class DeliveryComponent {
     this.candidateBox?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
   chooseCandidate(): void {
-    if (!this.candidate) return;
-    // แผนใหม่สายต้องติ๊ก ack ก่อน ไม่ใช่แค่ปุ่มทึบ — พาโฟกัสไปที่ checkbox
-    if (!this.candidate.deadlineSafe && !this.acknowledgeCandidate) {
+    const candidate = this.candidate();
+    const backend = this.candidateBackend();
+    if (!candidate || !backend) return;
+    if (!candidate.deadlineSafe && !this.acknowledgeCandidate) {
       this.ackCandidateBox?.nativeElement.focus();
       return;
     }
-    this.backendPlanId = this.candidateBackend?.routePlanId ?? null;
-    this.backendPlan = this.candidateBackend;
-    this.riderAssignments = Object.fromEntries(
-      (this.candidateBackend?.jobs ?? [])
-        .filter((job) => job.jobId !== undefined && job.riderId !== null)
-        .map((job) => [job.jobId!, job.riderId!]),
-    );
-    this.lateOverride = !this.candidate.deadlineSafe;
-    this.acknowledgeLate = false;
+    this.adoptBackend(backend);
+    this.lateOverride = !candidate.deadlineSafe;
     this.acknowledgeCandidate = false;
     this.ackError = false;
-    this.selectedRoute = null;
-    this.store.choosePlan(this.candidate);
-    this.candidate = null;
-    this.candidateBackend = null;
-    this.reviewing = false;
   }
   startReview(): void {
     this.acknowledgeLate = false;
@@ -563,7 +524,7 @@ export class DeliveryComponent {
     if (this.backendPlanId != null && this.routePlans) {
       const assignments = this.backendPlan.jobs?.map((job) => ({
         jobId: job.jobId!,
-        riderId: this.riderAssignments[job.jobId!],
+        riderId: job.riderId!,
       }));
       if (
         assignments &&
@@ -661,11 +622,11 @@ export class DeliveryComponent {
       : 0;
   }
   mapShop() {
-    return this.candidateBackend?.shop ?? this.store.plan()?.shop ?? this.store.settings();
+    return this.candidateBackend()?.shop ?? this.store.plan()?.shop ?? this.store.settings();
   }
   mapStart(): string {
     return (
-      this.candidateBackend?.startTime ??
+      this.candidateBackend()?.startTime ??
       this.backendPlan?.startTime ??
       this.mapShop()?.deliveryStartTime ??
       ''

@@ -332,9 +332,7 @@
         <details class="mt-3 rounded-lg border border-line p-3">
           <summary class="cursor-pointer text-sm font-semibold">
             เลือกออเดอร์ในรอบนี้ ·
-            {{
-              selectedOrderIds.length ? selectedOrderIds.length : store.pendingOrders().length
-            }}
+            {{ selectedOrderIds.length ? selectedOrderIds.length : store.pendingOrders().length }}
             รายการ
           </summary>
           <p class="mt-2 text-xs text-slate-600">
@@ -390,7 +388,7 @@
             <button
               class="neu-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 font-bold"
               type="button"
-              [disabled]="!!candidate || calculating"
+              [disabled]="!!candidate() || calculating"
               (click)="store.confirmedPlan() ? calculate() : compare()"
             >
               <svg
@@ -483,15 +481,6 @@
                   : 'แผนยังไม่ส่งให้ไรเดอร์'
             }}
           </h3>
-          @if (fallbackNotice && !store.confirmedPlan()) {
-            <p
-              class="mt-3 rounded-lg border border-amber-300 bg-warning-soft p-3 text-sm text-amber-900"
-              role="alert"
-            >
-              <strong class="block">ต่อระบบหลังบ้านไม่ได้</strong>ตัวเลขนี้คำนวณแบบเส้นตรงโดยประมาณ
-              จะกลับเป็นเส้นถนนจริงเมื่อต่อ backend สำเร็จ
-            </p>
-          }
           @if (store.confirmedPlan()) {
             <p class="mt-1 text-sm text-slate-700">
               ยืนยัน {{ plan.routes.length }} ใบงานแล้ว
@@ -517,7 +506,7 @@
                       class="neu-field min-h-11 rounded-lg px-2"
                       [id]="'assign-rider-' + job.jobId"
                       [name]="'assign-rider-' + job.jobId"
-                      [ngModel]="riderAssignments[job.jobId!]"
+                      [ngModel]="job.riderId"
                       (ngModelChange)="assignRider(job.jobId!, $event)"
                     >
                       <option [ngValue]="null" disabled>เลือกไรเดอร์พร้อมงาน</option>
@@ -598,12 +587,12 @@
             <button
               class="neu-primary mt-3 min-h-11 rounded-lg px-4 text-sm font-bold"
               type="button"
-              [attr.aria-disabled]="!!candidate"
-              (click)="candidate ? focusCandidate() : startReview()"
+              [attr.aria-disabled]="!!candidate()"
+              (click)="candidate() ? focusCandidate() : startReview()"
             >
               ตรวจทานแผน
             </button>
-            @if (candidate) {
+            @if (candidate()) {
               <p class="mt-2 text-sm font-semibold text-blue-800">
                 มีแผนใหม่รอเลือกอยู่ด้านล่าง — เลือกหรือทิ้งก่อนแล้วค่อยตรวจทาน
               </p>
@@ -752,7 +741,7 @@
           </div>
         }
 
-        @if (candidate; as next) {
+        @if (candidate(); as next) {
           @if (store.plan(); as current) {
             <section
               #candidateBox

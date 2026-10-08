@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, of, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { RoutePlanModel, RoutePlanSummaryModel } from './route-plan.models';
-import { DeliveryRouteModel } from './route-plan.models';
+import type { RiderJobModel } from './route-plan.models';
 import { AuthService } from './auth.service';
 
 /**
@@ -170,34 +170,10 @@ export class RoutePlanApiService {
     );
   }
 
-  myJobs(
-    date: string,
-  ): Observable<
-    Array<{
-      planId: number;
-      job: DeliveryRouteModel;
-      shop: {
-        latitude: number;
-        longitude: number;
-        deliveryDeadline: string;
-        shopName?: string;
-        deliveryStartTime?: string;
-      };
-    }>
-  > {
-    return this.http.get<
-      Array<{
-        planId: number;
-        job: DeliveryRouteModel;
-        shop: {
-          latitude: number;
-          longitude: number;
-          deliveryDeadline: string;
-          shopName?: string;
-          deliveryStartTime?: string;
-        };
-      }>
-    >(`${environment.apiBaseUrl}/my-jobs`, { params: { date } });
+  myJobs(date: string): Observable<RiderJobModel[]> {
+    return this.http.get<RiderJobModel[]>(`${environment.apiBaseUrl}/my-jobs`, {
+      params: { date },
+    });
   }
 
   deliverMyStop(jobId: number, orderId: number): Observable<{ delivered: boolean }> {

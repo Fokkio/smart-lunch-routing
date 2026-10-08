@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize, forkJoin, timeout } from 'rxjs';
-import { todayLocal } from '../../core/backend-api.service';
+import { todayLocal } from '../../core/dates';
 import { NearbySearchComponent } from '../../shared/nearby-search.component';
 import { apiErrorMessage } from '../../core/api-error';
 import { ApiCustomer } from '../../core/customer-api.models';

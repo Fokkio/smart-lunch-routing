@@ -4,11 +4,11 @@ import { finalize, fromEvent, timer, timeout } from 'rxjs';
 import { apiErrorMessage } from '../../core/api-error';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { todayLocal } from '../../core/backend-api.service';
+import { todayLocal } from '../../core/dates';
 import { RoutePlanApiService } from '../../core/route-plan-api.service';
 import { AuthService } from '../../core/auth.service';
 import { SHOP } from '../../core/models';
-import { DeliveryRouteModel, RouteStopModel } from '../../core/route-plan.models';
+import { DeliveryRouteModel, RouteStopModel, RiderJobModel } from '../../core/route-plan.models';
 import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
 
 type Stage = 'entry' | 'summary' | 'delivery' | 'completed';
@@ -37,17 +37,7 @@ export class RiderComponent implements OnInit {
   readonly shopPoint = signal<[number, number]>([SHOP.lat, SHOP.lng]);
   shopName = 'ร้าน';
   mapStart = '';
-  jobs: Array<{
-    planId: number;
-    job: DeliveryRouteModel;
-    shop: {
-      latitude: number;
-      longitude: number;
-      deliveryDeadline: string;
-      shopName?: string;
-      deliveryStartTime?: string;
-    };
-  }> = [];
+  jobs: RiderJobModel[] = [];
   jobQuery = '';
   filteredJobs() {
     const query = this.jobQuery.trim().toLowerCase();
@@ -144,17 +134,7 @@ export class RiderComponent implements OnInit {
       });
   }
 
-  selectJob(item: {
-    planId: number;
-    job: DeliveryRouteModel;
-    shop: {
-      latitude: number;
-      longitude: number;
-      deliveryDeadline: string;
-      shopName?: string;
-      deliveryStartTime?: string;
-    };
-  }): void {
+  selectJob(item: RiderJobModel): void {
     if (item.job.status === 'CANCELLED') return;
     this.newJobsMessage = '';
     this.errorMessage = '';

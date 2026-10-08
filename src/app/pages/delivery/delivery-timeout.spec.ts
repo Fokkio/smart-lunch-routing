@@ -3,6 +3,7 @@ import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { NEVER, Subject, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { RoutePlanModel } from '../../core/route-plan.models';
 import { DeliveryComponent } from './delivery.component';
 import { DeliveryService } from '../../core/delivery.service';
 import { RoutePlanApiService } from '../../core/route-plan-api.service';
@@ -60,7 +61,6 @@ describe('DeliveryComponent saved plans loading', () => {
             pendingOrders: () => [],
             pendingBoxes: () => 0,
             customerFor: () => null,
-            calculateRoutes: () => {},
             choosePlan: (value: any) => plan.set(value),
             confirmPlan: confirmSpy,
           },
@@ -156,12 +156,17 @@ describe('DeliveryComponent saved plans loading', () => {
     expect(fixture.nativeElement.querySelector('.comparison')).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('เลือกแผนใหม่');
     expect(component.calculating).toBe(false);
+    component.chooseCandidate();
+    expect(component.backendPlanId).toBe(18);
+    expect(component.store.plan()?.version).toBe(18);
+    expect(component.candidate()).toBeNull();
+    expect(component.mapJobs()).toEqual(backend.jobs);
   });
 
   it('sends the current draft ID and releases the compare button on timeout', async () => {
     vi.useFakeTimers();
     setup(of([]), true);
-    component.backendPlanId = 17;
+    component.backendPlan = { routePlanId: 17, status: 'GENERATED', jobs: [] } as never;
     component.selectedOrderIds = [3, 4];
     component.compare();
     expect(recalculateSpy).toHaveBeenCalledWith(
@@ -170,7 +175,7 @@ describe('DeliveryComponent saved plans loading', () => {
     );
     await vi.advanceTimersByTimeAsync(31000);
     expect(component.calculating).toBe(false);
-    expect(component.candidate).toBeNull();
+    expect(component.candidate()).toBeNull();
     expect(component.plansError).toContain('หมดเวลารอ');
     recalculateSpy.mockReturnValue(throwError(() => ({ status: 422 })));
     component.compare();
@@ -208,14 +213,19 @@ describe('DeliveryComponent saved plans loading', () => {
   });
   it('rejects duplicate riders and sends the complete assignment with confirmation', () => {
     setup(of([]), true);
-    component.backendPlanId = 5;
-    component.backendPlan = { status: 'GENERATED', jobs: [{ jobId: 7 }, { jobId: 8 }] } as never;
+    component.backendPlan = {
+      routePlanId: 5,
+      status: 'GENERATED',
+      jobs: [
+        { jobId: 7, riderId: 1 },
+        { jobId: 8, riderId: 1 },
+      ],
+    } as never;
     component.store.plan.set({ deadlineSafe: true } as never);
     component.reviewing = true;
-    component.riderAssignments = { 7: 1, 8: 1 };
     component.confirm();
     expect(selectSpy).not.toHaveBeenCalled();
-    component.riderAssignments = { 7: 2, 8: 1 };
+    (component.backendPlan as RoutePlanModel).jobs[0].riderId = 2;
     component.confirm();
     expect(selectSpy).toHaveBeenCalledWith(5, [
       { jobId: 7, riderId: 2 },
@@ -232,16 +242,12 @@ describe('DeliveryComponent saved plans loading', () => {
     expect(component.mapJobs()).toBeNull();
   });
 
-  it('clears the previous backend identity when choosing a local candidate', () => {
+  it('refuses to confirm an unpersisted plan', () => {
     setup(of([]), true);
-    component.backendPlanId = 5;
-    component.backendPlan = { status: 'GENERATED', jobs: [] } as never;
-    component.candidate = { deadlineSafe: true } as never;
-    component.chooseCandidate();
-    expect(component.backendPlanId).toBeNull();
-    expect(component.backendPlan).toBeNull();
+    component.store.plan.set({ deadlineSafe: true } as never);
     component.startReview();
     component.confirm();
+    expect(selectSpy).not.toHaveBeenCalled();
     expect(confirmSpy).not.toHaveBeenCalled();
     expect(component.plansError).toContain('ตัวอย่างเท่านั้น');
   });
@@ -329,8 +335,7 @@ describe('DeliveryComponent saved plans loading', () => {
       throwError(() => ({ status: 422 })),
     );
     component.store.plan.set({ deadlineSafe: true } as never);
-    component.backendPlanId = 5;
-    component.backendPlan = { status: 'GENERATED' } as never;
+    component.backendPlan = { routePlanId: 5, status: 'GENERATED' } as never;
     component.reviewing = true;
     component.confirm();
     expect(confirmSpy).not.toHaveBeenCalled();
@@ -339,14 +344,13 @@ describe('DeliveryComponent saved plans loading', () => {
 
   it('removes a newly generated backend draft when the comparison is discarded', () => {
     setup(of([]), true);
-    component.candidate = { deadlineSafe: true } as never;
-    (component as any).candidateBackend = { routePlanId: 23 };
+    (component as any).candidateBackend.set({ routePlanId: 23 });
     deleteSpy.mockReturnValue(of(undefined));
 
     component.discardCandidate();
 
     expect(deleteSpy).toHaveBeenCalledWith(23);
-    expect(component.candidate).toBeNull();
+    expect(component.candidate()).toBeNull();
     expect(listSpy).toHaveBeenCalledTimes(2);
   });
 });

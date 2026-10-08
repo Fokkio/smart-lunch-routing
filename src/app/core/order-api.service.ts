@@ -11,6 +11,7 @@ export interface ApiOrder {
   status: ApiOrderStatus;
   orderDate: string;
   isSimulated: boolean;
+  createdAt?: string;
   distanceKm?: number;
 }
 export type ApiOrderInput = Pick<ApiOrder, 'customerId' | 'boxes'> & {

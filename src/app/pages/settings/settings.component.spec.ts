@@ -15,22 +15,20 @@ describe('SettingsComponent', () => {
     const fixture = TestBed.createComponent(SettingsComponent);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
-    http
-      .expectOne('/api/settings')
-      .flush({
-        settingId: 1,
-        shopName: 'ร้านเดิม',
-        latitude: 16,
-        longitude: 103,
-        deliveryStartTime: '11:30:00',
-        deliveryDeadline: '12:30:00',
-        maxOrdersPerRider: 3,
-        riderSpeedKmh: 30,
-        boxSalePrice: 65,
-        boxFoodCost: 40,
-        riderBaseCost: 15,
-        riderCostPerKm: 2,
-      });
+    http.expectOne('/api/settings').flush({
+      settingId: 1,
+      shopName: 'ร้านเดิม',
+      latitude: 16,
+      longitude: 103,
+      deliveryStartTime: '11:30:00',
+      deliveryDeadline: '12:30:00',
+      maxOrdersPerRider: 3,
+      riderSpeedKmh: 30,
+      boxSalePrice: 65,
+      boxFoodCost: 40,
+      riderBaseCost: 15,
+      riderCostPerKm: 2,
+    });
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('input[name="shopName"]')).not.toBeNull();

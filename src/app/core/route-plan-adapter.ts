@@ -2,12 +2,6 @@ import type { Customer, Order, Rider, RiderRoute, RoutePlan, RouteStop } from '.
 import type { DeliveryRouteModel, RoutePlanModel } from './route-plan.models';
 import { ROUTE_PALETTE } from './route-plan-view';
 
-export interface BackendPlanLookup {
-  customers: Customer[];
-  orders: Order[];
-  riders: Rider[];
-}
-
 interface ShopTime {
   deadlineTime: string;
 }
@@ -22,14 +16,14 @@ const FALLBACK_RIDER_NAMES = (index: number): string => `ไรเดอร์ $
  */
 export function adaptBackendPlan(
   plan: RoutePlanModel,
-  lookup: BackendPlanLookup,
+  riders: readonly Rider[],
   shop: ShopTime = { deadlineTime: '12:30' },
 ): RoutePlan {
   shop = {
     deadlineTime:
       plan.deliveryDeadline ?? plan.shop?.deliveryDeadline.slice(0, 5) ?? shop.deadlineTime,
   };
-  const riderById = new Map(lookup.riders.map((r) => [r.id, r]));
+  const riderById = new Map(riders.map((r) => [r.id, r]));
 
   const routes: RiderRoute[] = plan.jobs.map((job, index) =>
     adaptJob(plan, job, index, riderById, shop),

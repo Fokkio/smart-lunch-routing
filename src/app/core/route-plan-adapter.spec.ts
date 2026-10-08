@@ -66,11 +66,9 @@ it('preserves saved delivery inputs and deadline despite stale lookup data', () 
       },
     ],
   };
-  const adapted = adaptBackendPlan(plan, {
-    customers: [{ id: '1', name: 'Changed', phone: '', address: 'Changed', lat: 0, lng: 0 }],
-    orders: [{ id: '1', customerId: '1', boxes: 3, status: 'pending', createdAt: '' }],
-    riders: [{ id: '8', name: 'Different rider', phone: '', jobCode: '', color: 'blue' }],
-  });
+  const adapted = adaptBackendPlan(plan, [
+    { id: '8', name: 'Different rider', phone: '', jobCode: '', color: 'blue' },
+  ]);
   expect(adapted.deadlineSafe).toBe(false);
   expect(adapted.startTime).toBe('12:00');
   expect(adapted.deliveryDeadline).toBe('12:40');

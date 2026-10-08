@@ -12,20 +12,18 @@ describe('OrdersComponent radius search', () => {
     const late = new Subject<any[]>();
     const api = {
       list: vi.fn().mockReturnValue(late),
-      nearby: vi
-        .fn()
-        .mockReturnValue(
-          of([
-            {
-              id: 7,
-              customerId: 3,
-              boxes: 1,
-              status: 'CANCELLED',
-              orderDate: '2026-09-30',
-              distanceKm: 1.2,
-            },
-          ]),
-        ),
+      nearby: vi.fn().mockReturnValue(
+        of([
+          {
+            id: 7,
+            customerId: 3,
+            boxes: 1,
+            status: 'CANCELLED',
+            orderDate: '2026-09-30',
+            distanceKm: 1.2,
+          },
+        ]),
+      ),
     };
     TestBed.configureTestingModule({
       imports: [OrdersComponent],

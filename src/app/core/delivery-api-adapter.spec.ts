@@ -1,11 +1,5 @@
-import {
-  fromBackendStatus,
-  mapCustomer,
-  mapOrder,
-  mapRider,
-  toBackendStatus,
-  todayLocal,
-} from './backend-api.service';
+import { fromBackendStatus, mapCustomer, mapOrder, mapRider } from './delivery-api-adapter';
+import { todayLocal } from './dates';
 
 describe('backend-api mapping', () => {
   it('maps a backend customer to the local model', () => {
@@ -34,9 +28,6 @@ describe('backend-api mapping', () => {
     expect(fromBackendStatus('PLANNED')).toBe('assigned');
     expect(fromBackendStatus('DELIVERING')).toBe('assigned');
     expect(fromBackendStatus('CANCELLED')).toBe('assigned');
-    expect(toBackendStatus('pending')).toBe('PENDING');
-    expect(toBackendStatus('delivered')).toBe('DELIVERED');
-    expect(toBackendStatus('assigned')).toBe('PLANNED');
   });
 
   it('maps a backend order and rider with string ids', () => {
@@ -46,10 +37,21 @@ describe('backend-api mapping', () => {
       boxes: 2,
       status: 'PENDING',
       orderDate: '2026-09-30',
+      isSimulated: false,
     });
     expect(order).toMatchObject({ id: '3', customerId: '7', boxes: 2, status: 'pending' });
 
-    const rider = mapRider({ id: 2, name: 'Rider Two', phone: null, isAvailable: true }, 1);
+    const rider = mapRider(
+      {
+        id: 2,
+        name: 'Rider Two',
+        phone: null,
+        isAvailable: true,
+        username: null,
+        hasPassword: false,
+      },
+      1,
+    );
     expect(rider).toMatchObject({ id: '2', name: 'Rider Two', phone: '', jobCode: 'LUNCH-2' });
     expect(rider.color).toMatch(/^#/);
   });

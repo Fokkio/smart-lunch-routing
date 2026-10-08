@@ -2,6 +2,7 @@ import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { apiErrorMessage } from '../../core/api-error';
 import { FormsModule } from '@angular/forms';
+import { mapCustomer } from '../../core/delivery-api-adapter';
 import { Customer, SHOP } from '../../core/models';
 import { CustomersApiService } from '../../core/customer-api.service';
 import { DeliveryService } from '../../core/delivery.service';
@@ -57,7 +58,7 @@ export class CustomersComponent implements OnInit {
   manualLat: number | null = null;
   manualLng: number | null = null;
   error = '';
-  feedback = '';
+  readonly feedback = signal('');
   draft: Draft = this.blankDraft();
   mapShop() {
     const settings = this.deliveryStore.settings?.();
@@ -69,7 +70,10 @@ export class CustomersComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadCustomers();
-    this.destroyRef.onDestroy(() => clearTimeout(this.feedbackTimer));
+    this.destroyRef.onDestroy(() => {
+      clearTimeout(this.feedbackTimer);
+      clearTimeout(this.searchTimer);
+    });
   }
 
   // ใช้ทั้งตอนเปิดหน้าและตอนกดค้นหา
@@ -92,16 +96,7 @@ export class CustomersComponent implements OnInit {
               .map((customer) => [String(customer.id), customer.distanceKm!]),
           ),
         );
-        this.apiCustomers.set(
-          customers.map((customer) => ({
-            id: String(customer.id),
-            name: customer.name,
-            phone: customer.phone,
-            address: customer.address ?? '',
-            lat: customer.lat,
-            lng: customer.lng,
-          })),
-        );
+        this.apiCustomers.set(customers.map(mapCustomer));
 
         this.loadingCustomers.set(false);
       },
@@ -342,8 +337,8 @@ export class CustomersComponent implements OnInit {
 
   private notify(message: string): void {
     clearTimeout(this.feedbackTimer);
-    this.feedback = message;
-    this.feedbackTimer = setTimeout(() => (this.feedback = ''), 3500);
+    this.feedback.set(message);
+    this.feedbackTimer = setTimeout(() => this.feedback.set(''), 3500);
   }
 
   private blankDraft(): Draft {
