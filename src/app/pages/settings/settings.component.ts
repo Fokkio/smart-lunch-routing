@@ -7,11 +7,12 @@ import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.com
 import { ShopSettings, ShopSettingsApiService } from '../../core/shop-settings-api.service';
 import { DeliveryService } from '../../core/delivery.service';
 import { RoutePlanApiService } from '../../core/route-plan-api.service';
+import { OwnerAccountComponent } from './owner-account.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [FormsModule, DeliveryMapComponent],
+  imports: [FormsModule, DeliveryMapComponent, OwnerAccountComponent],
   templateUrl: './settings.component.html',
 })
 export class SettingsComponent implements OnInit {

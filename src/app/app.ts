@@ -24,8 +24,9 @@ export class App {
   }
 
   logout(): void {
+    const loginPath = this.auth.user()?.type === 'OWNER' ? '/login/owner' : '/login/rider';
     this.auth.logout();
-    void this.router.navigateByUrl('/login');
+    void this.router.navigateByUrl(loginPath);
   }
 
   pageTitle(): string {

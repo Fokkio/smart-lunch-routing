@@ -263,7 +263,7 @@ export class RiderComponent implements OnInit {
   }
   logout(): void {
     this.auth.logout();
-    void this.router.navigateByUrl('/login');
+    void this.router.navigateByUrl('/login/rider');
   }
   changePassword(): void {
     if (this.changingPassword || this.newPassword.length < 12 || !this.currentPassword) return;

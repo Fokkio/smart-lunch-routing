@@ -1,0 +1,382 @@
+:host {
+  display: block;
+}
+.login-page {
+  --accent: #0053fd;
+  --soft: #eaf1ff;
+  min-height: 100dvh;
+  background: radial-gradient(ellipse at 8% 65%, var(--soft), transparent 62%), #f8faff;
+  padding: 28px 6vw 20px;
+}
+.rider-login,
+.rider-card {
+  --accent: #087967;
+  --soft: #e7f5ef;
+}
+.login-header {
+  max-width: 1220px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 19px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.brand-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: white;
+}
+.brand-icon svg {
+  width: 30px;
+}
+.login-brand small {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  color: #64748b;
+}
+.role-switch {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+.role-switch span {
+  margin-left: 8px;
+}
+.login-layout {
+  max-width: 1140px;
+  margin: 76px auto 64px;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  align-items: center;
+  gap: 80px;
+}
+.story-eyebrow {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 18px;
+}
+h1 {
+  font-size: clamp(30px, 3.4vw, 46px);
+  line-height: 1.35;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+.login-story h1 span {
+  color: var(--accent);
+}
+.story-description {
+  color: #64748b;
+  margin-top: 18px;
+  max-width: 400px;
+  font-size: 15px;
+  line-height: 1.9;
+}
+.route-illustration {
+  margin-top: 38px;
+  border: 1px solid white;
+  background: #ffffffa6;
+  padding: 22px 24px;
+  border-radius: 24px;
+  box-shadow: 0 14px 48px #33415508;
+  color: var(--accent);
+}
+.route-caption {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: #475569;
+}
+.route-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+.route-illustration svg {
+  width: 100%;
+}
+.route-steps {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+}
+.login-card {
+  min-width: 0;
+  padding: 36px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 28px;
+  box-shadow: 0 24px 70px #233b640d;
+}
+.account-badge {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 5px 9px;
+  background: var(--soft);
+  color: var(--accent);
+}
+.login-card h2 {
+  margin-top: 18px;
+  font-size: 24px;
+  font-weight: 700;
+}
+.card-description {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 8px;
+}
+.login-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 28px;
+}
+.login-form label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.login-form input {
+  width: 100%;
+  min-width: 0;
+  height: 50px;
+  padding: 0 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 15px;
+  background: #fff;
+}
+.login-form input:focus {
+  border-color: var(--accent);
+  outline-color: var(--accent);
+}
+.password-field {
+  position: relative;
+}
+.password-field input {
+  padding-right: 52px;
+}
+.password-toggle {
+  position: absolute;
+  right: 5px;
+  top: 3px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  border-radius: 9px;
+}
+.password-toggle svg {
+  width: 21px;
+}
+.login-submit {
+  margin-top: 12px;
+  min-height: 52px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+}
+.login-submit:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+.login-error,
+.login-notice {
+  font-size: 13px;
+  padding: 12px;
+  border-radius: 10px;
+}
+.login-error {
+  color: #991b1b;
+  background: #fef2f2;
+}
+.login-notice {
+  margin-top: 18px;
+  color: #065f46;
+  background: #ecfdf5;
+}
+.login-help {
+  text-align: center;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 18px;
+}
+.back-to-roles {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: #475569;
+  margin-top: 26px;
+}
+.login-footer {
+  text-align: center;
+  font-size: 11px;
+  color: #64748b;
+}
+.role-selection {
+  max-width: 790px;
+  margin: 70px auto 64px;
+  text-align: center;
+}
+.role-selection .story-description {
+  margin: 16px auto 0;
+}
+.role-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin-top: 40px;
+  text-align: left;
+}
+.role-card {
+  position: relative;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  background: white;
+  padding: 30px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.role-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 14px 40px #233b640b;
+}
+.role-card-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  color: var(--accent);
+  background: var(--soft);
+  border-radius: 17px;
+  margin-bottom: 28px;
+}
+.role-card-icon svg {
+  width: 29px;
+}
+.role-card .account-badge {
+  position: absolute;
+  top: 35px;
+  right: 30px;
+}
+.role-card h2 {
+  font-size: 25px;
+  font-weight: 700;
+}
+.role-card p {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.9;
+  margin-top: 10px;
+}
+.role-card-link {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 28px;
+}
+@media (max-width: 900px) {
+  .login-layout {
+    gap: 32px;
+    margin-top: 50px;
+  }
+  .login-card {
+    padding: 28px;
+  }
+}
+@media (max-width: 680px) {
+  .login-page {
+    padding: 22px 20px;
+  }
+  .login-brand {
+    font-size: 16px;
+    gap: 9px;
+  }
+  .brand-icon {
+    width: 39px;
+    height: 39px;
+  }
+  .role-switch {
+    font-size: 11px;
+  }
+  .role-switch span {
+    margin-left: 2px;
+  }
+  .login-layout {
+    grid-template-columns: 1fr;
+    gap: 26px;
+    margin: 38px auto;
+    max-width: 440px;
+  }
+  .story-eyebrow {
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-size: 30px;
+  }
+  .story-description {
+    margin-top: 12px;
+    font-size: 13px;
+  }
+  .route-illustration {
+    display: none;
+  }
+  .login-card {
+    padding: 26px 22px;
+    border-radius: 22px;
+  }
+  .login-card h2 {
+    font-size: 22px;
+  }
+  .role-selection {
+    margin-top: 42px;
+  }
+  .role-cards {
+    grid-template-columns: 1fr;
+    margin-top: 28px;
+    gap: 16px;
+  }
+  .role-card {
+    padding: 24px;
+  }
+  .role-card-icon {
+    margin-bottom: 18px;
+  }
+  .role-card h2 {
+    font-size: 23px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .role-card {
+    transition: none;
+  }
+}

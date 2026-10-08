@@ -17,7 +17,10 @@ it.each(['old-token', 'new-token', null])(
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: { token: () => token, clear } },
+        {
+          provide: AuthService,
+          useValue: { token: () => token, user: () => ({ type: 'OWNER' }), clear },
+        },
         { provide: Router, useValue: { navigateByUrl } },
       ],
     });
@@ -31,7 +34,39 @@ it.each(['old-token', 'new-token', null])(
     pending.flush({}, { status: 401, statusText: 'Unauthorized' });
     expect(clear).toHaveBeenCalledTimes(currentToken === 'old-token' ? 1 : 0);
     expect(navigateByUrl).toHaveBeenCalledTimes(currentToken === 'old-token' ? 1 : 0);
+    if (currentToken === 'old-token') expect(navigateByUrl).toHaveBeenCalledWith('/login/owner');
     expect(token).toBe(currentToken === 'old-token' ? null : currentToken);
+    http.verify();
+  },
+);
+
+it.each(['Current password is incorrect', 'Session expired or account disabled'])(
+  'distinguishes an owner password mistake from an expired session: %s',
+  (message) => {
+    const clear = vi.fn();
+    const navigateByUrl = vi.fn().mockResolvedValue(true);
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([authInterceptor])),
+        provideHttpClientTesting(),
+        {
+          provide: AuthService,
+          useValue: { token: () => 'owner-token', user: () => ({ type: 'OWNER' }), clear },
+        },
+        { provide: Router, useValue: { navigateByUrl } },
+      ],
+    });
+    TestBed.inject(HttpClient)
+      .put('/api/auth/owner-account', {})
+      .subscribe({ error: () => {} });
+    const http = TestBed.inject(HttpTestingController);
+    http
+      .expectOne('/api/auth/owner-account')
+      .flush({ message }, { status: 401, statusText: 'Unauthorized' });
+    expect(clear).toHaveBeenCalledTimes(message === 'Current password is incorrect' ? 0 : 1);
+    expect(navigateByUrl).toHaveBeenCalledTimes(
+      message === 'Current password is incorrect' ? 0 : 1,
+    );
     http.verify();
   },
 );

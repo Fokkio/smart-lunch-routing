@@ -1,42 +1,198 @@
-<section class="min-h-dvh bg-neu px-4 py-12">
-  <div class="neu-panel mx-auto max-w-md rounded-2xl p-6 sm:p-8">
-    <h1 class="text-2xl font-bold">เข้าสู่ระบบ</h1>
-    <p class="mt-2 text-sm text-slate-600">เข้าสู่ระบบเพื่อดูงานและข้อมูลตามหน้าที่</p>
-    <form class="mt-6 grid gap-4" (ngSubmit)="login()">
-      <label class="grid gap-1 text-sm font-semibold"
-        >ประเภทบัญชี<select
-          class="neu-field min-h-12 rounded-xl px-3"
-          name="role"
-          [(ngModel)]="role"
-        >
-          <option value="OWNER">เจ้าของร้าน</option>
-          <option value="RIDER">ไรเดอร์</option>
-        </select></label
+<section class="login-page" [class.rider-login]="role === 'RIDER'">
+  <header class="login-header">
+    <a routerLink="/login" class="login-brand" aria-label="ครัวเที่ยงตรง เลือกบัญชี">
+      <span class="brand-icon" aria-hidden="true"
+        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="M4 15h16M6 15a6 6 0 0 1 12 0M12 7V5M3 19h18" stroke-linecap="round" /></svg
+      ></span>
+      <span>ครัวเที่ยงตรง<small>SMART LUNCH ROUTING</small></span>
+    </a>
+    @if (role) {
+      <a class="role-switch" [routerLink]="owner ? '/login/rider' : '/login/owner'"
+        >{{ owner ? 'สำหรับไรเดอร์' : 'สำหรับเจ้าของร้าน' }} <span aria-hidden="true">↗</span></a
       >
-      <label class="grid gap-1 text-sm font-semibold"
-        >ชื่อผู้ใช้<input
-          class="neu-field min-h-12 rounded-xl px-3"
-          name="username"
-          [(ngModel)]="username"
-          required
-          autocomplete="username"
-          [placeholder]="role === 'RIDER' ? 'เช่น rider_1' : ''"
-      /></label>
-      <label class="grid gap-1 text-sm font-semibold"
-        >รหัสผ่าน<input
-          class="neu-field min-h-12 rounded-xl px-3"
-          name="password"
-          [(ngModel)]="password"
-          required
-          type="password"
-          autocomplete="current-password"
-      /></label>
-      @if (error) {
-        <p class="rounded-xl bg-red-50 p-3 text-sm text-red-900" role="alert">{{ error }}</p>
-      }
-      <button class="neu-primary min-h-12 rounded-xl font-bold" [disabled]="loading" type="submit">
-        {{ loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ' }}
-      </button>
-    </form>
-  </div>
+    }
+  </header>
+  @if (role) {
+    <main class="login-layout">
+      <div class="login-story">
+        <span class="story-eyebrow">{{
+          owner ? 'พื้นที่ของเจ้าของร้าน' : 'พื้นที่ของไรเดอร์'
+        }}</span>
+        <h1>
+          {{ owner ? 'จัดการร้านให้พร้อม' : 'พร้อมรับงาน' }}<br /><span>{{
+            owner ? 'ส่งทุกมื้อได้ตรงเวลา' : 'พร้อมส่งมื้ออร่อย'
+          }}</span>
+        </h1>
+        <p class="story-description">
+          {{
+            owner
+              ? 'ดูออเดอร์ วางแผนเส้นทาง และมอบหมายงานให้ไรเดอร์จากที่เดียว'
+              : 'เปิดใบงาน ดูเส้นทาง และอัปเดตการจัดส่งได้สะดวกในทุกจุดหมาย'
+          }}
+        </p>
+        <div class="route-illustration" aria-hidden="true">
+          <div class="route-caption">
+            <span class="route-dot"></span
+            >{{ owner ? 'ทุกเส้นทาง เริ่มที่ร้านคุณ' : 'ทุกจุดหมาย อยู่ในใบงานของคุณ' }}
+          </div>
+          <svg viewBox="0 0 400 210" fill="none">
+            <path
+              d="M50 154H120Q145 154 145 130V72Q145 48 169 48H232Q256 48 256 72V130Q256 154 280 154H347"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-dasharray="7 7"
+            />
+            <circle cx="50" cy="154" r="25" fill="currentColor" />
+            <path
+              d="M38 159V147L50 139L62 147V159H38ZM47 159V150H53V159"
+              stroke="white"
+              stroke-width="2"
+              stroke-linejoin="round"
+            />
+            <circle cx="198" cy="48" r="17" fill="white" stroke="currentColor" stroke-width="3" />
+            <path
+              d="m191 48 5 5 9-10"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle cx="347" cy="154" r="25" fill="white" stroke="currentColor" stroke-width="3" />
+            <path
+              d="M347 142a8 8 0 0 0-8 8c0 6 8 13 8 13s8-7 8-13a8 8 0 0 0-8-8Z"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <circle cx="347" cy="150" r="2.5" fill="currentColor" />
+          </svg>
+          <div class="route-steps">
+            <span>{{ owner ? 'วางแผน' : 'รับงาน' }}</span
+            ><span>{{ owner ? 'มอบหมาย' : 'นำทาง' }}</span
+            ><span>{{ owner ? 'ส่งถึงมือ' : 'ยืนยันจัดส่ง' }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="login-card">
+        <span class="account-badge">{{ owner ? 'OWNER' : 'RIDER' }}</span>
+        <h2>เข้าสู่ระบบ{{ owner ? 'เจ้าของร้าน' : 'ไรเดอร์' }}</h2>
+        <p class="card-description">
+          {{
+            owner
+              ? 'เริ่มจัดการออเดอร์และรอบจัดส่งของร้าน'
+              : 'เข้าสู่ระบบเพื่อดูใบงานที่ได้รับมอบหมาย'
+          }}
+        </p>
+        @if (accountUpdated && owner) {
+          <p class="login-notice" role="status">บันทึกบัญชีแล้ว กรุณาเข้าสู่ระบบด้วยข้อมูลใหม่</p>
+        }
+        <form #loginForm="ngForm" class="login-form" (ngSubmit)="loginForm.valid && login()">
+          <label for="login-username">ชื่อผู้ใช้</label>
+          <input
+            id="login-username"
+            name="username"
+            [(ngModel)]="username"
+            required
+            maxlength="100"
+            autocomplete="username"
+            autocapitalize="none"
+            spellcheck="false"
+            [disabled]="loading"
+            [placeholder]="owner ? 'ชื่อผู้ใช้เจ้าของร้าน' : 'เช่น rider_1'"
+          />
+          <label for="login-password">รหัสผ่าน</label>
+          <div class="password-field">
+            <input
+              id="login-password"
+              name="password"
+              [(ngModel)]="password"
+              required
+              maxlength="128"
+              [type]="showPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              [disabled]="loading"
+              placeholder="กรอกรหัสผ่านของคุณ"
+            />
+            <button
+              type="button"
+              class="password-toggle"
+              [attr.aria-label]="showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'"
+              [attr.aria-pressed]="showPassword"
+              (click)="showPassword = !showPassword"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                aria-hidden="true"
+              >
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                <circle cx="12" cy="12" r="3" />
+                @if (showPassword) {
+                  <path d="m3 3 18 18" />
+                }
+              </svg>
+            </button>
+          </div>
+          @if (error) {
+            <p class="login-error" role="alert">{{ error }}</p>
+          }
+          <button
+            class="login-submit"
+            [disabled]="loading || loginForm.invalid || !username.trim()"
+            type="submit"
+          >
+            {{ loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ' }}<span aria-hidden="true">→</span>
+          </button>
+        </form>
+        <p class="login-help">
+          {{
+            owner ? 'ใช้บัญชีเจ้าของร้านที่ตั้งค่าไว้ในระบบ' : 'ใช้บัญชีที่เจ้าของร้านกำหนดให้คุณ'
+          }}
+        </p>
+        <a class="back-to-roles" routerLink="/login">← กลับไปเลือกประเภทบัญชี</a>
+      </div>
+    </main>
+  } @else {
+    <main class="role-selection">
+      <span class="story-eyebrow">หนึ่งร้าน ทุกการจัดส่ง</span>
+      <h1>มื้ออร่อย พร้อมออกเดินทาง</h1>
+      <p class="story-description">เลือกพื้นที่ทำงานของคุณเพื่อเข้าสู่ระบบ</p>
+      <div class="role-cards">
+        <a class="role-card" routerLink="/login/owner">
+          <span class="role-card-icon" aria-hidden="true"
+            ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <path
+                d="M4 10V20H20V10M3 10L5 4H19L21 10M3 10C3 13 7 13 7 10C7 13 12 13 12 10C12 13 17 13 17 10C17 13 21 13 21 10M9 20V15H15V20"
+                stroke-linejoin="round"
+              /></svg
+          ></span>
+          <span class="account-badge">OWNER</span>
+          <h2>เจ้าของร้าน</h2>
+          <p>จัดการออเดอร์ ลูกค้า ไรเดอร์<br />และวางแผนการจัดส่งของร้าน</p>
+          <span class="role-card-link"
+            >เข้าสู่ระบบเจ้าของร้าน <span aria-hidden="true">→</span></span
+          >
+        </a>
+        <a class="role-card rider-card" routerLink="/login/rider">
+          <span class="role-card-icon" aria-hidden="true"
+            ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+              <circle cx="5" cy="17" r="3" />
+              <circle cx="19" cy="17" r="3" />
+              <path
+                d="M5 17L10 8L15 17H5M10 8H16L19 17M9 5H12M16 5V8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg
+          ></span>
+          <span class="account-badge">RIDER</span>
+          <h2>ไรเดอร์</h2>
+          <p>รับใบงาน ดูเส้นทางนำทาง<br />และยืนยันการส่งของแต่ละจุด</p>
+          <span class="role-card-link">เข้าสู่ระบบไรเดอร์ <span aria-hidden="true">→</span></span>
+        </a>
+      </div>
+    </main>
+  }
+  <footer class="login-footer">ครัวเที่ยงตรง · จัดมื้อเที่ยงให้เป็นเรื่องง่าย</footer>
 </section>

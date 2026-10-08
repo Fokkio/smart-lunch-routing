@@ -1,0 +1,107 @@
+<section class="neu-panel mt-6 rounded-2xl p-5 sm:p-8" aria-labelledby="owner-account-title">
+  <div class="mb-6 flex items-start gap-3">
+    <span
+      class="grid size-11 shrink-0 place-items-center rounded-xl bg-info-soft text-primary"
+      aria-hidden="true"
+      ><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+        <path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z" stroke-linejoin="round" />
+        <path d="m8 12 3 3 5-6" stroke-linecap="round" stroke-linejoin="round" /></svg
+    ></span>
+    <div>
+      <h2 id="owner-account-title" class="text-xl font-bold">บัญชีเจ้าของร้าน</h2>
+      <p class="mt-1 text-sm text-slate-600">
+        เปลี่ยนชื่อผู้ใช้หรือรหัสผ่านสำหรับเข้าสู่ระบบของคุณ
+      </p>
+    </div>
+  </div>
+  @if (error()) {
+    <p class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-900" role="alert">{{ error() }}</p>
+  }
+  @if (loading()) {
+    <p class="text-sm text-slate-600" role="status">กำลังโหลดข้อมูลบัญชี...</p>
+  } @else if (currentUsername() === null) {
+    <button
+      class="neu-control min-h-11 rounded-xl px-4 font-semibold"
+      type="button"
+      (click)="load()"
+    >
+      ลองโหลดบัญชีอีกครั้ง
+    </button>
+  } @else {
+    <form #accountForm="ngForm" class="grid gap-5" (ngSubmit)="accountForm.valid && save()">
+      <fieldset [disabled]="saving()" class="grid min-w-0 gap-5">
+        <legend class="sr-only">แก้ไขบัญชีเจ้าของร้าน</legend>
+        <label class="grid gap-2 text-sm font-semibold" for="owner-username"
+          >ชื่อผู้ใช้<input
+            id="owner-username"
+            name="ownerUsername"
+            class="neu-field min-h-12 w-full rounded-xl px-3 text-base"
+            [(ngModel)]="username"
+            required
+            maxlength="100"
+            autocomplete="username"
+            autocapitalize="none"
+            spellcheck="false"
+            aria-describedby="owner-username-help"
+        /></label>
+        <p id="owner-username-help" class="-mt-3 text-xs text-slate-500">
+          ชื่อผู้ใช้ 1–100 ตัวอักษร ระบบไม่แยกตัวพิมพ์ใหญ่และเล็ก
+        </p>
+        <div class="grid gap-5 sm:grid-cols-2">
+          <label class="grid gap-2 text-sm font-semibold" for="owner-new-password"
+            >รหัสผ่านใหม่<input
+              id="owner-new-password"
+              name="ownerNewPassword"
+              type="password"
+              class="neu-field min-h-12 w-full rounded-xl px-3 text-base"
+              [(ngModel)]="newPassword"
+              autocomplete="new-password"
+              minlength="12"
+              maxlength="72"
+              aria-describedby="owner-password-help"
+              placeholder="เว้นว่างเพื่อใช้รหัสผ่านเดิม"
+          /></label>
+          <label class="grid gap-2 text-sm font-semibold" for="owner-confirm-password"
+            >ยืนยันรหัสผ่านใหม่<input
+              id="owner-confirm-password"
+              name="ownerConfirmPassword"
+              type="password"
+              class="neu-field min-h-12 w-full rounded-xl px-3 text-base"
+              [(ngModel)]="confirmPassword"
+              autocomplete="new-password"
+              [required]="!!newPassword"
+              maxlength="72"
+          /></label>
+        </div>
+        <p id="owner-password-help" class="-mt-3 text-xs text-slate-500">
+          อย่างน้อย 12 ตัวอักษร และไม่เกิน 72 ไบต์ อักษรไทยใช้งานได้แต่ใช้หลายไบต์ต่ออักษร
+        </p>
+        <div class="border-t border-line pt-5">
+          <label class="grid gap-2 text-sm font-semibold" for="owner-current-password"
+            >รหัสผ่านปัจจุบัน<input
+              id="owner-current-password"
+              name="ownerCurrentPassword"
+              type="password"
+              class="neu-field mt-1 min-h-12 w-full rounded-xl px-3 text-base"
+              [(ngModel)]="currentPassword"
+              required
+              maxlength="128"
+              autocomplete="current-password"
+              placeholder="ยืนยันว่าคุณเป็นเจ้าของบัญชี"
+          /></label>
+        </div>
+      </fieldset>
+      <p class="rounded-xl bg-info-soft p-3 text-sm text-slate-700">
+        หลังบันทึก บัญชีนี้จะออกจากระบบทุกอุปกรณ์ กรุณาเข้าสู่ระบบด้วยข้อมูลใหม่ หากหมดเวลารอ
+        ให้ลองเข้าสู่ระบบด้วยข้อมูลใหม่ก่อนบันทึกซ้ำ
+      </p>
+      <button
+        class="neu-primary min-h-12 rounded-xl px-5 font-bold sm:justify-self-start"
+        type="submit"
+        [disabled]="saving() || accountForm.invalid"
+      >
+        {{ saving() ? 'กำลังบันทึกบัญชี...' : 'บันทึกบัญชี' }}
+      </button>
+    </form>
+  }
+</section>

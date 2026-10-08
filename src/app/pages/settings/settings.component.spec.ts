@@ -15,6 +15,7 @@ describe('SettingsComponent', () => {
     const fixture = TestBed.createComponent(SettingsComponent);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
+    http.expectOne('/api/auth/owner-account').flush({ username: 'sample-owner' });
     http.expectOne('/api/settings').flush({
       settingId: 1,
       shopName: 'ร้านเดิม',

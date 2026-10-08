@@ -3,27 +3,32 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, timeout } from 'rxjs';
 import { apiErrorMessage } from '../../core/api-error';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, type User } from '../../core/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './login.component.html',
+  styleUrl: './login.component.css',
 })
 export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
-  role: User['type'] = 'RIDER';
+  private readonly route = inject(ActivatedRoute);
+  readonly role: User['type'] | undefined = this.route.snapshot.data['role'];
+  readonly owner = this.role === 'OWNER';
+  readonly accountUpdated = this.route.snapshot.queryParamMap.has('accountUpdated');
+  showPassword = false;
   username = '';
   password = '';
   error = '';
   loading = false;
   login(): void {
-    if (!this.username.trim() || !this.password || this.loading) return;
+    if (!this.role || !this.username.trim() || !this.password || this.loading) return;
     this.loading = true;
     this.error = '';
     this.auth
