@@ -18,7 +18,7 @@ export interface Order {
 }
 
 export interface Rider {
-  workStatus?: 'READY'|'BUSY'|'DELIVERING'|'PAUSED'|'UNCONFIGURED';
+  workStatus?: 'READY' | 'BUSY' | 'DELIVERING' | 'PAUSED' | 'UNCONFIGURED';
   assignedOrdersToday?: number;
   id: string;
   name: string;

@@ -38,10 +38,7 @@ export function geometryToLatLngs(job: DeliveryRouteModel): LatLng[] | null {
 }
 
 /** Approximate fallback line shop → stops (dashed display when geometry is null). */
-export function approximateLine(
-  shop: LatLng,
-  job: DeliveryRouteModel,
-): LatLng[] {
+export function approximateLine(shop: LatLng, job: DeliveryRouteModel): LatLng[] {
   return [shop, ...job.stops.map((stop): LatLng => [stop.latitude, stop.longitude])];
 }
 
@@ -49,15 +46,21 @@ export function routingSourceLabel(plan: RoutePlanModel): string {
   const roadLines = plan.jobs.filter((job) => job.geometry != null).length;
   if (plan.routingSource === 'ROAD' && !plan.approximate) {
     if (roadLines > 0 && roadLines === plan.jobs.length) return 'ระยะทางและเส้นถนนจริง (OSRM)';
-    return roadLines ? 'ระยะทาง OSRM · บางเส้นบนแผนที่เป็นเส้นประมาณ'
+    return roadLines
+      ? 'ระยะทาง OSRM · บางเส้นบนแผนที่เป็นเส้นประมาณ'
       : 'ระยะทาง OSRM · เส้นบนแผนที่เป็นเส้นประมาณ';
   }
-  return roadLines ? 'ระยะทางโดยประมาณ · เส้นบนแผนที่บางส่วนมาจาก OSRM'
+  return roadLines
+    ? 'ระยะทางโดยประมาณ · เส้นบนแผนที่บางส่วนมาจาก OSRM'
     : 'ระยะทางและเส้นทางโดยประมาณ (สำรอง)';
 }
 
 /** A single order's leg starts at the shop or the previous delivery stop. */
-export function stopLine(shop: LatLng, job: DeliveryRouteModel, index: number): { points: LatLng[]; approximate: boolean } {
+export function stopLine(
+  shop: LatLng,
+  job: DeliveryRouteModel,
+  index: number,
+): { points: LatLng[]; approximate: boolean } {
   const stop = job.stops[index];
   if (!stop) return { points: [], approximate: true };
   const coordinates = stop.geometry?.coordinates;
@@ -66,7 +69,10 @@ export function stopLine(shop: LatLng, job: DeliveryRouteModel, index: number): 
   }
   const previous = job.stops[index - 1];
   return {
-    points: [previous ? [previous.latitude, previous.longitude] : shop, [stop.latitude, stop.longitude]],
+    points: [
+      previous ? [previous.latitude, previous.longitude] : shop,
+      [stop.latitude, stop.longitude],
+    ],
     approximate: true,
   };
 }

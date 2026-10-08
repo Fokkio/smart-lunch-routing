@@ -4,7 +4,7 @@ import { environment } from '../../environments/environment';
 
 // รูปแบบข้อมูล rider ที่ backend ส่งกลับมา
 export interface ApiRider {
-  workStatus?: 'READY'|'BUSY'|'DELIVERING'|'PAUSED'|'UNCONFIGURED';
+  workStatus?: 'READY' | 'BUSY' | 'DELIVERING' | 'PAUSED' | 'UNCONFIGURED';
   assignedOrdersToday?: number;
   id: number;
   name: string;
@@ -53,6 +53,9 @@ export class RidersApiService {
   }
 
   setAccount(id: number, username: string, password?: string) {
-    return this.http.put<void>(`${this.url}/${id}/account`, { username, ...(password ? { password } : {}) });
+    return this.http.put<void>(`${this.url}/${id}/account`, {
+      username,
+      ...(password ? { password } : {}),
+    });
   }
 }

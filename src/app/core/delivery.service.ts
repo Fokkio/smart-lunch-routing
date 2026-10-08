@@ -20,12 +20,16 @@ export class DeliveryService {
   readonly connectionError = signal('');
   readonly confirmedPlan = signal<RoutePlan | null>(null);
   readonly planHistory = signal<RoutePlan[]>([]);
-  readonly pendingOrders = computed(() => this.orders().filter((order) => order.status === 'pending'));
+  readonly pendingOrders = computed(() =>
+    this.orders().filter((order) => order.status === 'pending'),
+  );
   readonly dispatchCustomers = computed(() => {
-    const customerIds = new Set(this.pendingOrders().map(order => order.customerId));
-    return this.customers().filter(customer => customerIds.has(customer.id));
+    const customerIds = new Set(this.pendingOrders().map((order) => order.customerId));
+    return this.customers().filter((customer) => customerIds.has(customer.id));
   });
-  readonly pendingBoxes = computed(() => this.pendingOrders().reduce((sum, order) => sum + order.boxes, 0));
+  readonly pendingBoxes = computed(() =>
+    this.pendingOrders().reduce((sum, order) => sum + order.boxes, 0),
+  );
   /** Only an API-confirmed snapshot is ready for dispatch. */
   readonly usingBackend = signal(false);
   /** ค่าตั้งร้านจาก backend (null = ยังโหลดไม่ได้ ใช้ค่า default เดียวกับ backend seed) */
@@ -45,8 +49,12 @@ export class DeliveryService {
 
   constructor() {
     // Retire legacy order/plan caches; never restore orders or their snapshots from storage.
-    try { localStorage.removeItem('smart-lunch-orders-v1'); localStorage.removeItem(PLAN_KEY); }
-    catch { /* API data remains usable when storage is unavailable. */ }
+    try {
+      localStorage.removeItem('smart-lunch-orders-v1');
+      localStorage.removeItem(PLAN_KEY);
+    } catch {
+      /* API data remains usable when storage is unavailable. */
+    }
   }
 
   /**
@@ -62,32 +70,48 @@ export class DeliveryService {
       customers: this.api.listCustomers(),
       orders: this.api.listOrders(),
       riders: this.api.listRiders(),
-    }).pipe(timeout(15000), finalize(() => { if (current()) this.connecting.set(false); })).subscribe({ next: (data) => {
-      if (!current()) return;
-      this.customers.set(data.customers);
-      this.orders.set(data.orders);
-      this.riders.set(data.riders);
-      // A persisted local preview has no backend geometry or durable status.
-      // Load the saved backend plan afresh on the dispatch page instead.
-      this.plan.set(null);
-      this.confirmedPlan.set(null);
-      try { localStorage.removeItem(PLAN_KEY); } catch { /* browser storage unavailable */ }
-      this.usingBackend.set(true);
-      this.dataRevision.update(value => value + 1);
-    }, error: () => {
-      if (!current()) return;
-      this.customers.set([]);
-      this.orders.set([]);
-      this.riders.set([]);
-      this.plan.set(null);
-      this.confirmedPlan.set(null);
-      this.usingBackend.set(false);
-      this.connectionError.set('โหลดข้อมูลจัดส่งไม่สำเร็จ กรุณาลองเชื่อมต่ออีกครั้ง');
-      this.dataRevision.update(value => value + 1);
-    } });
+    })
+      .pipe(
+        timeout(15000),
+        finalize(() => {
+          if (current()) this.connecting.set(false);
+        }),
+      )
+      .subscribe({
+        next: (data) => {
+          if (!current()) return;
+          this.customers.set(data.customers);
+          this.orders.set(data.orders);
+          this.riders.set(data.riders);
+          // A persisted local preview has no backend geometry or durable status.
+          // Load the saved backend plan afresh on the dispatch page instead.
+          this.plan.set(null);
+          this.confirmedPlan.set(null);
+          try {
+            localStorage.removeItem(PLAN_KEY);
+          } catch {
+            /* browser storage unavailable */
+          }
+          this.usingBackend.set(true);
+          this.dataRevision.update((value) => value + 1);
+        },
+        error: () => {
+          if (!current()) return;
+          this.customers.set([]);
+          this.orders.set([]);
+          this.riders.set([]);
+          this.plan.set(null);
+          this.confirmedPlan.set(null);
+          this.usingBackend.set(false);
+          this.connectionError.set('โหลดข้อมูลจัดส่งไม่สำเร็จ กรุณาลองเชื่อมต่ออีกครั้ง');
+          this.dataRevision.update((value) => value + 1);
+        },
+      });
     // ค่าตั้งร้านแยกเส้นต่างหาก — พังก็แค่ใช้ default ไม่กระทบข้อมูลหลัก
     this.settingsApi?.get().subscribe({
-      next: (settings) => { if (current()) this.settings.set(settings); },
+      next: (settings) => {
+        if (current()) this.settings.set(settings);
+      },
       error: (error) => console.warn('[delivery] โหลดค่าตั้งร้านไม่สำเร็จ ใช้ค่า default:', error),
     });
   }
@@ -95,8 +119,16 @@ export class DeliveryService {
   saveCustomer(input: Omit<Customer, 'id'> & { id?: string }): void {
     if (this.usingBackend() && this.api) {
       const current = this.currentResponse();
-      const payload = { name: input.name, phone: input.phone, address: input.address, lat: input.lat, lng: input.lng };
-      const request = input.id ? this.api.updateCustomer(input.id, payload) : this.api.createCustomer(payload);
+      const payload = {
+        name: input.name,
+        phone: input.phone,
+        address: input.address,
+        lat: input.lat,
+        lng: input.lng,
+      };
+      const request = input.id
+        ? this.api.updateCustomer(input.id, payload)
+        : this.api.createCustomer(payload);
       request.subscribe({
         next: (saved) => {
           if (!current()) return;
@@ -113,7 +145,9 @@ export class DeliveryService {
     }
     const current = this.customers();
     const customer: Customer = { ...input, id: input.id || `c-${Date.now()}` };
-    const next = input.id ? current.map((item) => item.id === input.id ? customer : item) : [...current, customer];
+    const next = input.id
+      ? current.map((item) => (item.id === input.id ? customer : item))
+      : [...current, customer];
     this.customers.set(next);
     this.persist(CUSTOMER_KEY, next);
     this.clearPlan();
@@ -124,7 +158,9 @@ export class DeliveryService {
     if (this.usingBackend() && this.api) {
       const current = this.currentResponse();
       this.api.deleteCustomer(id).subscribe({
-        next: () => { if (current()) this.customerDeleted(id); },
+        next: () => {
+          if (current()) this.customerDeleted(id);
+        },
         // 409 = backend บอกว่ามีออเดอร์อ้างอิงอยู่ — คงรายการไว้แล้วให้ toast ฝั่ง UI ตัดสินใจ
         error: (error) => console.error('[delivery] ลบลูกค้าใน backend ไม่สำเร็จ:', error),
       });
@@ -175,18 +211,25 @@ export class DeliveryService {
     const sorted = [...known].sort((a, b) => {
       const ca = customerById.get(a.customerId)!;
       const cb = customerById.get(b.customerId)!;
-      return Math.atan2(ca.lat - SHOP.lat, ca.lng - SHOP.lng) - Math.atan2(cb.lat - SHOP.lat, cb.lng - SHOP.lng);
+      return (
+        Math.atan2(ca.lat - SHOP.lat, ca.lng - SHOP.lng) -
+        Math.atan2(cb.lat - SHOP.lat, cb.lng - SHOP.lng)
+      );
     });
     const offset = sorted.length ? (version - 1) % sorted.length : 0;
     const rotated = [...sorted.slice(offset), ...sorted.slice(0, offset)];
-    const groups = Array.from({ length: Math.ceil(rotated.length / 3) }, (_, index) => rotated.slice(index * 3, index * 3 + 3));
+    const groups = Array.from({ length: Math.ceil(rotated.length / 3) }, (_, index) =>
+      rotated.slice(index * 3, index * 3 + 3),
+    );
     const routes = groups.map((group, index) => this.buildRoute(group, index, customerById));
     const plan: RoutePlan = {
       version,
       generatedAt: new Date().toISOString(),
       routes,
       totalDistanceKm: this.round(routes.reduce((sum, route) => sum + route.distanceKm, 0)),
-      totalDurationMinutes: Math.round(routes.reduce((sum, route) => sum + route.durationMinutes, 0)),
+      totalDurationMinutes: Math.round(
+        routes.reduce((sum, route) => sum + route.durationMinutes, 0),
+      ),
       deliveryCost: this.round(routes.reduce((sum, route) => sum + route.deliveryCost, 0)),
       revenue: routes.reduce((sum, route) => sum + route.revenue, 0),
       foodCost: routes.reduce((sum, route) => sum + route.foodCost, 0),
@@ -220,11 +263,15 @@ export class DeliveryService {
     const plan = this.plan();
     if (!plan) return;
     this.confirmedPlan.set(plan);
-    this.planHistory.update(history => [plan, ...history]);
+    this.planHistory.update((history) => [plan, ...history]);
   }
 
   routeForJobCode(jobCode: string): RiderRoute | null {
-    return this.confirmedPlan()?.routes.find((route) => route.rider.jobCode.toLowerCase() === jobCode.trim().toLowerCase()) || null;
+    return (
+      this.confirmedPlan()?.routes.find(
+        (route) => route.rider.jobCode.toLowerCase() === jobCode.trim().toLowerCase(),
+      ) || null
+    );
   }
 
   customerFor(order: Order): Customer | undefined {
@@ -244,17 +291,26 @@ export class DeliveryService {
     localStorage.removeItem(PLAN_KEY);
   }
 
-  private buildRoute(orders: Order[], riderIndex: number, customerById: Map<string, Customer>): RiderRoute {
-    const remaining = orders.map((order) => ({ order, customer: customerById.get(order.customerId)! }));
+  private buildRoute(
+    orders: Order[],
+    riderIndex: number,
+    customerById: Map<string, Customer>,
+  ): RiderRoute {
+    const remaining = orders.map((order) => ({
+      order,
+      customer: customerById.get(order.customerId)!,
+    }));
     const stops: RouteStop[] = [];
     let current: { lat: number; lng: number } = { lat: SHOP.lat, lng: SHOP.lng };
     let totalDistance = 0;
     while (remaining.length) {
-      remaining.sort((a, b) => this.distance(current, a.customer) - this.distance(current, b.customer));
+      remaining.sort(
+        (a, b) => this.distance(current, a.customer) - this.distance(current, b.customer),
+      );
       const next = remaining.shift()!;
       const leg = this.distance(current, next.customer);
       totalDistance += leg;
-      const elapsedMinutes = totalDistance / 30 * 60;
+      const elapsedMinutes = (totalDistance / 30) * 60;
       stops.push({
         ...next,
         sequence: stops.length + 1,
@@ -265,10 +321,12 @@ export class DeliveryService {
     }
     const totalBoxes = orders.reduce((sum, order) => sum + order.boxes, 0);
     const distanceKm = this.round(totalDistance);
-    const durationMinutes = Math.ceil(distanceKm / 30 * 60);
+    const durationMinutes = Math.ceil((distanceKm / 30) * 60);
     // สูตรเดียวกับ backend cost-calculator: ฐาน + กม. × ต่อกม.ต่อกล่อง × จำนวนกล่อง (ตามสเปก Project.pdf)
     const pricing = this.settings();
-    const deliveryCost = this.round((pricing?.riderBaseCost ?? 15) + distanceKm * (pricing?.riderCostPerKm ?? 2) * totalBoxes);
+    const deliveryCost = this.round(
+      (pricing?.riderBaseCost ?? 15) + distanceKm * (pricing?.riderCostPerKm ?? 2) * totalBoxes,
+    );
     const revenue = totalBoxes * (pricing?.boxSalePrice ?? 65);
     const foodCost = totalBoxes * (pricing?.boxFoodCost ?? 40);
     return {
@@ -291,7 +349,8 @@ export class DeliveryService {
     const dLng = this.toRadians(b.lng - a.lng);
     const lat1 = this.toRadians(a.lat);
     const lat2 = this.toRadians(b.lat);
-    const value = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+    const value =
+      Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
     return radius * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
   }
 
@@ -308,8 +367,11 @@ export class DeliveryService {
   }
 
   private persist(key: string, value: unknown): void {
-    try { localStorage.setItem(key, JSON.stringify(value)); }
-    catch { console.warn('[delivery] บันทึก cache ในเครื่องไม่ได้ จะใช้ข้อมูลที่อยู่ในหน่วยความจำ'); }
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      console.warn('[delivery] บันทึก cache ในเครื่องไม่ได้ จะใช้ข้อมูลที่อยู่ในหน่วยความจำ');
+    }
   }
 
   clearForLogout(): void {
@@ -332,6 +394,6 @@ export class DeliveryService {
   }
 
   private toRadians(value: number): number {
-    return value * Math.PI / 180;
+    return (value * Math.PI) / 180;
   }
 }

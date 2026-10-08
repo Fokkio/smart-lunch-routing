@@ -25,7 +25,10 @@ export function adaptBackendPlan(
   lookup: BackendPlanLookup,
   shop: ShopTime = { deadlineTime: '12:30' },
 ): RoutePlan {
-  shop = { deadlineTime: plan.deliveryDeadline ?? plan.shop?.deliveryDeadline.slice(0, 5) ?? shop.deadlineTime };
+  shop = {
+    deadlineTime:
+      plan.deliveryDeadline ?? plan.shop?.deliveryDeadline.slice(0, 5) ?? shop.deadlineTime,
+  };
   const riderById = new Map(lookup.riders.map((r) => [r.id, r]));
 
   const routes: RiderRoute[] = plan.jobs.map((job, index) =>
@@ -57,15 +60,13 @@ function adaptJob(
   riderById: Map<string, Rider>,
   shop: ShopTime,
 ): RiderRoute {
-  const rider: Rider =
-    (job.riderId !== null && riderById.get(String(job.riderId))) ||
-    {
-      id: job.riderId !== null ? String(job.riderId) : `backend-r${index + 1}`,
-      name: FALLBACK_RIDER_NAMES(index),
-      phone: '',
-      jobCode: job.jobCode ?? `P${plan.routePlanId ?? ''}-R${index + 1}`,
-      color: ROUTE_PALETTE[index % ROUTE_PALETTE.length]!,
-    };
+  const rider: Rider = (job.riderId !== null && riderById.get(String(job.riderId))) || {
+    id: job.riderId !== null ? String(job.riderId) : `backend-r${index + 1}`,
+    name: FALLBACK_RIDER_NAMES(index),
+    phone: '',
+    jobCode: job.jobCode ?? `P${plan.routePlanId ?? ''}-R${index + 1}`,
+    color: ROUTE_PALETTE[index % ROUTE_PALETTE.length]!,
+  };
 
   const stops: RouteStop[] = job.stops.map((s) => {
     const customer: Customer = {

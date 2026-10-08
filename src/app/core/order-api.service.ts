@@ -13,7 +13,10 @@ export interface ApiOrder {
   isSimulated: boolean;
   distanceKm?: number;
 }
-export type ApiOrderInput = Pick<ApiOrder, 'customerId' | 'boxes'> & { status?: ApiOrderStatus; orderDate?: string };
+export type ApiOrderInput = Pick<ApiOrder, 'customerId' | 'boxes'> & {
+  status?: ApiOrderStatus;
+  orderDate?: string;
+};
 
 @Injectable({ providedIn: 'root' })
 export class OrderApiService {
@@ -23,16 +26,29 @@ export class OrderApiService {
   list(date?: string): Observable<ApiOrder[]> {
     return this.http.get<ApiOrder[]>(this.url, { params: date ? { date } : {} });
   }
-  nearby(date?: string, status?: ApiOrderStatus, radiusKm=2): Observable<ApiOrder[]> {
-    return this.http.get<ApiOrder[]>(`${this.url}/nearby`, {params:{radiusKm,...(date ? {date} : {}),...(status ? {status} : {})}});
+  nearby(date?: string, status?: ApiOrderStatus, radiusKm = 2): Observable<ApiOrder[]> {
+    return this.http.get<ApiOrder[]>(`${this.url}/nearby`, {
+      params: { radiusKm, ...(date ? { date } : {}), ...(status ? { status } : {}) },
+    });
   }
-  create(input: ApiOrderInput): Observable<ApiOrder> { return this.http.post<ApiOrder>(this.url, input); }
-  update(id: number, input: ApiOrderInput): Observable<ApiOrder> { return this.http.put<ApiOrder>(`${this.url}/${id}`, input); }
-  delete(id: number): Observable<void> { return this.http.delete<void>(`${this.url}/${id}`); }
+  create(input: ApiOrderInput): Observable<ApiOrder> {
+    return this.http.post<ApiOrder>(this.url, input);
+  }
+  update(id: number, input: ApiOrderInput): Observable<ApiOrder> {
+    return this.http.put<ApiOrder>(`${this.url}/${id}`, input);
+  }
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.url}/${id}`);
+  }
   simulate(date: string, count = 25): Observable<{ createdCount: number; orders: ApiOrder[] }> {
-    return this.http.post<{ createdCount: number; orders: ApiOrder[] }>(`${this.url}/simulate`, { count, orderDate: date });
+    return this.http.post<{ createdCount: number; orders: ApiOrder[] }>(`${this.url}/simulate`, {
+      count,
+      orderDate: date,
+    });
   }
   clearSimulated(orderIds: number[]): Observable<{ deletedCount: number }> {
-    return this.http.delete<{ deletedCount: number }>(`${this.url}/simulated`, { body: { orderIds } });
+    return this.http.delete<{ deletedCount: number }>(`${this.url}/simulated`, {
+      body: { orderIds },
+    });
   }
 }

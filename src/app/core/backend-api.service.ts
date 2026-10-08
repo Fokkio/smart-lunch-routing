@@ -32,8 +32,16 @@ export interface BackendRider {
 }
 
 const RIDER_COLORS = [
-  '#d13b45', '#16865c', '#0053fd', '#c96a16', '#7549c7',
-  '#0b7a88', '#4e7472', '#a25228', '#5967a2', '#7b5e39',
+  '#d13b45',
+  '#16865c',
+  '#0053fd',
+  '#c96a16',
+  '#7549c7',
+  '#0b7a88',
+  '#4e7472',
+  '#a25228',
+  '#5967a2',
+  '#7b5e39',
 ];
 
 export function fromBackendStatus(status: BackendOrderStatus): OrderStatus {
@@ -49,7 +57,12 @@ export function toBackendStatus(status: OrderStatus): BackendOrderStatus {
 }
 
 export function todayLocal(date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
 }
 
 export function mapCustomer(raw: BackendCustomer): Customer {
@@ -100,15 +113,27 @@ export class BackendApiService {
       .pipe(map((rows) => rows.map(mapCustomer)));
   }
 
-  createCustomer(input: { name: string; phone: string; address: string; lat: number; lng: number }): Observable<Customer> {
+  createCustomer(input: {
+    name: string;
+    phone: string;
+    address: string;
+    lat: number;
+    lng: number;
+  }): Observable<Customer> {
     return this.http
       .post<BackendCustomer>(`${this.base}/customers`, { ...input, address: input.address || null })
       .pipe(map(mapCustomer));
   }
 
-  updateCustomer(id: string | number, input: { name: string; phone: string; address: string; lat: number; lng: number }): Observable<Customer> {
+  updateCustomer(
+    id: string | number,
+    input: { name: string; phone: string; address: string; lat: number; lng: number },
+  ): Observable<Customer> {
     return this.http
-      .put<BackendCustomer>(`${this.base}/customers/${id}`, { ...input, address: input.address || null })
+      .put<BackendCustomer>(`${this.base}/customers/${id}`, {
+        ...input,
+        address: input.address || null,
+      })
       .pipe(map(mapCustomer));
   }
 
@@ -122,7 +147,11 @@ export class BackendApiService {
       .pipe(map((rows) => rows.map(mapOrder)));
   }
 
-  createOrder(input: { customerId: string | number; boxes: number; orderDate?: string }): Observable<Order> {
+  createOrder(input: {
+    customerId: string | number;
+    boxes: number;
+    orderDate?: string;
+  }): Observable<Order> {
     return this.http
       .post<BackendOrder>(`${this.base}/orders`, {
         customerId: Number(input.customerId),
