@@ -28,7 +28,7 @@ const SHOP: LatLng = [16.24631, 103.25286];
   standalone: true,
   imports: [FormsModule],
   template: `
-    <div class="relative h-full w-full">
+    <div class="relative isolate h-full w-full">
       <div
         #map
         class="route-plan-map"
@@ -92,7 +92,7 @@ const SHOP: LatLng = [16.24631, 103.25286];
         width: 100%;
         height: 100%;
         min-height: 420px;
-        background: #f7f6f3;
+        background: var(--color-surface-subtle);
       }
       .route-plan-map.compact {
         min-height: 260px;

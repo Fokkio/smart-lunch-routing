@@ -1,5 +1,15 @@
-<section class="mx-auto max-w-[1560px] p-3 sm:p-5 lg:p-6">
-  <h2 class="sr-only">ภาพรวมการจัดส่งวันนี้</h2>
+<section class="workspace-page">
+  <header class="page-header">
+    <div>
+      <h2 class="page-heading">ทุกมื้อ เริ่มส่งจากที่นี่</h2>
+      <p class="page-description">ดูภาพรวม วางเส้นทาง และตรวจงานให้พร้อมก่อนออกส่ง</p>
+    </div>
+    <a
+      class="neu-control inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold"
+      routerLink="/owner/orders"
+      >ดูออเดอร์ทั้งหมด ↗</a
+    >
+  </header>
   @if (!store.usingBackend()) {
     <div
       class="mb-4 rounded-xl border border-amber-300 bg-warning-soft p-3 text-sm text-amber-900"
@@ -23,6 +33,70 @@
       {{ plansError }}
     </div>
   }
+
+  <section class="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="ภาพรวมการจัดส่ง">
+    <article class="stat-card relative min-h-24 p-4 sm:p-5">
+      <span class="absolute right-4 top-4 size-2 rounded-full bg-primary" aria-hidden="true"></span>
+      <span class="text-xs font-semibold text-slate-500">ออเดอร์วันนี้</span>
+      <strong class="mt-1 block font-mono text-2xl font-semibold tracking-tight sm:text-3xl">{{
+        store.orders().length
+      }}</strong>
+      <small class="text-slate-600">{{ store.pendingOrders().length }} รายการพร้อมจัดส่ง</small>
+    </article>
+    <article class="stat-card relative min-h-24 p-4 sm:p-5">
+      <span
+        class="absolute right-4 top-4 size-2 rounded-full bg-[#c96a16]"
+        aria-hidden="true"
+      ></span>
+      <span class="text-xs font-semibold text-slate-500">ข้าวกล่องทั้งหมด</span>
+      <strong class="mt-1 block font-mono text-2xl font-semibold tracking-tight sm:text-3xl">{{
+        store.plan()?.routes?.length
+          ? (backendPlan?.totalBoxes ?? store.pendingBoxes())
+          : store.pendingBoxes()
+      }}</strong>
+      <small class="text-slate-600">{{
+        backendPlan ? 'ในแผนที่เปิดอยู่' : 'จากออเดอร์ที่ยังไม่ส่ง'
+      }}</small>
+    </article>
+    <article class="stat-card relative min-h-24 p-4 sm:p-5">
+      <span class="absolute right-4 top-4 size-2 rounded-full bg-success" aria-hidden="true"></span>
+      <span class="text-xs font-semibold text-slate-500">ระยะทางรวม</span>
+      <strong class="mt-1 block font-mono text-2xl font-semibold tracking-tight sm:text-3xl"
+        >{{ store.plan()?.totalDistanceKm || 0
+        }}<span class="ml-1 text-xs font-medium text-slate-500">กม.</span></strong
+      >
+      <small class="text-slate-600">{{
+        backendPlanId
+          ? 'แผน #' + backendPlanId
+          : store.plan()
+            ? 'แผนในเครื่องเวอร์ชัน ' + store.plan()?.version
+            : 'รอคำนวณเส้นทาง'
+      }}</small>
+    </article>
+    <article class="stat-card relative min-h-24 p-4 sm:p-5">
+      <span
+        class="absolute right-4 top-4 size-2 rounded-full"
+        [class.bg-emerald-600]="store.plan()?.deadlineSafe"
+        [class.bg-red-600]="store.plan() && !store.plan()?.deadlineSafe"
+        [class.bg-slate-300]="!store.plan()"
+        aria-hidden="true"
+      ></span>
+      <span class="text-xs font-semibold text-slate-500">กำไรประมาณการ</span>
+      <strong
+        class="mt-1 block font-mono text-2xl font-semibold tracking-tight sm:text-3xl"
+        [class.text-emerald-700]="(store.plan()?.profit || 0) >= 0"
+        [class.text-red-700]="(store.plan()?.profit || 0) < 0"
+        >{{ store.plan()?.profit || 0 | currency: 'THB' : 'symbol-narrow' : '1.0-0' }}</strong
+      >
+      <small class="text-slate-600">{{
+        store.plan()?.deadlineSafe
+          ? 'ผ่านเงื่อนไขเวลาในแบบจำลอง'
+          : store.plan()
+            ? 'ไม่ผ่านเงื่อนไขเวลาในแบบจำลอง'
+            : 'รอคำนวณต้นทุน'
+      }}</small>
+    </article>
+  </section>
 
   @if (store.usingBackend()) {
     <section
@@ -142,75 +216,11 @@
     </section>
   }
 
-  <section class="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4" aria-label="ภาพรวมการจัดส่ง">
-    <article class="neu-panel relative min-h-24 rounded-xl p-4">
-      <span class="absolute right-4 top-4 size-2 rounded-full bg-primary" aria-hidden="true"></span>
-      <span class="text-xs font-semibold text-slate-500">ออเดอร์วันนี้</span>
-      <strong class="mt-1 block font-mono text-2xl font-semibold tracking-tight sm:text-3xl">{{
-        store.orders().length
-      }}</strong>
-      <small class="text-slate-600">{{ store.pendingOrders().length }} รายการพร้อมจัดส่ง</small>
-    </article>
-    <article class="neu-panel relative min-h-24 rounded-xl p-4">
-      <span
-        class="absolute right-4 top-4 size-2 rounded-full bg-[#c96a16]"
-        aria-hidden="true"
-      ></span>
-      <span class="text-xs font-semibold text-slate-500">ข้าวกล่องทั้งหมด</span>
-      <strong class="mt-1 block font-mono text-2xl font-semibold tracking-tight sm:text-3xl">{{
-        store.plan()?.routes?.length
-          ? (backendPlan?.totalBoxes ?? store.pendingBoxes())
-          : store.pendingBoxes()
-      }}</strong>
-      <small class="text-slate-600">{{
-        backendPlan ? 'ในแผนที่เปิดอยู่' : 'จากออเดอร์ที่ยังไม่ส่ง'
-      }}</small>
-    </article>
-    <article class="neu-panel relative min-h-24 rounded-xl p-4">
-      <span class="absolute right-4 top-4 size-2 rounded-full bg-success" aria-hidden="true"></span>
-      <span class="text-xs font-semibold text-slate-500">ระยะทางรวม</span>
-      <strong class="mt-1 block font-mono text-2xl font-semibold tracking-tight sm:text-3xl"
-        >{{ store.plan()?.totalDistanceKm || 0
-        }}<span class="ml-1 text-xs font-medium text-slate-500">กม.</span></strong
-      >
-      <small class="text-slate-600">{{
-        backendPlanId
-          ? 'แผน #' + backendPlanId
-          : store.plan()
-            ? 'แผนในเครื่องเวอร์ชัน ' + store.plan()?.version
-            : 'รอคำนวณเส้นทาง'
-      }}</small>
-    </article>
-    <article class="neu-panel relative min-h-24 rounded-xl p-4">
-      <span
-        class="absolute right-4 top-4 size-2 rounded-full"
-        [class.bg-emerald-600]="store.plan()?.deadlineSafe"
-        [class.bg-red-600]="store.plan() && !store.plan()?.deadlineSafe"
-        [class.bg-slate-300]="!store.plan()"
-        aria-hidden="true"
-      ></span>
-      <span class="text-xs font-semibold text-slate-500">กำไรประมาณการ</span>
-      <strong
-        class="mt-1 block font-mono text-2xl font-semibold tracking-tight sm:text-3xl"
-        [class.text-emerald-700]="(store.plan()?.profit || 0) >= 0"
-        [class.text-red-700]="(store.plan()?.profit || 0) < 0"
-        >{{ store.plan()?.profit || 0 | currency: 'THB' : 'symbol-narrow' : '1.0-0' }}</strong
-      >
-      <small class="text-slate-600">{{
-        store.plan()?.deadlineSafe
-          ? 'ผ่านเงื่อนไขเวลาในแบบจำลอง'
-          : store.plan()
-            ? 'ไม่ผ่านเงื่อนไขเวลาในแบบจำลอง'
-            : 'รอคำนวณต้นทุน'
-      }}</small>
-    </article>
-  </section>
-
-  <div class="result-grid grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,.75fr)]">
+  <div class="result-grid grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,.85fr)]">
     <section
       #routeMapPanel
       tabindex="-1"
-      class="neu-panel min-w-0 overflow-hidden rounded-xl max-xl:order-2"
+      class="neu-panel min-w-0 overflow-hidden rounded-2xl max-xl:order-2"
       aria-labelledby="operations-map-title"
     >
       <header
@@ -232,7 +242,7 @@
           >เพิ่มออเดอร์</a
         >
       </header>
-      <div class="relative h-[430px] bg-surface-subtle sm:h-[560px] xl:min-h-[650px]">
+      <div class="relative isolate h-[430px] bg-surface-subtle sm:h-[560px] xl:min-h-[650px]">
         @if (mapJobs(); as jobs) {
           <app-route-plan-map
             [jobs]="jobs"
@@ -290,7 +300,7 @@
     <aside
       #dispatchPanel
       tabindex="-1"
-      class="neu-panel flex min-h-[600px] flex-col overflow-hidden rounded-xl max-xl:order-1"
+      class="neu-panel flex min-h-[600px] flex-col overflow-hidden rounded-2xl max-xl:order-1"
       aria-labelledby="dispatch-title"
     >
       <div class="border-b border-line p-4">
@@ -612,7 +622,7 @@
         @if (store.plan(); as plan) {
           @for (route of plan.routes; track route.rider.id; let i = $index) {
             <article
-              class="border-b border-line p-3 last:border-0"
+              class="mb-3 rounded-xl border border-line bg-surface-subtle p-4"
               [class.opacity-40]="selectedRoute !== null && selectedRoute !== i"
             >
               <div class="flex items-center gap-3">

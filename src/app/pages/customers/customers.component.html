@@ -1,5 +1,9 @@
-<section class="mx-auto max-w-[1480px] p-4 sm:p-6 lg:p-8">
-  <header class="mb-5 flex flex-wrap justify-end gap-3">
+<section class="workspace-page">
+  <header class="page-header">
+    <div class="min-w-0 flex-1 basis-full sm:basis-auto">
+      <h2 class="page-heading">ลูกค้าของร้าน</h2>
+      <p class="page-description">จัดการข้อมูลติดต่อและตำแหน่งส่งอาหารของลูกค้า</p>
+    </div>
     <button
       class="neu-control inline-flex min-h-11 items-center gap-2 rounded-xl px-4 font-bold"
       type="button"
@@ -54,7 +58,7 @@
 
   <div [class]="showForm ? 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_430px]' : 'grid gap-5'">
     <article class="neu-panel overflow-hidden rounded-2xl">
-      <div class="flex flex-wrap items-end gap-3 border-b border-white/70 p-5">
+      <div class="section-toolbar flex flex-wrap items-end gap-3">
         <!-- พิมพ์แล้วค้นหาทันที หรือกด Enter / ปุ่มค้นหา -->
         <form
           class="flex min-w-0 w-full max-w-lg items-end gap-2"
@@ -117,18 +121,12 @@
           </p>
         } @else {
           @for (customer of filteredCustomers(); track customer.id) {
-            <article
-              class="grid gap-3 p-5 transition-colors duration-200 hover:bg-white/25 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:items-center"
-            >
-              <span
-                class="neu-panel-soft grid size-11 place-items-center rounded-full font-bold text-emerald-800"
-                aria-hidden="true"
-                >{{ customer.name.slice(0, 1) }}</span
-              >
+            <article class="record-card">
+              <span class="record-avatar" aria-hidden="true">{{ customer.name.slice(0, 1) }}</span>
               <div class="min-w-0">
                 <strong class="block">{{ customer.name }}</strong
                 ><span class="block text-sm text-slate-500">{{ customer.phone }}</span>
-                <p class="mt-1 truncate text-sm text-slate-600">
+                <p class="mt-1 break-words text-sm text-slate-600">
                   {{ customer.address || 'ยังไม่มีรายละเอียดที่อยู่' }}
                 </p>
                 @if (distances()[customer.id] !== undefined) {
@@ -141,7 +139,7 @@
                   >ปักตำแหน่งแล้ว</span
                 >
               </div>
-              <div class="flex gap-2 sm:justify-end">
+              <div class="record-actions">
                 <!-- EDIT BUTTON -->
 
                 <button
@@ -250,7 +248,7 @@
               placeholder="เช่น หอพัก อาคาร หรือจุดนัดรับ"
             ></textarea>
           </label>
-          <div class="border-t border-white/70 pt-4">
+          <div class="border-t border-line pt-4">
             <h3 class="font-bold">ตำแหน่งจัดส่ง</h3>
             <p class="text-sm text-slate-600">คลิกบนแผนที่หรือลากหมุดเพื่อระบุตำแหน่ง</p>
           </div>
@@ -264,7 +262,7 @@
               autocomplete="off"
           /></label>
           @if (placeMatches().length) {
-            <div class="neu-inset divide-y divide-white/70 rounded-xl">
+            <div class="neu-inset divide-y divide-line rounded-xl">
               @for (place of placeMatches(); track place.id) {
                 <button
                   class="block min-h-11 w-full px-3 py-2 text-left transition-colors hover:bg-white/30"
@@ -355,7 +353,7 @@
             </p>
           }
           <!-- ปุ่มท้ายฟอร์ม: ยกเลิกและบันทึกข้อมูลลูกค้า -->
-          <div class="flex justify-end gap-3 border-t border-white/70 pt-4">
+          <div class="flex justify-end gap-3 border-t border-line pt-4">
             <!-- ปิดฟอร์มโดยไม่บันทึก -->
             <button
               class="neu-control min-h-11 rounded-xl px-4 font-bold"

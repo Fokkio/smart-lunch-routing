@@ -18,7 +18,7 @@ import { Customer, RiderRoute, SHOP } from '../../core/models';
   selector: 'app-delivery-map',
   standalone: true,
   template: `
-    <div class="relative h-full min-h-80 w-full">
+    <div class="relative isolate h-full min-h-80 w-full">
       <div
         #map
         class="h-full min-h-80 w-full bg-neu"
