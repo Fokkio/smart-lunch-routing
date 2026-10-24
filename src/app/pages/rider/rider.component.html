@@ -283,6 +283,16 @@
               </div>
             </dl>
           </article>
+          @if (navigationUrl; as navUrl) {
+            <a
+              class="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 font-bold text-white transition-colors hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-800"
+              [href]="navUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              🧭 นำทางไปยังลูกค้าคนนี้ด้วย Google Maps ↗
+            </a>
+          }
           <div class="mt-5 overflow-hidden rounded-xl border border-line">
             <app-route-plan-map
               [jobs]="mapJobs"
