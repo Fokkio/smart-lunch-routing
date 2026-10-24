@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, fromEvent, timer, timeout } from 'rxjs';
 import { apiErrorMessage } from '../../core/api-error';
@@ -19,7 +19,7 @@ type Stage = 'entry' | 'summary' | 'delivery' | 'completed';
   imports: [FormsModule, RoutePlanMapComponent],
   templateUrl: './rider.component.html',
 })
-export class RiderComponent implements OnInit {
+export class RiderComponent implements OnInit, OnDestroy {
   private readonly api = inject(RoutePlanApiService);
   private readonly cdr = inject(ChangeDetectorRef);
   readonly auth = inject(AuthService);
@@ -60,6 +60,11 @@ export class RiderComponent implements OnInit {
   newPassword = '';
   passwordMessage = '';
   changingPassword = false;
+
+  readonly riderLocation = signal<[number, number] | null>(null);
+  readonly gpsStatus = signal<'inactive' | 'tracking' | 'error' | 'denied'>('inactive');
+  readonly gpsErrorMessage = signal<string>('');
+  private watchId: number | null = null;
 
   get currentStop(): RouteStopModel | null {
     return this.activeRoute?.stops[this.stopIndex] ?? null;
@@ -154,6 +159,9 @@ export class RiderComponent implements OnInit {
           ? 'delivery'
           : 'summary';
     this.confirmingStop = false;
+    if (this.stage !== 'completed') {
+      this.startGpsTracking();
+    }
     this.cdr.markForCheck();
   }
   acknowledge(): void {
@@ -197,6 +205,7 @@ export class RiderComponent implements OnInit {
           route.status = 'DELIVERING';
           this.confirmingStop = false;
           this.stage = 'delivery';
+          this.startGpsTracking();
           this.cdr.markForCheck();
         },
         error: () => {
@@ -238,6 +247,7 @@ export class RiderComponent implements OnInit {
           if (this.stopIndex >= route.stops.length) {
             this.stage = 'completed';
             route.status = 'COMPLETED';
+            this.stopGpsTracking();
           }
           this.cdr.markForCheck();
         },
@@ -252,6 +262,7 @@ export class RiderComponent implements OnInit {
       });
   }
   closeJob(): void {
+    this.stopGpsTracking();
     this.stage = 'entry';
     this.activeRoute = null;
     this.mapJobs = [];
@@ -260,6 +271,52 @@ export class RiderComponent implements OnInit {
     this.stopIndex = 0;
     this.confirmingStop = false;
     this.loadJobs();
+  }
+
+  ngOnDestroy(): void {
+    this.stopGpsTracking();
+  }
+
+  startGpsTracking(): void {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      this.gpsStatus.set('error');
+      this.gpsErrorMessage.set('อุปกรณ์นี้ไม่รองรับระบบ GPS');
+      return;
+    }
+    if (this.watchId !== null) return;
+    this.gpsStatus.set('tracking');
+    this.watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        this.riderLocation.set([pos.coords.latitude, pos.coords.longitude]);
+        this.gpsStatus.set('tracking');
+        this.gpsErrorMessage.set('');
+        this.cdr.markForCheck();
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          this.gpsStatus.set('denied');
+          this.gpsErrorMessage.set('กรุณาเปิดสิทธิ์เข้าถึงพิกัด GPS เพื่อติดตามตำแหน่งสดบนแผนที่');
+        } else {
+          this.gpsStatus.set('error');
+          this.gpsErrorMessage.set('ไม่สามารถรับสัญญาณ GPS ได้ในขณะนี้');
+        }
+        this.cdr.markForCheck();
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 4000,
+        timeout: 12000,
+      },
+    );
+  }
+
+  stopGpsTracking(): void {
+    if (this.watchId !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
+    }
+    this.gpsStatus.set('inactive');
+    this.riderLocation.set(null);
   }
   logout(): void {
     this.auth.logout();
