@@ -174,6 +174,16 @@ describe('Rider assigned jobs', () => {
     stop.latitude = 16.3;
     expect(new URL(rider.navigationUrl!).searchParams.get('destination')).toBe('16.3,103.2');
     stop.latitude = 16.2;
+    // เมื่อมี GPS สด ลิงก์ต้องแนบ origin ให้ Google Maps เริ่มจากตำแหน่งไรเดอร์ทันที
+    rider.riderLocation.set([16.251234567, 103.261234567]);
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    const navigationWithOrigin = new URL(navigation.href);
+    expect(navigationWithOrigin.searchParams.get('origin')).toBe('16.251235,103.261235');
+    rider.riderLocation.set(null);
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    expect(new URL(navigation.href).searchParams.has('origin')).toBe(false);
     rider.confirmingStop = true;
     rider.completeStop();
     expect(rider.stage).toBe('delivery');

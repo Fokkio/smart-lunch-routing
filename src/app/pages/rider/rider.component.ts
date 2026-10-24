@@ -86,6 +86,11 @@ export class RiderComponent implements OnInit, OnDestroy {
       travelmode: 'driving',
       dir_action: 'navigate',
     });
+    // แนบ origin จาก GPS สดเมื่อมีตำแหน่ง — Google Maps เริ่มคำนวณเส้นทางจากจุดที่ไรเดอร์ยืนอยู่ทันที
+    const location = this.riderLocation();
+    if (location && Number.isFinite(location[0]) && Number.isFinite(location[1])) {
+      params.set('origin', `${location[0].toFixed(6)},${location[1].toFixed(6)}`);
+    }
     return `https://www.google.com/maps/dir/?${params}`;
   }
 
