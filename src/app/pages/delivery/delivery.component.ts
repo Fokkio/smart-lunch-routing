@@ -133,10 +133,15 @@ export class DeliveryComponent {
     if (this.showAllSavedPlans) return this.savedPlans;
     const current =
       this.savedPlans.find((plan) => plan.routePlanId === this.backendPlanId) ??
-      this.savedPlans.find((plan) => plan.status === 'SELECTED');
+      this.savedPlans.find((plan) => plan.status === 'SELECTED' && !this.isOtherDay(plan));
     return current
       ? [current, ...this.savedPlans.filter((plan) => plan !== current)].slice(0, 4)
       : this.savedPlans.slice(0, 4);
+  }
+
+  /** แผนวันอื่น (ไม่ใช่วันนี้) — มักเป็นร่างตกค้างที่ทำให้ลบออเดอร์ไม่ได้ */
+  isOtherDay(plan: RoutePlanSummaryModel): boolean {
+    return Boolean(plan.planDate) && plan.planDate !== todayLocal();
   }
 
   constructor() {
@@ -170,7 +175,7 @@ export class DeliveryComponent {
     this.plansError = null;
     try {
       this.routePlans
-        .list(todayLocal())
+        .list()
         .pipe(
           timeout(15000),
           this.currentSession(),
@@ -183,9 +188,12 @@ export class DeliveryComponent {
         .subscribe({
           next: (plans) => {
             this.savedPlans = plans;
+            // เปิดทานให้เฉพาะแผนวันนี้เสมอ แผนวันอื่นเอาไว้ตรวจ/ลบเอง
+            const today = todayLocal();
+            const isToday = (plan: RoutePlanSummaryModel) => !plan.planDate || plan.planDate === today;
             const current =
-              plans.find((plan) => plan.status === 'SELECTED') ??
-              plans.find((plan) => plan.status === 'GENERATED');
+              plans.find((plan) => plan.status === 'SELECTED' && isToday(plan)) ??
+              plans.find((plan) => plan.status === 'GENERATED' && isToday(plan));
             if (
               current?.routePlanId != null &&
               this.backendPlanId === null &&
