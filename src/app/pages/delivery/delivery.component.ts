@@ -12,6 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { apiErrorMessage } from '../../core/api-error';
 import { AuthService } from '../../core/auth.service';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -301,8 +302,9 @@ export class DeliveryComponent {
           }
           this.store.refresh();
         },
-        error: () => {
-          this.plansError = 'ลบใบงานไม่สำเร็จ กรุณาลองใหม่';
+        error: (error) => {
+          // ส่งเหตุผลจริงจาก backend เช่น "กำลังส่งอยู่" ขึ้นหน้า แทนข้อความกลาง
+          this.plansError = apiErrorMessage(error, 'ลบใบงานไม่สำเร็จ กรุณาลองใหม่');
         },
       });
   }
