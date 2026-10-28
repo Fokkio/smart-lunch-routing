@@ -328,6 +328,10 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
     });
 
     const bounds = this.layer.getBounds();
+    // ครอบตำแหน่งไรเดอร์สดไว้ในภาพรวมด้วย ไม่งั้นหมุด GPS จะหลุดออกนอกขอบ viewport
+    if (this.riderMarker && this.riderLocation) {
+      bounds.extend(this.riderLocation);
+    }
     if (bounds.isValid()) this.map.fitBounds(bounds.pad(0.2), { maxZoom: 15 });
   }
 }
