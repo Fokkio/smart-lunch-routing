@@ -1,3 +1,5 @@
+// ไฟล์นี้: แผนที่แสดงแผนการจัดส่ง (Leaflet) — วาดร้าน จุดส่ง เส้นถนน/เส้นประมาณ และหมุด GPS สดของไรเดอร์
+
 import {
   AfterViewInit,
   Component,
@@ -23,6 +25,7 @@ const SHOP: LatLng = [16.24631, 103.25286];
  * Renders per-order road legs when available. Older plans retain their
  * whole-job road line in overview and use dashed approximate order legs.
  */
+// component แผนที่แผนการจัดส่ง: สร้างแผนที่ Leaflet วาดงานที่เลือก และติดตามตำแหน่งไรเดอร์
 @Component({
   selector: 'app-route-plan-map',
   standalone: true,
@@ -169,6 +172,7 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
   private layer?: L.FeatureGroup;
   private riderMarker?: L.Marker;
 
+  // ตอนแผนที่พร้อมแสดง: สร้างแผนที่ Leaflet กลางที่ร้าน วาดงาน และปรับขนาดแผนที่
   ngAfterViewInit(): void {
     this.map = L.map(this.mapElement.nativeElement, { zoomControl: true }).setView(this.shop, 14);
     this.tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -184,6 +188,7 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
     setTimeout(() => this.map?.invalidateSize(), 0);
   }
 
+  // เมื่อข้อมูลที่ส่งเข้ามาเปลี่ยน: อัปเดตหมุดไรเดอร์ และวาดแผนที่ใหม่ถ้างาน/ร้าน/เวลาที่เลือกเปลี่ยน
   ngOnChanges(changes: SimpleChanges): void {
     if (this.selectedJob !== null && this.selectedJob >= this.jobs.length)
       this.selectedJobChange.emit(null);
@@ -202,17 +207,20 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
     }
   }
 
+  // ตอนออกจาก component: ลบหมุดไรเดอร์และแผนที่ออก
   ngOnDestroy(): void {
     this.riderMarker?.remove();
     this.map?.remove();
   }
 
+  // เลื่อนแผนที่ไปกลางตำแหน่ง GPS ปัจจุบันของไรเดอร์
   centerOnRider(): void {
     if (this.map && this.riderLocation) {
       this.map.setView(this.riderLocation, 16, { animate: true });
     }
   }
 
+  // อัปเดตหมุด GPS ไรเดอร์: สร้างหมุดถ้ายังไม่มี เลื่อนหมุดถ้ามีแล้ว และตามตำแหน่งถ้าเปิด follow
   private updateRiderMarker(): void {
     if (!this.map) return;
     if (!this.riderLocation) {
@@ -245,28 +253,34 @@ export class RoutePlanMapComponent implements AfterViewInit, OnChanges, OnDestro
     }
   }
 
+  // ลองโหลดภาพแผนที่ (tiles) ใหม่อีกครั้งเมื่อโหลดไม่สำเร็จ
   retryTiles(): void {
     this.tilesUnavailable.set(false);
     this.tileLayer?.redraw();
   }
 
+  // เลือกงานที่จะแสดงบนแผนที่ -> แจ้งหน้าหลัก แล้ววาดแผนที่ใหม่
   onFilterChange(value: number | null): void {
     this.selectedJobChange.emit(value);
     this.render();
   }
 
+  // ชื่อไรเดอร์ตามลำดับงาน: ใช้ชื่อที่หน้าหลักส่งมา ถ้าไม่มีใช้ "ไรเดอร์ ลำดับที่"
   riderName(index: number): string {
     return this.riderNames[index] ?? `ไรเดอร์ ${index + 1}`;
   }
 
+  // มีจุดส่งใดบ้างที่ไม่มีเส้นถนนจริง (ต้องวาดเส้นประมาณ)
   hasApproximateLegs(): boolean {
     return this.jobs.some((job) => job.stops.some((stop) => !stop.geometry));
   }
 
+  // ลำดับงานที่เลือกให้แสดงบนแผนที่ในตอนนี้
   private effectiveSelected(): number | null {
     return this.selectedJob;
   }
 
+  // วาดแผนที่ใหม่ทั้งหมด: ร้าน จุดส่ง เส้นของแต่ละงาน (ถนนจริงหรือเส้นประมาณแบบประ) แล้วขยายให้พอดีกับทุกจุด
   private render(): void {
     if (!this.map) return;
     this.layer?.remove();

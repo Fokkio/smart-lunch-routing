@@ -1,3 +1,5 @@
+// ไฟล์นี้: ส่วนแก้ไขบัญชีเจ้าของร้านในหน้าตั้งค่า — เปลี่ยนชื่อผู้ใช้และรหัสผ่าน
+
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -6,6 +8,7 @@ import { finalize, timeout } from 'rxjs';
 import { AuthService } from '../../core/auth.service';
 import { apiErrorMessage } from '../../core/api-error';
 
+// ส่วนบัญชีเจ้าของร้าน: โหลดบัญชีปัจจุบัน และบันทึกชื่อผู้ใช้/รหัสผ่านใหม่
 @Component({
   selector: 'app-owner-account',
   imports: [FormsModule],
@@ -24,10 +27,12 @@ export class OwnerAccountComponent implements OnInit {
   newPassword = '';
   confirmPassword = '';
 
+  // ตอนเปิดส่วนนี้: โหลดบัญชีเจ้าของร้าน
   ngOnInit(): void {
     this.load();
   }
 
+  // โหลดบัญชีเจ้าของร้านจาก backend
   load(): void {
     if (this.loading() || this.saving()) return;
     this.loading.set(true);
@@ -49,6 +54,7 @@ export class OwnerAccountComponent implements OnInit {
       });
   }
 
+  // บันทึกบัญชีเจ้าของร้าน: ตรวจชื่อผู้ใช้ รหัสเดิม และรหัสใหม่ (อย่างน้อย 12 ตัวอักษร) ก่อนส่ง, สำเร็จแล้วล้าง session พาไป login ใหม่
   save(): void {
     const previousUsername = this.currentUsername();
     if (this.loading() || this.saving() || previousUsername === null) return;

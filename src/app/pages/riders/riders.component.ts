@@ -1,3 +1,5 @@
+// ไฟล์นี้: หน้าจัดการไรเดอร์ของเจ้าของร้าน — ดู เพิ่ม แก้ไข ลบไรเดอร์ และตั้งบัญชี/รหัสผ่านให้ไรเดอร์
+
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, timeout } from 'rxjs';
@@ -8,6 +10,7 @@ import { DeliveryService } from '../../core/delivery.service';
 
 type Draft = { id?: number; name: string; phone: string; isAvailable: boolean };
 
+// หน้าจัดการไรเดอร์: โหลดรายชื่อ, กรอง, และบันทึก/ลบ/ตั้งบัญชีไรเดอร์
 @Component({
   selector: 'app-riders',
   standalone: true,
@@ -30,10 +33,12 @@ export class RidersComponent implements OnInit {
   newPassword = '';
   draft: Draft = this.blankDraft();
 
+  // ตอนเปิดหน้า: โหลดรายชื่อไรเดอร์
   ngOnInit(): void {
     this.reload();
   }
 
+  // โหลดรายชื่อไรเดอร์จาก backend ใหม่
   reload(): void {
     this.loading.set(true);
     this.error.set('');
@@ -56,10 +61,12 @@ export class RidersComponent implements OnInit {
       });
   }
 
+  // จำนวนไรเดอร์ที่พร้อมรับงาน (isAvailable)
   availableCount(): number {
     return this.riders().filter((rider) => rider.workStatus === 'READY').length;
   }
 
+  // ป้ายสถานะงานของไรเดอร์ภาษาไทยจากสถานะของ backend
   workStatusLabel(rider: ApiRider): string {
     return (
       {
@@ -72,6 +79,7 @@ export class RidersComponent implements OnInit {
     )[rider.workStatus ?? 'UNCONFIGURED'];
   }
 
+  // ไรเดอร์ที่จะแสดงตามคำค้น (ชื่อ/เบอร์)
   filteredRiders(): ApiRider[] {
     const term = this.query.trim().toLowerCase();
     if (!term) return this.riders();
@@ -80,6 +88,7 @@ export class RidersComponent implements OnInit {
     );
   }
 
+  // เปิดฟอร์มเพิ่มไรเดอร์ใหม่ด้วยข้อมูลว่าง
   startCreate(): void {
     if (this.saving()) return;
     this.draft = this.blankDraft();
@@ -87,6 +96,7 @@ export class RidersComponent implements OnInit {
     this.showForm = true;
   }
 
+  // เปิดฟอร์มแก้ไขไรเดอร์คนนี้ โดยใส่ข้อมูลเดิมลงฟอร์ม
   edit(rider: ApiRider): void {
     if (this.saving()) return;
     this.draft = {
@@ -99,6 +109,7 @@ export class RidersComponent implements OnInit {
     this.showForm = true;
   }
 
+  // เปิดฟอร์มตั้งบัญชี login ให้ไรเดอร์คนนี้
   openAccount(rider: ApiRider): void {
     if (this.saving()) return;
     this.accountRider = rider;
@@ -107,6 +118,7 @@ export class RidersComponent implements OnInit {
     this.error.set('');
   }
 
+  // บันทึกบัญชี login ของไรเดอร์ (ชื่อผู้ใช้ และรหัสผ่านถ้ากรอก) แล้วโหลดรายชื่อใหม่
   saveAccount(): void {
     const username = this.accountUsername.trim().toLowerCase();
     if (
@@ -146,12 +158,14 @@ export class RidersComponent implements OnInit {
       });
   }
 
+  // ปิดฟอร์มโดยไม่บันทึก
   cancel(): void {
     if (this.saving()) return;
     this.showForm = false;
     this.error.set('');
   }
 
+  // ลบไรเดอร์คนนี้หลังยืนยัน แล้วโหลดรายชื่อใหม่
   remove(rider: ApiRider): void {
     if (this.saving()) return;
     if (!window.confirm(`ลบไรเดอร์ ${rider.name} หรือไม่?`)) return;
@@ -182,6 +196,7 @@ export class RidersComponent implements OnInit {
       });
   }
 
+  // บันทึกฟอร์มไรเดอร์: มี id = แก้ไขคนเดิม, ไม่มี id = เพิ่มคนใหม่
   save(): void {
     if (this.saving()) return;
     const name = this.draft.name.trim();
@@ -221,6 +236,7 @@ export class RidersComponent implements OnInit {
       });
   }
 
+  // ฟอร์มไรเดอร์ว่างตั้งต้น
   private blankDraft(): Draft {
     return { name: '', phone: '', isAvailable: true };
   }

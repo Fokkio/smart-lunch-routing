@@ -1,3 +1,5 @@
+// ไฟล์นี้: หน้า "ศูนย์จัดส่ง" ของเจ้าของร้าน — เลือกออเดอร์ สร้าง/เปรียบเทียบ/ยืนยันแผน ดูแผนที่ และจัดการใบงานที่บันทึกไว้
+
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import {
   ChangeDetectorRef,
@@ -32,6 +34,7 @@ import { routingSourceLabel } from '../../core/route-plan-view';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
 import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
 
+// หน้าวางแผนจัดส่ง: ขอแผนจาก backend, แสดงสรุป/แผนที่, เลือกและยืนยันแผน, จัดการใบงานที่บันทึกไว้
 @Component({
   selector: 'app-delivery',
   standalone: true,
@@ -49,11 +52,13 @@ export class DeliveryComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService, { optional: true });
+  // สร้างตัวกรองที่ปล่อย response ผ่านเฉพาะเมื่อ token ยังเป็นของ session เดิม
   private currentSession() {
     const token = this.auth?.token();
     return <T>(source: Observable<T>) => source.pipe(filter(() => token === this.auth?.token()));
   }
   readonly store = inject(DeliveryService);
+  // พิกัดร้านบนแผนที่: จากแผนเปรียบเทียบ/แผนปัจจุบัน/ค่าตั้งร้าน
   readonly shopPoint = computed<[number, number]>(() => {
     const settings =
       this.candidateBackend()?.shop ?? this.store.plan()?.shop ?? this.store.settings();
@@ -67,6 +72,7 @@ export class DeliveryComponent {
   @ViewChild('routeMapPanel') private routeMapPanel?: ElementRef<HTMLElement>;
   @ViewChild('ackLate') private ackLateBox?: ElementRef<HTMLInputElement>;
   @ViewChild('ackCandidate') private ackCandidateBox?: ElementRef<HTMLInputElement>;
+  // แผนเปรียบเทียบที่แปลงเป็นรูปของหน้าแอปแล้ว (null = ไม่มีแผนเปรียบเทียบ)
   readonly candidate = computed(() => {
     const backend = this.candidateBackend();
     return backend
@@ -78,14 +84,17 @@ export class DeliveryComponent {
   roundStart = '';
   roundDeadline = '';
   selectedOrderIds: number[] = [];
+  // ติ๊ก/ยกเลิกติ๊กออเดอร์ที่จะรวมในแผนรอบนี้
   toggleOrder(id: number, checked: boolean): void {
     this.selectedOrderIds = checked
       ? [...new Set([...this.selectedOrderIds, id])]
       : this.selectedOrderIds.filter((value) => value !== id);
   }
+  // ไรเดอร์ที่พร้อมรับงาน (สถานะ READY) สำหรับเลือกมอบหมายงาน
   readyRiders() {
     return this.store.riders().filter((rider) => rider.workStatus === 'READY');
   }
+  // มอบหมายใบงานที่ยังไม่ยืนยันให้ไรเดอร์ที่เลือก แล้วอัปเดตแผนที่แสดง
   assignRider(jobId: number, riderId: number): void {
     const rider = this.store.riders().find((r) => Number(r.id) === riderId);
     if (!this.backendPlan || this.backendPlan.status !== 'GENERATED' || !rider) return;
@@ -95,6 +104,7 @@ export class DeliveryComponent {
     };
     this.store.choosePlan(adaptBackendPlan(this.backendPlan, this.store.riders()));
   }
+  // ช่วงเวลาส่งของรอบนี้: ใช้ที่กรอกไว้ก่อน ถ้าไม่กรอกใช้ค่าตั้งร้าน พร้อมออเดอร์ที่ติ๊กไว้
   private roundWindow() {
     return {
       startTime: this.roundStart || this.store.settings()?.deliveryStartTime?.slice(0, 5),
@@ -130,6 +140,7 @@ export class DeliveryComponent {
   private readonly candidateBackend = signal<RoutePlanModel | null>(null);
   private viewRequestId = 0;
 
+  // ใบงานที่บันทึกไว้ที่จะแสดง: แสดงทั้งหมดถ้ากดดูทั้งหมด ไม่งั้นแสดงแผนปัจจุบันก่อนแล้วตามด้วย 4 ใบแรก
   get visibleSavedPlans(): RoutePlanSummaryModel[] {
     if (this.showAllSavedPlans) return this.savedPlans;
     const current =
@@ -145,6 +156,7 @@ export class DeliveryComponent {
     return Boolean(plan.planDate) && plan.planDate !== todayLocal();
   }
 
+  // ตอนสร้าง: รีเฟรชข้อมูล แล้วตั้ง effect ให้โหลดใบงานที่บันทึกไว้ทันทีที่ backend พร้อม
   constructor() {
     this.store.refresh();
     // connect() เป็น async — effect นี้รันครั้งแรกตอนสร้าง component และรันซ้ำ
@@ -191,6 +203,7 @@ export class DeliveryComponent {
             this.savedPlans = plans;
             // เปิดทานให้เฉพาะแผนวันนี้เสมอ แผนวันอื่นเอาไว้ตรวจ/ลบเอง
             const today = todayLocal();
+            // เช็กว่าแผนนี้เป็นของวันนี้หรือไม่ (ไม่มีวัน = ถือว่าเป็นวันนี้)
             const isToday = (plan: RoutePlanSummaryModel) => !plan.planDate || plan.planDate === today;
             const current =
               plans.find((plan) => plan.status === 'SELECTED' && isToday(plan)) ??
@@ -213,6 +226,7 @@ export class DeliveryComponent {
     }
   }
 
+  // ป้ายสถานะแผนภาษาไทยจากสถานะของ backend
   planStatusLabel(status: RoutePlanStatus): string {
     return status === 'SELECTED'
       ? 'ยืนยันแล้ว'
@@ -326,6 +340,7 @@ export class DeliveryComponent {
     return plan ? routingSourceLabel(plan) : null;
   }
 
+  // คำนวณแผนได้หรือไม่: มีออเดอร์ค้าง และไม่ได้กำลังคำนวณ/ยืนยันอยู่
   canCalculate(): boolean {
     const orders = this.store
       .pendingOrders()
@@ -348,6 +363,7 @@ export class DeliveryComponent {
       })
     );
   }
+  // ขอให้ backend สร้างแผนใหม่จากออเดอร์ที่เลือกและช่วงเวลาที่ตั้งไว้
   calculate(): void {
     if (!this.canCalculate() || this.calculating) return;
     this.plansError = null;
@@ -390,6 +406,7 @@ export class DeliveryComponent {
     }
     this.plansError = 'ยังเชื่อมต่อระบบจัดส่งไม่ได้ กรุณารีเฟรชและลองใหม่';
   }
+  // รับแผนจาก backend มาเก็บไว้: แปลงเป็นรูปของหน้าแอป และตั้งเวลาเริ่ม/เส้นตายตามแผน
   private adoptBackend(backend: RoutePlanModel): void {
     this.roundStart = (backend.startTime ?? backend.shop?.deliveryStartTime ?? '').slice(0, 5);
     this.roundDeadline = (backend.deliveryDeadline ?? backend.shop?.deliveryDeadline ?? '').slice(
@@ -409,6 +426,7 @@ export class DeliveryComponent {
     this.reviewing = false;
     this.calculating = false;
   }
+  // ขอให้ backend คำนวณแผนใหม่เพื่อเปรียบเทียบกับแผนเดิม (ยังไม่แทนที่จนกว่าจะเลือก)
   compare(): void {
     if (this.candidate() || this.calculating) return;
     this.plansError = null;
@@ -452,6 +470,7 @@ export class DeliveryComponent {
     }
     this.plansError = 'กรุณาเปิดแผนร่างจากระบบก่อนค้นหาแผนทางเลือก';
   }
+  // ทิ้งแผนที่คำนวณมาเปรียบเทียบ (ไม่เลือก)
   discardCandidate(): void {
     const id = this.candidateBackend()?.routePlanId;
     if (id != null && this.routePlans) {
@@ -480,14 +499,17 @@ export class DeliveryComponent {
     }
     this.clearCandidate();
   }
+  // ล้างแผนเปรียบเทียบและสถานะการรับทราบทั้งหมด
   private clearCandidate(): void {
     this.candidateBackend.set(null);
     this.acknowledgeCandidate = false;
   }
+  // เลื่อนหน้าจอไปโฟกัสที่กล่องแผนเปรียบเทียบ
   focusCandidate(): void {
     this.candidateBox?.nativeElement.focus();
     this.candidateBox?.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+  // เลือกแผนเปรียบเทียบให้เป็นแผนปัจจุบัน
   chooseCandidate(): void {
     const candidate = this.candidate();
     const backend = this.candidateBackend();
@@ -501,11 +523,13 @@ export class DeliveryComponent {
     this.acknowledgeCandidate = false;
     this.ackError = false;
   }
+  // เริ่มโหมดตรวจแผนก่อนยืนยัน
   startReview(): void {
     this.acknowledgeLate = false;
     this.ackError = false;
     this.reviewing = true;
   }
+  // ยืนยันแผนปัจจุบัน: ถ้าแผนส่งเกินเส้นตายต้องติ๊ก รับทราบก่อน แล้วส่งให้ backend บันทึกการเลือก
   confirm(): void {
     const plan = this.store.plan();
     if (!this.reviewing || !plan || this.confirmingPlan) return;
@@ -525,6 +549,7 @@ export class DeliveryComponent {
       return;
     }
     const wasLate = !plan.deadlineSafe;
+    // ปิดท้ายการยืนยันแผน: เก็บแผนที่ยืนยันแล้ว ปิดโหมดตรวจ และล้างสถานะรับทราบ
     const finish = () => {
       this.store.confirmPlan();
       this.reviewing = false;
@@ -570,16 +595,20 @@ export class DeliveryComponent {
       return;
     }
   }
+  // เวลานานที่สุดในทุกคันของแผน (นาที)
   longestMinutes(plan: RoutePlan): number {
     return Math.max(0, ...plan.routes.map((route) => route.durationMinutes));
   }
+  // จำนวนจุดส่งรวมของทุกคันในแผน
   totalStops(plan: RoutePlan): number {
     return plan.routes.reduce((total, route) => total + route.stops.length, 0);
   }
+  // แปลงเวลา "HH:MM" -> จำนวนนาทีตั้งแต่เที่ยงคืน
   private timeMinutes(value: string): number {
     const [hours, minutes] = value.slice(0, 5).split(':').map(Number);
     return hours * 60 + minutes;
   }
+  // เวลาเริ่มส่งของแผน (นาทีตั้งแต่เที่ยงคืน) จากแผนหรือค่าตั้งร้าน
   private startMinutes(): number {
     return this.timeMinutes(
       this.store.plan()?.startTime ??
@@ -588,9 +617,11 @@ export class DeliveryComponent {
         '11:30',
     );
   }
+  // เส้นตายส่งของ (นาทีตั้งแต่เที่ยงคืน) จากแผนหรือค่าตั้งร้าน
   private deadlineMinutes(): number {
     return this.timeMinutes(this.deadlineLabel());
   }
+  // เส้นตายส่งของที่จะแสดง (HH:MM) จากแผนหรือค่าตั้งร้าน
   deadlineLabel(): string {
     return (
       this.store.plan()?.deliveryDeadline ??
@@ -599,16 +630,20 @@ export class DeliveryComponent {
       '12:30'
     ).slice(0, 5);
   }
+  // เวลาจบโดยประมาณของแผน: ใช้ค่าจาก backend ถ้ามี ไม่งั้นเริ่ม+เวลานานที่สุด
   finishTime(plan: RoutePlan): string {
     return plan.estimatedFinishTime || this.finishTimeForRoute(this.longestMinutes(plan));
   }
+  // เวลาที่เหลือก่อนเส้นตายของแผน (นาที, ติดลบ = เกินเส้นตาย)
   marginMinutes(plan: RoutePlan): number {
     return this.deadlineMinutes() - this.startMinutes() - this.longestMinutes(plan);
   }
+  // เวลาจบของเส้นทางหนึ่งคัน: เวลาเริ่ม + ระยะเวลาของคันนั้น -> HH:MM
   finishTimeForRoute(durationMinutes: number): string {
     const minutes = this.startMinutes() + durationMinutes;
     return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
   }
+  // เวลาจบของคันนี้: ใช้ค่าจาก backend ถ้ามี ไม่งั้นคำนวณจากเวลาเริ่ม+ระยะเวลา
   routeFinishTime(route: RiderRoute): string {
     return route.estimatedFinishTime || this.finishTimeForRoute(route.durationMinutes);
   }
@@ -620,20 +655,24 @@ export class DeliveryComponent {
   lateMinutes(route: RiderRoute): number {
     return Math.max(0, this.startMinutes() + route.durationMinutes - this.deadlineMinutes());
   }
+  // ความจุรวมของแผน: จำนวนคัน x ออเดอร์สูงสุดต่อคัน
   capacity(plan: RoutePlan): number {
     return (
       plan.routes.length *
       (plan.shop?.maxOrdersPerRider ?? this.store.settings()?.maxOrdersPerRider ?? 3)
     );
   }
+  // เปอร์เซ็นต์ความจุที่ใช้ไปของแผน (สูงสุด 100)
   capacityPercent(plan: RoutePlan): number {
     return this.capacity(plan)
       ? Math.min(100, (this.totalStops(plan) / this.capacity(plan)) * 100)
       : 0;
   }
+  // ข้อมูลร้านที่จะแสดงบนแผนที่: แผนเปรียบเทียบ > แผนปัจจุบัน > ค่าตั้งร้าน
   mapShop() {
     return this.candidateBackend()?.shop ?? this.store.plan()?.shop ?? this.store.settings();
   }
+  // เวลาเริ่มที่จะแสดงบนแผนที่ (HH:MM)
   mapStart(): string {
     return (
       this.candidateBackend()?.startTime ??
@@ -642,11 +681,13 @@ export class DeliveryComponent {
       ''
     ).slice(0, 5);
   }
+  // ค่าเรียกไรเดอร์รวมของแผน: จำนวนคัน x ค่าเรียกต่อคัน
   callFee(plan: RoutePlan): number {
     return (
       plan.routes.length * (plan.shop?.riderBaseCost ?? this.store.settings()?.riderBaseCost ?? 15)
     );
   }
+  // ค่าตามระยะทางของแผน: ค่าส่งรวม - ค่าเรียกไรเดอร์ (ปัด 2 ตำแหน่ง)
   distanceFee(plan: RoutePlan): number {
     return Math.round((plan.deliveryCost - this.callFee(plan)) * 100) / 100;
   }

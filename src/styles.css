@@ -1,3 +1,5 @@
+/* ไฟล์นี้: สไตล์รวมของแอป — ธีมสี ฟอนต์ และคลาสที่ใช้ร่วมกันทุกหน้า (Tailwind + Leaflet) */
+
 @import 'tailwindcss';
 @import 'leaflet/dist/leaflet.css';
 

@@ -1,3 +1,5 @@
+// ไฟล์นี้: แปลงข้อมูลแผนให้เป็นรูปที่แสดงบนแผนที่ — สีประจำคัน เส้นถนน/เส้นประมาณ และป้ายอธิบาย
+
 import { DeliveryRouteModel, RoutePlanModel } from './route-plan.models';
 
 /**
@@ -8,6 +10,7 @@ import { DeliveryRouteModel, RoutePlanModel } from './route-plan.models';
  */
 
 /** Predefined presentation palette — one distinct color per rider route. */
+// ชุดสีประจำคันสำหรับแสดงเส้นทางบนแผนที่ (สีละคัน วนซ้ำเมื่อเกิน)
 export const ROUTE_PALETTE = [
   '#9f2f2d',
   '#346538',
@@ -21,6 +24,7 @@ export const ROUTE_PALETTE = [
   '#31437c',
 ] as const;
 
+// สีประจำคันจากลำดับไรเดอร์ -> สีในจานสี (วนซ้ำเมื่อเกินจำนวนสี)
 export function routeColor(riderIndex: number): string {
   return ROUTE_PALETTE[riderIndex % ROUTE_PALETTE.length]!;
 }
@@ -32,16 +36,19 @@ export type LatLng = [number, number];
  * Leaflet polyline (`[latitude, longitude]`). Returns null when the plan
  * used fallback routing and carries no road geometry.
  */
+// แปลงเส้น GeoJSON [lng, lat] ของงาน -> จุด [lat, lng] สำหรับ Leaflet, ไม่มีเส้นถนนคืน null
 export function geometryToLatLngs(job: DeliveryRouteModel): LatLng[] | null {
   if (!job.geometry) return null;
   return job.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
 }
 
 /** Approximate fallback line shop → stops (dashed display when geometry is null). */
+// เส้นประมาณจากร้านไปทุกจุดส่ง ใช้เมื่อไม่มีเส้นถนนจริง
 export function approximateLine(shop: LatLng, job: DeliveryRouteModel): LatLng[] {
   return [shop, ...job.stops.map((stop): LatLng => [stop.latitude, stop.longitude])];
 }
 
+// ป้ายอธิบายที่มาของเส้นทาง: ถนนจริงจาก OSRM ทั้งหมด/บางส่วน หรือเส้นทางโดยประมาณ
 export function routingSourceLabel(plan: RoutePlanModel): string {
   const roadLines = plan.jobs.filter((job) => job.geometry != null).length;
   if (plan.routingSource === 'ROAD' && !plan.approximate) {
@@ -56,6 +63,7 @@ export function routingSourceLabel(plan: RoutePlanModel): string {
 }
 
 /** A single order's leg starts at the shop or the previous delivery stop. */
+// เส้นของจุดส่งหนึ่งจุด: ใช้เส้นถนนของจุดนั้นถ้ามี ไม่งั้นลากจากจุดก่อนหน้า (หรือร้าน) -> จุดพร้อมบอกว่าเป็นเส้นประมาณหรือไม่
 export function stopLine(
   shop: LatLng,
   job: DeliveryRouteModel,
@@ -77,6 +85,7 @@ export function stopLine(
   };
 }
 
+// เทียบเวลาจบโดยประมาณกับเส้นตาย -> "ส่งทันภายในกำหนด" หรือ "เกินกำหนด"
 export function deadlineLabel(plan: RoutePlanModel, deadline: string): string {
   return plan.estimatedFinishTime <= deadline ? 'ส่งทันภายในกำหนด' : 'เกินกำหนด';
 }

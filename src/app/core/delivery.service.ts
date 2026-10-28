@@ -1,3 +1,5 @@
+// ไฟล์นี้: ที่เก็บข้อมูลกลางของแอป (store) — ลูกค้า ออเดอร์ ไรเดอร์ แผน และค่าตั้งร้านที่ทุกหน้าใช้ร่วมกัน
+
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { finalize, forkJoin, map, timeout } from 'rxjs';
 import { CustomersApiService } from './customer-api.service';
@@ -12,6 +14,7 @@ import { AuthService } from './auth.service';
 
 const PLAN_KEY = 'smart-lunch-plan-v1';
 
+// store กลาง: เก็บลูกค้า/ออเดอร์/ไรเดอร์/แผน/ค่าตั้งร้าน และโหลดจาก backend
 @Injectable({ providedIn: 'root' })
 export class DeliveryService {
   readonly customers = signal<Customer[]>([]);
@@ -22,13 +25,16 @@ export class DeliveryService {
   readonly connectionError = signal('');
   readonly confirmedPlan = signal<RoutePlan | null>(null);
   readonly planHistory = signal<RoutePlan[]>([]);
+  // ออเดอร์ที่ยังค้าง (สถานะ pending) จากทั้งหมด
   readonly pendingOrders = computed(() =>
     this.orders().filter((order) => order.status === 'pending'),
   );
+  // ลูกค้าที่มีออเดอร์ค้างอยู่
   readonly dispatchCustomers = computed(() => {
     const customerIds = new Set(this.pendingOrders().map((order) => order.customerId));
     return this.customers().filter((customer) => customerIds.has(customer.id));
   });
+  // จำนวนกล่องรวมของออเดอร์ที่ค้าง
   readonly pendingBoxes = computed(() =>
     this.pendingOrders().reduce((sum, order) => sum + order.boxes, 0),
   );
@@ -45,12 +51,14 @@ export class DeliveryService {
   private readonly auth = inject(AuthService, { optional: true });
   private loadGeneration = 0;
 
+  // สร้างตัวเช็กว่า response นี้ยังเป็นรอบโหลดล่าสุดและ token ยังไม่เปลี่ยนหรือไม่
   private currentResponse(): () => boolean {
     const generation = this.loadGeneration;
     const token = this.auth?.token();
     return () => generation === this.loadGeneration && token === this.auth?.token();
   }
 
+  // ตอนสร้าง: ลบแคชออเดอร์/แผนเก่าที่เคยเก็บในเครื่องออก (ไม่ใช้ข้อมูลเก่าจัดส่ง)
   constructor() {
     // Retire legacy order/plan caches; never restore orders or their snapshots from storage.
     try {
@@ -65,6 +73,7 @@ export class DeliveryService {
   /**
    * Load one complete API snapshot; failed/partial loads cannot become dispatch data.
    */
+  // โหลดข้อมูลชุดใหญ่จาก backend พร้อมกัน (ลูกค้า+ออเดอร์วันนี้+ไรเดอร์) -> เก็บลง store; โหลดไม่ครบถือว่าใช้ไม่ได้
   connect(refresh = false): void {
     if (this.usingBackend() && !refresh) return;
     this.loadGeneration++;
@@ -121,21 +130,25 @@ export class DeliveryService {
     });
   }
 
+  // เมื่อลูกค้าถูกลบ: เอาออกจากรายการ ล้างแคชแผน และล้างแผนปัจจุบัน
   customerDeleted(id: string): void {
     this.customers.update((list) => list.filter((customer) => customer.id !== id));
     this.routePlans?.invalidateCache();
     this.clearPlan();
   }
 
+  // โหลดข้อมูลใหม่ทั้งหมด: ล้างแคชแผนแล้วโหลดชุดใหญ่ซ้ำ
   refresh(): void {
     this.routePlans?.invalidateCache();
     this.connect(true);
   }
 
+  // เมื่อออเดอร์ถูกลบ 1 ใบ: ส่งต่อให้ตัวลบหลายใบจัดการ
   orderDeleted(id: string): void {
     this.ordersDeleted([id]);
   }
 
+  // เอาออเดอร์ที่ระบุออกจากรายการ ล้างแคชแผน และล้างแผนปัจจุบัน
   ordersDeleted(ids: readonly string[]): void {
     const removed = new Set(ids);
     this.orders.update((list) => list.filter((order) => !removed.has(order.id)));
@@ -143,11 +156,13 @@ export class DeliveryService {
     this.clearPlan();
   }
 
+  // เลือกแผนที่จะแสดง/ยืนยัน -> เก็บเป็นแผนปัจจุบัน และล้างแผนที่ยืนยันแล้ว
   choosePlan(plan: RoutePlan): void {
     this.plan.set(plan);
     this.confirmedPlan.set(null);
   }
 
+  // ยืนยันแผนปัจจุบัน -> เก็บเป็นแผนที่ยืนยันแล้ว และเพิ่มไว้ต้นประวัติแผน
   confirmPlan(): void {
     const plan = this.plan();
     if (!plan) return;
@@ -155,15 +170,18 @@ export class DeliveryService {
     this.planHistory.update((history) => [plan, ...history]);
   }
 
+  // หาลูกค้าของออเดอร์ใบนี้จาก id ลูกค้า -> ลูกค้าคนนั้น หรือไม่เจอ
   customerFor(order: Order): Customer | undefined {
     return this.customers().find((customer) => customer.id === order.customerId);
   }
 
+  // ล้างแผนปัจจุบันและแผนที่ยืนยันแล้ว
   private clearPlan(): void {
     this.plan.set(null);
     this.confirmedPlan.set(null);
   }
 
+  // ล้างข้อมูลทั้งหมดใน store เมื่อออกจากระบบ
   clearForLogout(): void {
     this.loadGeneration++;
     this.customers.set([]);

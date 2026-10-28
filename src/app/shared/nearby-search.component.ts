@@ -1,6 +1,9 @@
+// ไฟล์นี้: กล่องค้นหาใกล้ร้านที่ใช้ร่วมกัน — ติ๊กเปิด/ปิด เลือกรัศมี แล้วส่งรัศมีให้หน้าหลักไปค้นหา
+
 import { Component, input, linkedSignal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
+// component ค้นหาใกล้ร้าน: รับรัศมีตั้งต้น แสดง checkbox+ช่องรัศมี และส่ง event เมื่อค้นหา/ยกเลิก
 @Component({
   selector: 'app-nearby-search',
   standalone: true,
@@ -61,6 +64,7 @@ export class NearbySearchComponent {
   readonly searched = output<number>();
   readonly cleared = output<void>();
   error = '';
+  // ติ๊ก checkbox: เปิด = ค้นหาด้วยรัศมีที่กรอก, ปิด = แจ้งหน้าหลักว่ายกเลิกการค้นหาใกล้ร้าน
   toggle(event: Event): void {
     const checkbox = event.target as HTMLInputElement;
     if (checkbox.checked) {
@@ -70,6 +74,7 @@ export class NearbySearchComponent {
       this.cleared.emit();
     }
   }
+  // ตรวจรัศมีว่าต้องมากกว่า 0 กม. แล้วส่งรัศมีให้หน้าหลัก -> สำเร็จหรือไม่
   search(): boolean {
     if (this.busy()) return false;
     const radius = this.radius();

@@ -1,3 +1,5 @@
+// ไฟล์นี้: แปลงข้อมูลดิบจาก API ให้เป็นรูปที่หน้าแอปใช้ (id ตัวเลข -> ข้อความ, สถานะ backend -> สถานะหน้าแอป)
+
 import type { ApiCustomer } from './customer-api.models';
 import type { ApiOrder, ApiOrderStatus } from './order-api.service';
 import type { ApiRider } from './rider-api.service';
@@ -16,12 +18,14 @@ const RIDER_COLORS = [
   '#7b5e39',
 ];
 
+// แปลงสถานะออเดอร์จาก backend (PENDING/DELIVERED/อื่น) -> pending/delivered/assigned
 export function fromBackendStatus(status: ApiOrderStatus): OrderStatus {
   if (status === 'PENDING') return 'pending';
   if (status === 'DELIVERED') return 'delivered';
   return 'assigned';
 }
 
+// แปลงลูกค้าจาก API -> ลูกค้าของหน้าแอป (id เป็นข้อความ, ที่อยู่ค่าว่างเป็น '')
 export function mapCustomer(raw: ApiCustomer): Customer {
   return {
     id: String(raw.id),
@@ -33,6 +37,7 @@ export function mapCustomer(raw: ApiCustomer): Customer {
   };
 }
 
+// แปลงออเดอร์จาก API -> ออเดอร์ของหน้าแอป พร้อมแปลงสถานะ
 export function mapOrder(raw: ApiOrder): Order {
   return {
     id: String(raw.id),
@@ -43,6 +48,7 @@ export function mapOrder(raw: ApiOrder): Order {
   };
 }
 
+// แปลงไรเดอร์จาก API -> ไรเดอร์ของหน้าแอป พร้อมกำหนดสีและรหัสงานตามลำดับ
 export function mapRider(raw: ApiRider, index: number): Rider {
   return {
     workStatus: raw.workStatus,

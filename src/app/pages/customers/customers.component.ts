@@ -1,3 +1,5 @@
+// ไฟล์นี้: หน้า "ลูกค้า" ของเจ้าของร้าน — ค้นหา ดูแผนที่ เพิ่ม แก้ไข และลบลูกค้า
+
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { apiErrorMessage } from '../../core/api-error';
@@ -12,6 +14,7 @@ import { finalize, timeout } from 'rxjs';
 
 type Draft = Omit<Customer, 'id'> & { id?: string };
 
+// หน้า manage ลูกค้า: โหลดจาก backend, ค้นหาใกล้ร้าน, แก้ไขพิกัดบนแผนที่ และบันทึก/ลบ
 @Component({
   selector: 'app-customers',
   standalone: true,
@@ -40,11 +43,13 @@ export class CustomersComponent implements OnInit {
   nearbyRadius = 1;
   readonly distances = signal<Record<string, number>>({});
   private loadRequestId = 0;
+  // เปิดโหมดค้นหาใกล้ร้านด้วยรัศมีที่ระบุ แล้วโหลดลูกค้าใหม่
   searchNearby(radius = this.nearbyRadius): void {
     this.nearbyRadius = radius;
     this.nearbyPoint = true;
     this.loadCustomers();
   }
+  // ปิดโหมดค้นหาใกล้ร้าน แล้วโหลดลูกค้าปกติ
   clearNearby(): void {
     this.nearbyPoint = false;
     this.loadCustomers();
@@ -60,6 +65,7 @@ export class CustomersComponent implements OnInit {
   error = '';
   readonly feedback = signal('');
   draft: Draft = this.blankDraft();
+  // พิกัดร้านที่จะปักบนแผนที่: ใช้ค่าตั้งร้านจาก backend ถ้ามี ไม่งั้นใช้ค่าร้านตั้งต้น
   mapShop() {
     const settings = this.deliveryStore.settings?.();
     return settings
@@ -68,6 +74,7 @@ export class CustomersComponent implements OnInit {
   }
   private feedbackTimer?: ReturnType<typeof setTimeout>;
 
+  // ตอนเปิดหน้า: โหลดลูกค้า และตั้งให้ล้าง timer ค้นหา/แจ้งเตือนเมื่อออกจากหน้า
   ngOnInit(): void {
     this.loadCustomers();
     this.destroyRef.onDestroy(() => {
@@ -110,6 +117,7 @@ export class CustomersComponent implements OnInit {
     });
   }
 
+  // รายชื่อลูกค้าที่แสดง: โหมดใกล้ร้านให้กรองตามคำค้นในเครื่อง, โหมดปกติใช้รายการจาก backend ตรงๆ
   filteredCustomers(): Customer[] {
     // backend ค้นให้แล้ว แสดงรายการที่ตอบกลับได้เลย
     const term = this.query.trim().toLowerCase();
@@ -141,6 +149,7 @@ export class CustomersComponent implements OnInit {
       : [];
   }
 
+  // เปิดฟอร์มเพิ่มลูกค้าใหม่ด้วยข้อมูลว่าง (กันไม่ให้เปิดซ้อนตอนกำลังบันทึก/ลบ)
   startCreate(): void {
     // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ
     if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
@@ -156,6 +165,7 @@ export class CustomersComponent implements OnInit {
     this.showForm = true;
   }
 
+  // เปิดฟอร์มแก้ไขลูกค้าคนนี้ โดยใส่ข้อมูลและพิกัดเดิมลงฟอร์ม
   edit(customer: Customer): void {
     // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ
     if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
@@ -171,6 +181,7 @@ export class CustomersComponent implements OnInit {
     this.showForm = true;
   }
 
+  // ปิดฟอร์มโดยไม่บันทึก (กันไม่ให้ปิดตอนกำลังบันทึก/ลบ)
   cancel(): void {
     // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ
     if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
@@ -179,12 +190,14 @@ export class CustomersComponent implements OnInit {
     this.error = '';
   }
 
+  // เลือกลูกค้าจากผลค้นหาตำแหน่ง -> ใช้พิกัดของคนนั้น และเติมที่อยู่ถ้าฟอร์มยังว่าง
   selectPlace(customer: Customer): void {
     this.setLocation({ lat: customer.lat, lng: customer.lng });
     if (!this.draft.address.trim()) this.draft.address = customer.address;
     this.placeQuery = '';
   }
 
+  // ตั้งพิกัดให้ฟอร์มจากจุดที่เลือกบนแผนที่/จากผลค้นหา
   setLocation(location: { lat: number; lng: number }): void {
     this.draft.lat = location.lat;
     this.draft.lng = location.lng;
@@ -195,11 +208,13 @@ export class CustomersComponent implements OnInit {
     this.error = '';
   }
 
+  // ล้างพิกัดที่เลือกไว้ในฟอร์ม
   clearLocation(): void {
     this.locationSelected = false;
     this.pickerLocation = null;
   }
 
+  // ใช้พิกัดที่กรอกเอง: ตรวจว่าอยู่ในช่วง lat/lng ที่ถูกต้องก่อนตั้งให้ฟอร์ม
   applyCoordinates(): void {
     if (
       this.manualLat === null ||
@@ -215,6 +230,7 @@ export class CustomersComponent implements OnInit {
     this.setLocation({ lat: this.manualLat, lng: this.manualLng });
   }
 
+  // บันทึกฟอร์ม: ต้องปักพิกัดก่อน, มี id = แก้ไขคนเดิม, ไม่มี id = เพิ่มคนใหม่, แล้วโหลดรายการใหม่
   save(): void {
     // กันเปลี่ยนไปเปิดฟอร์มอื่นระหว่างบันทึก และ ลบ ไม่เกิดขึ้นพร้อมกัน
     if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
@@ -287,6 +303,7 @@ export class CustomersComponent implements OnInit {
   }
 
   // REMOVE //
+  // ลบลูกค้าคนนี้หลังยืนยัน: backend ลบสำเร็จจึงเอาออกจากหน้าจอ (ลบไม่ได้ถ้ามีออเดอร์อ้างอิง)
   remove(customer: Customer): void {
     // ไม่ให้ลบซ้ำ หรือลบระหว่างบันทึกฟอร์ม
     if (this.savingCustomer() || this.deletingCustomerId() !== null) return;
@@ -335,12 +352,14 @@ export class CustomersComponent implements OnInit {
       });
   }
 
+  // แสดงข้อความแจ้งผลสั้นๆ แล้วหายไปเองใน 3.5 วินาที
   private notify(message: string): void {
     clearTimeout(this.feedbackTimer);
     this.feedback.set(message);
     this.feedbackTimer = setTimeout(() => this.feedback.set(''), 3500);
   }
 
+  // ฟอร์มลูกค้าว่างตั้งต้น (พิกัดเริ่มที่ตำแหน่งร้าน)
   private blankDraft(): Draft {
     return { name: '', phone: '', address: '', lat: 16.24631, lng: 103.25286 };
   }

@@ -1,3 +1,5 @@
+// ไฟล์นี้: หน้าตั้งค่าร้านของเจ้าของร้าน — แก้ไขชื่อร้าน พิกัด เวลาส่ง และสูตรต้นทุน พร้อมส่วนบัญชีเจ้าของร้าน
+
 import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, timeout } from 'rxjs';
@@ -9,6 +11,7 @@ import { DeliveryService } from '../../core/delivery.service';
 import { RoutePlanApiService } from '../../core/route-plan-api.service';
 import { OwnerAccountComponent } from './owner-account.component';
 
+// หน้าตั้งค่าร้าน: โหลดค่าตั้งร้านมาใส่ฟอร์ม ตรวจพิกัด/เวลา แล้วบันทึก
 @Component({
   selector: 'app-settings',
   standalone: true,
@@ -26,6 +29,7 @@ export class SettingsComponent implements OnInit {
   saving = false;
   saved = false;
   error = '';
+  // ตั้งพิกัดร้านในฟอร์มจากจุดที่เลือกบนแผนที่ (ตรวจช่วง lat/lng ก่อน)
   setLocation(location: { lat: number; lng: number }): void {
     if (
       !this.draft ||
@@ -39,6 +43,7 @@ export class SettingsComponent implements OnInit {
     this.saved = false;
     this.cdr.markForCheck();
   }
+  // ตอนเปิดหน้า: โหลดค่าตั้งร้านจาก backend มาใส่ฟอร์ม (เวลาเหลือแค่ HH:MM)
   ngOnInit(): void {
     this.api
       .get()
@@ -63,6 +68,7 @@ export class SettingsComponent implements OnInit {
         },
       });
   }
+  // บันทึกค่าตั้งร้าน: ตรวจพิกัด ชื่อร้าน และเวลาเริ่มต้องก่อนเส้นตาย แล้วอัปเดต store และล้างแคชแผน
   save(): void {
     if (!this.draft || this.saving) return;
     this.error = '';

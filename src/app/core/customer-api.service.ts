@@ -1,9 +1,12 @@
+// ไฟล์นี้: คุยกับ API ลูกค้า — โหลด ค้นหาใกล้ร้าน เพิ่ม แก้ไข ลบ
+
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
 import type { ApiCustomer, ApiCustomerInput } from './customer-api.models';
 
+// service เรียก API /customers
 @Injectable({ providedIn: 'root' })
 export class CustomersApiService {
   private readonly http = inject(HttpClient);
@@ -15,6 +18,7 @@ export class CustomersApiService {
       params: search.trim() ? { search: search.trim() } : {},
     });
   }
+  // โหลดลูกค้าที่อยู่ใกล้ร้านในรัศมีที่กำหนด (กม.)
   nearby(radiusKm = 1) {
     return this.http.get<ApiCustomer[]>(`${this.url}/nearby`, { params: { radiusKm } });
   }

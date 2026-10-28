@@ -1,3 +1,5 @@
+// ไฟล์นี้: คุยกับ API ไรเดอร์ — โหลด เพิ่ม แก้ไข ลบ และตั้งบัญชี/รหัสผ่าน
+
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
@@ -21,6 +23,7 @@ export interface RiderApiInput {
   isAvailable?: boolean;
 }
 
+// service เรียก API /riders
 @Injectable({ providedIn: 'root' })
 export class RidersApiService {
   private readonly http = inject(HttpClient);
@@ -48,10 +51,12 @@ export class RidersApiService {
     return this.http.delete<void>(`${this.url}/${id}`);
   }
 
+  // ตั้งรหัสผ่านให้ไรเดอร์ตาม id
   setPassword(id: number, password: string) {
     return this.http.put<void>(`${this.url}/${id}/password`, { password });
   }
 
+  // ตั้งบัญชี login (ชื่อผู้ใช้ และรหัสผ่านถ้ามี) ให้ไรเดอร์ตาม id
   setAccount(id: number, username: string, password?: string) {
     return this.http.put<void>(`${this.url}/${id}/account`, {
       username,

@@ -1,3 +1,5 @@
+// ไฟล์นี้: หน้าออเดอร์ของเจ้าของร้าน — ดู เพิ่ม แก้ไข ลบออเดอร์ สร้างออเดอร์จำลอง และค้นหาใกล้ร้าน
+
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -13,6 +15,7 @@ import { DeliveryService } from '../../core/delivery.service';
 
 type Draft = { id?: number; customerId: number | null; boxes: number; status: ApiOrderStatus };
 
+// หน้าจัดการออเดอร์: โหลดออเดอร์ตามวัน/สถานะ, กรองในเครื่อง, และบันทึก/ลบ/สร้างออเดอร์จำลอง
 @Component({
   selector: 'app-orders',
   standalone: true,
@@ -35,6 +38,7 @@ export class OrdersComponent {
   dateFilter = this.today;
   statusFilter: ApiOrderStatus | '' = '';
   private loadRequestId = 0;
+  // เปิดโหมดค้นหาออเดอร์ใกล้ร้านด้วยรัศมีที่ระบุ แล้วโหลดใหม่ (ล้างตัวกรองวัน/สถานะ/จำลอง)
   searchNearby(radius = this.nearbyRadius): void {
     this.nearbyRadius = radius;
     this.nearbyPoint = true;
@@ -43,6 +47,7 @@ export class OrdersComponent {
     this.statusFilter = '';
     this.reload();
   }
+  // ปิดโหมดค้นหาใกล้ร้าน กลับไปดูออเดอร์ของวันนี้
   clearNearby(): void {
     this.nearbyPoint = false;
     this.dateFilter = this.today;
@@ -55,10 +60,12 @@ export class OrdersComponent {
   showForm = false;
   feedback = '';
   draft: Draft = this.blankDraft();
+  // ตอนเปิดหน้า: โหลดออเดอร์
   ngOnInit(): void {
     this.reload();
   }
 
+  // โหลดออเดอร์และลูกค้าพร้อมกัน (โหมดใกล้ร้านหรือตามวัน) กันผลเก่าทับผลใหม่
   reload(): void {
     this.loading.set(true);
     this.error.set('');
@@ -88,13 +95,16 @@ export class OrdersComponent {
       });
   }
 
+  // ออเดอร์ที่ยังค้าง (PENDING) จากทั้งหมด
   pendingOrders(): ApiOrder[] {
     return this.orders().filter((order) => order.status === 'PENDING');
   }
+  // จำนวนกล่องรวมของออเดอร์ที่ค้าง
   pendingBoxes(): number {
     return this.pendingOrders().reduce((sum, order) => sum + order.boxes, 0);
   }
 
+  // ออเดอร์ที่จะแสดง: กรองตามสถานะ, จริง/จำลอง, และคำค้นชื่อ-เบอร์ลูกค้า
   filteredOrders(): ApiOrder[] {
     const term = this.query.trim().toLowerCase();
     return this.orders().filter((order) => {
@@ -107,10 +117,12 @@ export class OrdersComponent {
     });
   }
 
+  // จำนวนออเดอร์จำลองในรายการที่กรองแล้ว
   simulatedCount(): number {
     return this.filteredOrders().filter((order) => order.isSimulated).length;
   }
 
+  // ลูกค้าที่ชื่อ/เบอร์ตรงกับคำค้น สูงสุด 8 คน สำหรับเลือกตอนสร้างออเดอร์
   matchingCustomers(): ApiCustomer[] {
     const term = this.customerQuery.trim().toLowerCase();
     return this.customers()
@@ -118,12 +130,15 @@ export class OrdersComponent {
       .slice(0, 8);
   }
 
+  // ลูกค้าที่เลือกไว้ในฟอร์มสร้างออเดอร์ จาก id ที่เลือก
   selectedCustomer(): ApiCustomer | undefined {
     return this.customers().find((customer) => customer.id === this.draft.customerId);
   }
+  // หาลูกค้าของออเดอร์ใบนี้จาก id ลูกค้า
   customerFor(order: ApiOrder): ApiCustomer | undefined {
     return this.customers().find((customer) => customer.id === order.customerId);
   }
+  // ป้ายสถานะออเดอร์ภาษาไทยจากสถานะของ backend
   statusLabel(status: ApiOrderStatus): string {
     return {
       PENDING: 'รอจัดส่ง',
@@ -134,6 +149,7 @@ export class OrdersComponent {
     }[status];
   }
 
+  // เปิดฟอร์มสร้างออเดอร์ใหม่ด้วยข้อมูลว่าง
   startCreate(): void {
     if (this.saving()) return;
     this.feedback = '';
@@ -141,6 +157,7 @@ export class OrdersComponent {
     this.customerQuery = '';
     this.showForm = true;
   }
+  // เปิดฟอร์มแก้ไขออเดอร์ใบนี้ โดยใส่ข้อมูลเดิมลงฟอร์ม
   edit(order: ApiOrder): void {
     if (this.saving() || !['PENDING', 'CANCELLED'].includes(order.status)) return;
     this.feedback = '';
@@ -153,18 +170,22 @@ export class OrdersComponent {
     this.customerQuery = '';
     this.showForm = true;
   }
+  // ปิดฟอร์มโดยไม่บันทึก
   cancel(): void {
     if (!this.saving()) this.showForm = false;
   }
+  // เลือกลูกค้าในฟอร์มสร้างออเดอร์ -> ตั้ง id ลูกค้าและปิดผลค้นหา
   chooseCustomer(customer: ApiCustomer): void {
     if (this.saving()) return;
     this.draft.customerId = customer.id;
     this.customerQuery = '';
   }
+  // เพิ่ม/ลดจำนวนกล่องในฟอร์ม โดยจำกัดไว้ 1-3 กล่อง
   adjustBoxes(step: number): void {
     if (this.saving()) return;
     this.draft.boxes = Math.max(1, Math.min(3, this.draft.boxes + step));
   }
+  // บันทึกฟอร์มออเดอร์: มี id = แก้ไขใบเดิม, ไม่มี id = สร้างใบใหม่ แล้วโหลดรายการใหม่
   save(): void {
     if (this.saving() || this.draft.customerId === null) return;
     this.saving.set(true);
@@ -201,6 +222,7 @@ export class OrdersComponent {
         },
       });
   }
+  // ขอให้ backend สร้างออเดอร์จำลองตามจำนวนที่ระบุในวันนี้
   simulate(): void {
     if (this.saving()) return;
     this.saving.set(true);
@@ -220,6 +242,7 @@ export class OrdersComponent {
         error: (err) => this.error.set(apiErrorMessage(err, 'สร้างออเดอร์จำลองไม่สำเร็จ')),
       });
   }
+  // ขอลบออเดอร์จำลองที่เลือกไว้ทั้งหมด
   clearSimulated(): void {
     const ids = this.filteredOrders()
       .filter((order) => order.isSimulated)
@@ -252,6 +275,7 @@ export class OrdersComponent {
           ),
       });
   }
+  // ลบออเดอร์ใบนี้หลังยืนยัน แล้วโหลดรายการใหม่
   remove(order: ApiOrder): void {
     if (this.saving() || !window.confirm(`ลบออเดอร์ ${order.id} หรือไม่?`)) return;
     this.saving.set(true);
@@ -276,6 +300,7 @@ export class OrdersComponent {
           ),
       });
   }
+  // ฟอร์มออเดอร์ว่างตั้งต้น (ลูกค้ายังไม่เลือก กล่อง 1 ใบ)
   private blankDraft(): Draft {
     return { customerId: null, boxes: 1, status: 'PENDING' };
   }

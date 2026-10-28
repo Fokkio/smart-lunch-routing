@@ -1,3 +1,5 @@
+// ไฟล์นี้: แผนที่ลูกค้าและเส้นทาง (Leaflet) — วาดร้าน ลูกค้า เส้นทางที่เลือก และให้เลือกพิกัดบนแผนที่ได้
+
 import {
   AfterViewInit,
   Component,
@@ -14,6 +16,7 @@ import {
 import * as L from 'leaflet';
 import { Customer, RiderRoute, SHOP } from '../../core/models';
 
+// component แผนที่ลูกค้า/เส้นทาง: สร้างแผนที่ Leaflet วาดร้าน ลูกค้า และเส้นทาง พร้อมโหมดเลือกพิกัด
 @Component({
   selector: 'app-delivery-map',
   standalone: true,
@@ -91,6 +94,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
   private tileLayer?: L.TileLayer;
   private layer?: L.FeatureGroup;
 
+  // ตอนแผนที่พร้อมแสดง: สร้างแผนที่ Leaflet กลางที่ร้าน วาดข้อมูล และเปิดโหมดคลิกเลือกพิกัดถ้าตั้งไว้
   ngAfterViewInit(): void {
     this.map = L.map(this.mapElement.nativeElement, { zoomControl: false }).setView(
       [this.shop.lat, this.shop.lng],
@@ -113,6 +117,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
     setTimeout(() => this.map?.invalidateSize(), 0);
   }
 
+  // เมื่อข้อมูลที่ส่งเข้ามาเปลี่ยน: ซิงก์เส้นทางที่เลือก แล้ววาดแผนที่ใหม่
   ngOnChanges(_changes: SimpleChanges): void {
     this.syncSelectedIndex();
     if (
@@ -127,15 +132,18 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
       );
   }
 
+  // ตอนออกจาก component: ลบแผนที่ออก
   ngOnDestroy(): void {
     this.map?.remove();
   }
 
+  // ลองโหลดภาพแผนที่ (tiles) ใหม่อีกครั้งเมื่อโหลดไม่สำเร็จ
   retryTiles(): void {
     this.tilesUnavailable.set(false);
     this.tileLayer?.redraw();
   }
 
+  // เลือกเส้นทางจาก dropdown -> แจ้งหน้าหลัก แล้ววาดแผนที่ใหม่
   selectRoute(event: Event): void {
     const id = (event.target as HTMLSelectElement).value || null;
     this.selectedRiderId = id;
@@ -144,6 +152,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
     this.render();
   }
 
+  // ซิงก์ลำดับเส้นทางที่เลือกให้ตรงกับข้อมูลที่ส่งเข้ามา (ถ้าเส้นทางนั้นไม่มีแล้วให้ยกเลิกการเลือก)
   private syncSelectedIndex(): void {
     if (this.selectedIndex === null) {
       this.selectedRiderId = null;
@@ -153,10 +162,12 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
     this.selectedRiderId = route ? route.rider.id : null;
   }
 
+  // เส้นทางนี้ควรแสดงบนแผนที่หรือไม่ (ตามเส้นทางที่เลือก)
   isVisible(route: RiderRoute): boolean {
     return !this.selectedRiderId || route.rider.id === this.selectedRiderId;
   }
 
+  // ตรวจว่าพิกัดถูกต้องหรือไม่: เป็นตัวเลขและ lat ไม่เกิน 90, lng ไม่เกิน 180
   private static validPoint(
     point: { lat: number; lng: number } | null | undefined,
   ): point is { lat: number; lng: number } {
@@ -169,6 +180,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
     );
   }
 
+  // วาดแผนที่ใหม่ทั้งหมด: ร้าน ลูกค้า เส้นทาง และปักหมุด พร้อมขยายให้พอดีกับทุกจุด
   private render(preserveView = false): void {
     if (!this.map) return;
     this.layer?.remove();
@@ -260,6 +272,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
       });
   }
 
+  // ส่งพิกัดที่เลือกบนแผนที่ให้หน้าหลัก (ปัดทศนิยม 6 ตำแหน่ง)
   private emitLocation(latlng: L.LatLng): void {
     this.locationPicked.emit({
       lat: Number(latlng.lat.toFixed(6)),
@@ -267,6 +280,7 @@ export class DeliveryMapComponent implements AfterViewInit, OnChanges, OnDestroy
     });
   }
 
+  // สร้างกล่อง popup ของแผนที่จากหัวข้อและรายละเอียด -> element ที่แสดงได้
   private popup(title: string, detail: string): HTMLElement {
     const content = document.createElement('div');
     const heading = document.createElement('strong');

@@ -1,3 +1,5 @@
+// ไฟล์นี้: แปลงแผนจาก backend ให้เป็นรูปที่หน้า delivery ใช้แสดงผล (ยอดรวมใช้จาก backend ตรงๆ)
+
 import type { Customer, Order, Rider, RiderRoute, RoutePlan, RouteStop } from './models';
 import type { DeliveryRouteModel, RoutePlanModel } from './route-plan.models';
 import { ROUTE_PALETTE } from './route-plan-view';
@@ -6,6 +8,7 @@ interface ShopTime {
   deadlineTime: string;
 }
 
+// ชื่อสำรองของไรเดอร์เมื่อ backend ไม่ได้ส่งชื่อมา -> "ไรเดอร์ ลำดับที่"
 const FALLBACK_RIDER_NAMES = (index: number): string => `ไรเดอร์ ${index + 1}`;
 
 /**
@@ -47,6 +50,7 @@ export function adaptBackendPlan(
   };
 }
 
+// แปลงงานของไรเดอร์หนึ่งคน -> เส้นทางพร้อมจุดส่ง และยอดรายรับ/ต้นทุน/กำไรของคันนั้น
 function adaptJob(
   plan: RoutePlanModel,
   job: DeliveryRouteModel,
@@ -112,6 +116,7 @@ function adaptJob(
   };
 }
 
+// ปัดตัวเลขให้เหลือทศนิยม 2 ตำแหน่ง
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }

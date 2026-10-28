@@ -1,3 +1,5 @@
+// ไฟล์นี้: รูปแบบค่าตั้งต้นตามสภาพแวดล้อม (ชื่อ และ URL ฐานของ API) ที่ไฟล์ environment ทุกไฟล์ต้องตรงกัน
+
 /**
  * Shape shared by every environment file.
  *

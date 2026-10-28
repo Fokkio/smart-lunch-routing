@@ -1,3 +1,5 @@
+// ไฟล์นี้: หน้าใบงานของไรเดอร์ — ดูงานวันนี้ รับทราบ เริ่มงาน ส่งทีละจุด นำทางด้วย Google Maps และติดตาม GPS
+
 import { ChangeDetectorRef, Component, DestroyRef, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, fromEvent, timer, timeout } from 'rxjs';
@@ -13,6 +15,7 @@ import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
 
 type Stage = 'entry' | 'summary' | 'delivery' | 'completed';
 
+// หน้าใบงานไรเดอร์: โหลดงานของตัวเอง, เลือกงาน, กดรับทราบ/เริ่มงาน/ส่งทีละจุด, และเปลี่ยนรหัสผ่าน
 @Component({
   selector: 'app-rider',
   standalone: true,
@@ -28,6 +31,7 @@ export class RiderComponent implements OnInit, OnDestroy {
   newJobsMessage = '';
   updatingJob = false;
   private loadedJobs = false;
+  // จำนวนงานใหม่ที่ยังไม่รับทราบและยังไม่จบ/ยกเลิก
   get unreadJobs(): number {
     return this.jobs.filter(
       (item) =>
@@ -39,6 +43,7 @@ export class RiderComponent implements OnInit, OnDestroy {
   mapStart = '';
   jobs: RiderJobModel[] = [];
   jobQuery = '';
+  // งานที่จะแสดง: ตัดงานที่ยกเลิกออก และกรองตามรหัสงานที่ค้นหา
   filteredJobs() {
     const query = this.jobQuery.trim().toLowerCase();
     return this.jobs.filter(
@@ -66,10 +71,12 @@ export class RiderComponent implements OnInit, OnDestroy {
   readonly gpsErrorMessage = signal<string>('');
   private watchId: number | null = null;
 
+  // จุดส่งปัจจุบันของงานที่เปิดอยู่ (ตามลำดับที่กำลังส่ง)
   get currentStop(): RouteStopModel | null {
     return this.activeRoute?.stops[this.stopIndex] ?? null;
   }
 
+  // ลิงก์ Google Maps นำทางไปจุดส่งปัจจุบัน (ใช้ GPS สดเป็นจุดเริ่มถ้ามี)
   get navigationUrl(): string | null {
     const stop = this.currentStop;
     if (
@@ -94,6 +101,7 @@ export class RiderComponent implements OnInit, OnDestroy {
     return `https://www.google.com/maps/dir/?${params}`;
   }
 
+  // ตอนเปิดหน้า: โหลดงาน แล้วตั้ง polling ทุก 20 วินาทีและตอนกลับมาหน้านี้เพื่อเช็กงานใหม่
   ngOnInit(): void {
     this.loadJobs();
     // ponytail: polling suits this small dispatch app; use server push if measured traffic requires it.
@@ -109,6 +117,7 @@ export class RiderComponent implements OnInit, OnDestroy {
       });
   }
 
+  // โหลดใบงานของตัวเองในวันนี้จาก backend (โหมดเบื้องหลังไม่ล้างข้อความเตือนเดิม)
   loadJobs(background = false): void {
     if (this.loading) return;
     this.loading = true;
@@ -144,6 +153,7 @@ export class RiderComponent implements OnInit, OnDestroy {
       });
   }
 
+  // เลือกใบงานมาเปิดดู: ตั้งจุดส่งที่ยังไม่ส่งจุดแรกเป็นจุดปัจจุบัน และเริ่มติดตาม GPS ถ้ายังไม่ส่งครบ
   selectJob(item: RiderJobModel): void {
     if (item.job.status === 'CANCELLED') return;
     this.newJobsMessage = '';
@@ -169,6 +179,7 @@ export class RiderComponent implements OnInit, OnDestroy {
     }
     this.cdr.markForCheck();
   }
+  // รับทราบใบงานที่เลือก -> แจ้ง backend ว่าไรเดอร์เห็นงานแล้ว
   acknowledge(): void {
     const route = this.activeRoute;
     if (!route || route.jobId === undefined || this.updatingJob || route.acknowledgedAt) return;
@@ -191,6 +202,7 @@ export class RiderComponent implements OnInit, OnDestroy {
         },
       });
   }
+  // เริ่มใบงานที่เลือก -> แจ้ง backend ว่าเริ่มส่งแล้ว
   begin(): void {
     const route = this.activeRoute;
     if (!this.currentStop || !route || route.jobId === undefined || this.updatingJob) return;
@@ -220,10 +232,12 @@ export class RiderComponent implements OnInit, OnDestroy {
         },
       });
   }
+  // กลับไปหน้ารวมของใบงานที่เลือก (ออกจากโหมดส่งทีละจุด)
   backToSummary(): void {
     this.confirmingStop = false;
     this.stage = 'summary';
   }
+  // ยืนยันว่าส่งจุดปัจจุบันแล้ว -> แจ้ง backend แล้วเลื่อนไปจุดถัดไป
   completeStop(): void {
     const stop = this.currentStop;
     if (
@@ -266,6 +280,7 @@ export class RiderComponent implements OnInit, OnDestroy {
         },
       });
   }
+  // ปิดงานที่เปิดอยู่ หยุด GPS และกลับไปหน้ารายการงาน พร้อมโหลดงานใหม่
   closeJob(): void {
     this.stopGpsTracking();
     this.stage = 'entry';
@@ -278,10 +293,12 @@ export class RiderComponent implements OnInit, OnDestroy {
     this.loadJobs();
   }
 
+  // ตอนออกจากหน้า: หยุดติดตาม GPS
   ngOnDestroy(): void {
     this.stopGpsTracking();
   }
 
+  // เริ่มติดตามตำแหน่ง GPS ของเครื่องนี้ เพื่อแสดงบนแผนที่และใช้เป็นจุดเริ่มนำทาง
   startGpsTracking(): void {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       this.gpsStatus.set('error');
@@ -315,6 +332,7 @@ export class RiderComponent implements OnInit, OnDestroy {
     );
   }
 
+  // หยุดติดตามตำแหน่ง GPS
   stopGpsTracking(): void {
     if (this.watchId !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.clearWatch(this.watchId);
@@ -323,10 +341,12 @@ export class RiderComponent implements OnInit, OnDestroy {
     this.gpsStatus.set('inactive');
     this.riderLocation.set(null);
   }
+  // ออกจากระบบของไรเดอร์ แล้วพากลับไปหน้า login ไรเดอร์
   logout(): void {
     this.auth.logout();
     void this.router.navigateByUrl('/login/rider');
   }
+  // เปลี่ยนรหัสผ่านของตัวเอง: ส่งรหัสเดิมกับรหัสใหม่ไป backend แล้วออกจากระบบให้ login ใหม่
   changePassword(): void {
     if (this.changingPassword || this.newPassword.length < 12 || !this.currentPassword) return;
     this.changingPassword = true;
