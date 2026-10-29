@@ -1,6 +1,6 @@
 // ไฟล์นี้: แปลงข้อมูลแผนให้เป็นรูปที่แสดงบนแผนที่ — สีประจำคัน เส้นถนน/เส้นประมาณ และป้ายอธิบาย
 
-import { DeliveryRouteModel, RoutePlanModel } from './route-plan.models';
+import { DeliveryRouteModel, RoutePlanModel } from '../models/route-plan.models';
 
 /**
  * Pure view-model mapping for the route-planning page (tested, no Angular

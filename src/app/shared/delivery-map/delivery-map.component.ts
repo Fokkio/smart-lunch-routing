@@ -14,7 +14,7 @@ import {
   signal,
 } from '@angular/core';
 import * as L from 'leaflet';
-import { Customer, RiderRoute, SHOP } from '../../core/models';
+import { Customer, RiderRoute, SHOP } from '../../core/models/models';
 
 // component แผนที่ลูกค้า/เส้นทาง: สร้างแผนที่ Leaflet วาดร้าน ลูกค้า และเส้นทาง พร้อมโหมดเลือกพิกัด
 @Component({

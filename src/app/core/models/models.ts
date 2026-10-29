@@ -62,7 +62,7 @@ export interface RiderRoute {
 export interface RoutePlan {
   startTime?: string;
   deliveryDeadline?: string;
-  shop?: import('./shop-settings-api.service').ShopSettings;
+  shop?: import('../api/shop-settings-api.service').ShopSettings;
   estimatedFinishTime?: string;
   version: number;
   generatedAt: string;

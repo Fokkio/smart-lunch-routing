@@ -4,7 +4,7 @@ import { HttpClient, HttpInterceptorFn } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Router, type CanActivateFn } from '@angular/router';
 import { catchError, filter, tap, throwError, timeout } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { environment } from '../../../environments/environment';
 
 export type User = { type: 'OWNER' | 'RIDER'; id: number; name: string };
 type Session = { token: string; user: User };

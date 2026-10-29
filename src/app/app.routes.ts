@@ -1,7 +1,7 @@
 // ไฟล์นี้: แผนที่ URL ของแอป — หน้าไหนต้องเป็น OWNER หรือ RIDER บ้าง และหน้าแรก/หน้าที่ไม่มีอยู่ไปไหน
 
 import { Routes } from '@angular/router';
-import { roleGuard } from './core/auth.service';
+import { roleGuard } from './core/api/auth.service';
 
 // รายการ route ทั้งหมด: โหลดหน้าแบบ lazy เมื่อเข้าถึงเท่านั้น
 export const routes: Routes = [

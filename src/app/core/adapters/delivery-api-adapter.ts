@@ -1,9 +1,9 @@
 // ไฟล์นี้: แปลงข้อมูลดิบจาก API ให้เป็นรูปที่หน้าแอปใช้ (id ตัวเลข -> ข้อความ, สถานะ backend -> สถานะหน้าแอป)
 
-import type { ApiCustomer } from './customer-api.models';
-import type { ApiOrder, ApiOrderStatus } from './order-api.service';
-import type { ApiRider } from './rider-api.service';
-import type { Customer, Order, OrderStatus, Rider } from './models';
+import type { ApiCustomer } from '../models/customer-api.models';
+import type { ApiOrder, ApiOrderStatus } from '../api/order-api.service';
+import type { ApiRider } from '../api/rider-api.service';
+import type { Customer, Order, OrderStatus, Rider } from '../models/models';
 
 const RIDER_COLORS = [
   '#d13b45',

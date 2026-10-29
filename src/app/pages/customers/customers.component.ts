@@ -2,12 +2,12 @@
 
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { apiErrorMessage } from '../../core/api-error';
+import { apiErrorMessage } from '../../core/utils/api-error';
 import { FormsModule } from '@angular/forms';
-import { mapCustomer } from '../../core/delivery-api-adapter';
-import { Customer, SHOP } from '../../core/models';
-import { CustomersApiService } from '../../core/customer-api.service';
-import { DeliveryService } from '../../core/delivery.service';
+import { mapCustomer } from '../../core/adapters/delivery-api-adapter';
+import { Customer, SHOP } from '../../core/models/models';
+import { CustomersApiService } from '../../core/api/customer-api.service';
+import { DeliveryService } from '../../core/state/delivery.service';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
 import { NearbySearchComponent } from '../../shared/nearby-search.component';
 import { finalize, timeout } from 'rxjs';

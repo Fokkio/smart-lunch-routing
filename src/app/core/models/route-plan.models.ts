@@ -57,7 +57,7 @@ export type RoutePlanStatus = 'GENERATED' | 'SELECTED' | 'REJECTED';
 export interface RoutePlanModel {
   startTime?: string;
   deliveryDeadline?: string;
-  shop?: import('./shop-settings-api.service').ShopSettings;
+  shop?: import('../api/shop-settings-api.service').ShopSettings;
   routePlanId?: number;
   planDate: string;
   status: RoutePlanStatus;

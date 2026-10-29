@@ -4,9 +4,9 @@ import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, timeout } from 'rxjs';
 import { FormsModule } from '@angular/forms';
-import { apiErrorMessage } from '../../core/api-error';
-import { ApiRider, RidersApiService } from '../../core/rider-api.service';
-import { DeliveryService } from '../../core/delivery.service';
+import { apiErrorMessage } from '../../core/utils/api-error';
+import { ApiRider, RidersApiService } from '../../core/api/rider-api.service';
+import { DeliveryService } from '../../core/state/delivery.service';
 
 type Draft = { id?: number; name: string; phone: string; isAvailable: boolean };
 

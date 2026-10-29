@@ -3,7 +3,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { environment } from '../../../environments/environment';
 
 /** Mirror ของ backend ShopSettings (ดู backend src/models/shop-settings.model.ts) */
 export interface ShopSettings {

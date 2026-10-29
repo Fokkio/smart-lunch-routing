@@ -2,9 +2,9 @@
 
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../environments/environment';
+import { environment } from '../../../environments/environment';
 
-import type { ApiCustomer, ApiCustomerInput } from './customer-api.models';
+import type { ApiCustomer, ApiCustomerInput } from '../models/customer-api.models';
 
 // service เรียก API /customers
 @Injectable({ providedIn: 'root' })

@@ -15,8 +15,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as L from 'leaflet';
-import { DeliveryRouteModel } from '../core/route-plan.models';
-import { geometryToLatLngs, LatLng, routeColor, stopLine } from '../core/route-plan-view';
+import { DeliveryRouteModel } from '../core/models/route-plan.models';
+import { geometryToLatLngs, LatLng, routeColor, stopLine } from '../core/view/route-plan-view';
 
 const SHOP: LatLng = [16.24631, 103.25286];
 

@@ -2,15 +2,15 @@
 
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { finalize, forkJoin, map, timeout } from 'rxjs';
-import { CustomersApiService } from './customer-api.service';
-import { OrderApiService } from './order-api.service';
-import { RidersApiService } from './rider-api.service';
-import { mapCustomer, mapOrder, mapRider } from './delivery-api-adapter';
-import { todayLocal } from './dates';
-import { Customer, Order, Rider, RoutePlan } from './models';
-import { ShopSettings, ShopSettingsApiService } from './shop-settings-api.service';
-import { RoutePlanApiService } from './route-plan-api.service';
-import { AuthService } from './auth.service';
+import { CustomersApiService } from '../api/customer-api.service';
+import { OrderApiService } from '../api/order-api.service';
+import { RidersApiService } from '../api/rider-api.service';
+import { mapCustomer, mapOrder, mapRider } from '../adapters/delivery-api-adapter';
+import { todayLocal } from '../utils/dates';
+import { Customer, Order, Rider, RoutePlan } from '../models/models';
+import { ShopSettings, ShopSettingsApiService } from '../api/shop-settings-api.service';
+import { RoutePlanApiService } from '../api/route-plan-api.service';
+import { AuthService } from '../api/auth.service';
 
 const PLAN_KEY = 'smart-lunch-plan-v1';
 

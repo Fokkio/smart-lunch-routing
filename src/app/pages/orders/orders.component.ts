@@ -5,13 +5,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize, forkJoin, timeout } from 'rxjs';
-import { todayLocal } from '../../core/dates';
+import { todayLocal } from '../../core/utils/dates';
 import { NearbySearchComponent } from '../../shared/nearby-search.component';
-import { apiErrorMessage } from '../../core/api-error';
-import { ApiCustomer } from '../../core/customer-api.models';
-import { CustomersApiService } from '../../core/customer-api.service';
-import { ApiOrder, ApiOrderStatus, OrderApiService } from '../../core/order-api.service';
-import { DeliveryService } from '../../core/delivery.service';
+import { apiErrorMessage } from '../../core/utils/api-error';
+import { ApiCustomer } from '../../core/models/customer-api.models';
+import { CustomersApiService } from '../../core/api/customer-api.service';
+import { ApiOrder, ApiOrderStatus, OrderApiService } from '../../core/api/order-api.service';
+import { DeliveryService } from '../../core/state/delivery.service';
 
 type Draft = { id?: number; customerId: number | null; boxes: number; status: ApiOrderStatus };
 

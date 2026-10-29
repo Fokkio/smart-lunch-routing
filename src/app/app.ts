@@ -2,8 +2,8 @@
 
 import { Component, effect, inject, untracked } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { DeliveryService } from './core/delivery.service';
-import { AuthService } from './core/auth.service';
+import { DeliveryService } from './core/state/delivery.service';
+import { AuthService } from './core/api/auth.service';
 
 // component ราก: แสดงโครงหลักของแอป และเชื่อมข้อมูลผู้ใช้กับข้อมูลจัดส่ง
 @Component({

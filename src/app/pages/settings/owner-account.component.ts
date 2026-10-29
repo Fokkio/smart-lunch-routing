@@ -5,8 +5,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
-import { AuthService } from '../../core/auth.service';
-import { apiErrorMessage } from '../../core/api-error';
+import { AuthService } from '../../core/api/auth.service';
+import { apiErrorMessage } from '../../core/utils/api-error';
 
 // ส่วนบัญชีเจ้าของร้าน: โหลดบัญชีปัจจุบัน และบันทึกชื่อผู้ใช้/รหัสผ่านใหม่
 @Component({

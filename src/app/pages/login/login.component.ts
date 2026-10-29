@@ -3,10 +3,10 @@
 import { ChangeDetectorRef, Component, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, timeout } from 'rxjs';
-import { apiErrorMessage } from '../../core/api-error';
+import { apiErrorMessage } from '../../core/utils/api-error';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { AuthService, type User } from '../../core/auth.service';
+import { AuthService, type User } from '../../core/api/auth.service';
 
 // หน้า login: รับชื่อผู้ใช้กับรหัสผ่าน แล้วพาไปหน้าของบทบาทนั้นเมื่อ login สำเร็จ
 @Component({

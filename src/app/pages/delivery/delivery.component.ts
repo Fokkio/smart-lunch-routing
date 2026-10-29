@@ -14,23 +14,23 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { apiErrorMessage } from '../../core/api-error';
-import { AuthService } from '../../core/auth.service';
+import { apiErrorMessage } from '../../core/utils/api-error';
+import { AuthService } from '../../core/api/auth.service';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { filter, finalize, timeout, type Observable } from 'rxjs';
-import { todayLocal } from '../../core/dates';
-import { DeliveryService } from '../../core/delivery.service';
-import { RiderRoute, RoutePlan, SHOP } from '../../core/models';
-import { adaptBackendPlan } from '../../core/route-plan-adapter';
+import { todayLocal } from '../../core/utils/dates';
+import { DeliveryService } from '../../core/state/delivery.service';
+import { RiderRoute, RoutePlan, SHOP } from '../../core/models/models';
+import { adaptBackendPlan } from '../../core/adapters/route-plan-adapter';
 import type {
   DeliveryRouteModel,
   RoutePlanModel,
   RoutePlanStatus,
   RoutePlanSummaryModel,
-} from '../../core/route-plan.models';
-import { RoutePlanApiService } from '../../core/route-plan-api.service';
-import { routingSourceLabel } from '../../core/route-plan-view';
+} from '../../core/models/route-plan.models';
+import { RoutePlanApiService } from '../../core/api/route-plan-api.service';
+import { routingSourceLabel } from '../../core/view/route-plan-view';
 import { DeliveryMapComponent } from '../../shared/delivery-map/delivery-map.component';
 import { RoutePlanMapComponent } from '../../shared/route-plan-map.component';
 
